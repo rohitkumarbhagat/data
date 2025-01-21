@@ -1,6 +1,6 @@
 # Import Automation System
 
-The import automation system has three components:
+The import automation system has two components:
 1. [Cloud Build configuration file](cloudbuild/README.md)
 2. [Executor](executor/README.md)
 
