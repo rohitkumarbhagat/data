@@ -1,0 +1,11 @@
+# Requirements for Data Commons ID extractors
+# 
+# For datacommons_id_extractor_v4.py (Selenium-based browser automation):
+selenium>=4.0.0
+webdriver-manager>=3.8.0
+
+# For datacommons_id_extractor_v5.py (API-based):
+requests>=2.25.0
+
+# Install with:
+# pip install -r requirements.txt
