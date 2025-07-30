@@ -6,15 +6,24 @@ This script uses the sdmx1 library's native functionality to download:
 - Data Structure Definitions (DSDs)
 - Actual statistical data
 
-It works with any SDMX-compliant endpoint, not just predefined sources.
+Usage:
+1. For predefined sources (ECB, IMF, WB, etc.):
+   python download_dataflows_sdmx1.py --source=ECB --agency_id=ECB
+
+2. For custom SDMX endpoints:
+   python download_dataflows_sdmx1.py --base_url=https://api.example.com/sdmx/rest --agency_id=MYORG
+
+The script automatically uses built-in methods when using predefined sources,
+providing cleaner code and better performance.
 """
 
 import os
 import time
 import logging
+import json
 from dataclasses import dataclass, asdict
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 from absl import app, flags
 import sdmx
@@ -22,15 +31,15 @@ import pandas as pd
 
 # Command-line flags
 FLAGS = flags.FLAGS
-flags.DEFINE_string("base_url", None, "Base URL of the SDMX REST API endpoint.")
+flags.DEFINE_string("base_url", None, "Base URL of the SDMX REST API endpoint (for custom sources).")
 flags.DEFINE_string("agency_id", None, "Agency ID to download dataflows from.")
+flags.DEFINE_string("source", None, "Predefined source name (e.g., ECB, IMF, WB). If provided, base_url is ignored.")
 flags.DEFINE_string("download_dir", "./data",
                     "Directory to download dataflows to.")
 flags.DEFINE_integer("timeout", 300, "Timeout for HTTP requests in seconds.")
 flags.DEFINE_integer("max_executors", 5,
                      "Maximum number of parallel executors.")
 
-flags.mark_flag_as_required("base_url")
 flags.mark_flag_as_required("agency_id")
 
 
@@ -50,21 +59,54 @@ class Counters:
 counter = Counters()
 
 
-def create_sdmx_client(timeout: int) -> sdmx.Client:
-    """Create a generic SDMX client for arbitrary endpoints.
+def create_sdmx_client(source: Optional[str], base_url: Optional[str], 
+                      agency_id: str, timeout: int) -> Tuple[sdmx.Client, bool]:
+    """Create an SDMX client for predefined or custom sources.
     
     Args:
+        source: Predefined source name (e.g., 'ECB', 'IMF') or None.
+        base_url: Base URL for custom sources (ignored if source is provided).
+        agency_id: Agency identifier.
         timeout: Request timeout in seconds.
         
     Returns:
-        Configured SDMX client.
+        Tuple of (configured SDMX client, is_predefined_source).
     """
-    return sdmx.Client(timeout=timeout)
+    if source:
+        # Try to use predefined source
+        try:
+            client = sdmx.Client(source, timeout=timeout)
+            logging.info(f"Using predefined source: {source}")
+            return client, True
+        except ValueError:
+            logging.warning(f"Unknown predefined source '{source}', falling back to custom endpoint")
+    
+    if not base_url:
+        raise ValueError("Either --source or --base_url must be provided")
+    
+    # Create generic client for custom endpoint
+    client = sdmx.Client(timeout=timeout)
+    
+    # Optionally configure as a custom source
+    if source:
+        custom_source = {
+            "id": source.upper(),
+            "name": source,
+            "url": base_url.rstrip('/'),
+            "api_version": "2.1"
+        }
+        try:
+            client.add_source(json.dumps(custom_source))
+            logging.info(f"Configured custom source: {source} at {base_url}")
+        except Exception as e:
+            logging.warning(f"Could not configure custom source: {e}")
+    
+    return client, False
 
 
 def download_dataflow_structure(client: sdmx.Client, base_url: str,
                                 agency_id: str, dataflow_id: str, version: str,
-                                download_dir: str) -> Optional[str]:
+                                download_dir: str, is_predefined: bool) -> Optional[str]:
     """Download dataflow structure with all references.
     
     This retrieves the dataflow definition along with its DSD and related structures.
@@ -76,6 +118,7 @@ def download_dataflow_structure(client: sdmx.Client, base_url: str,
         dataflow_id: Dataflow identifier.
         version: Dataflow version.
         download_dir: Directory to save files.
+        is_predefined: Whether using a predefined source.
         
     Returns:
         Path to saved file or None if failed.
@@ -94,18 +137,24 @@ def download_dataflow_structure(client: sdmx.Client, base_url: str,
 
     try:
         start_time = time.time()
-        url = f"{base_url}/dataflow/{agency_id}/{dataflow_id}/{version}"
-        logging.info(f"Downloading dataflow structure from {url}")
-
-        # Use native SDMX client with references to get everything
-        response = client.get(
-            url=url,
-            params={
-                'references': 'all',  # Gets DSD, codelists, concepts
-                'detail': 'full'
-            },
-            tofile=save_path  # Direct file saving
-        )
+        
+        if is_predefined:
+            # Use built-in method for predefined sources
+            logging.info(f"Downloading dataflow structure using built-in method: {dataflow_id}")
+            response = client.dataflow(dataflow_id, tofile=save_path)
+        else:
+            # Fall back to manual URL construction for custom endpoints
+            url = f"{base_url}/dataflow/{agency_id}/{dataflow_id}/{version}"
+            logging.info(f"Downloading dataflow structure from {url}")
+            
+            response = client.get(
+                url=url,
+                params={
+                    'references': 'all',  # Gets DSD, codelists, concepts
+                    'detail': 'full'
+                },
+                tofile=save_path  # Direct file saving
+            )
 
         logging.info(
             f"Downloaded dataflow structure in {time.time() - start_time:.2f} seconds"
@@ -123,7 +172,7 @@ def download_dataflow_structure(client: sdmx.Client, base_url: str,
 
 
 def download_dsd(client: sdmx.Client, base_url: str, agency_id: str,
-                 dsd_id: str, version: str, download_dir: str) -> Optional[str]:
+                 dsd_id: str, version: str, download_dir: str, is_predefined: bool) -> Optional[str]:
     """Download Data Structure Definition.
     
     Note: When using references='all' with dataflow, the DSD is included.
@@ -178,7 +227,7 @@ def download_dsd(client: sdmx.Client, base_url: str, agency_id: str,
 
 def download_dataflow_data(client: sdmx.Client, base_url: str, agency_id: str,
                            dataflow_id: str, version: str,
-                           download_dir: str) -> Optional[str]:
+                           download_dir: str, is_predefined: bool) -> Optional[str]:
     """Download actual statistical data for a dataflow.
     
     Args:
@@ -250,7 +299,7 @@ def download_dataflow_data(client: sdmx.Client, base_url: str, agency_id: str,
 
 def download_dataflow(client: sdmx.Client, base_url: str, agency_id: str,
                       dataflow_id: str, version: str,
-                      download_dir: str) -> Optional[Tuple[str, str, str]]:
+                      download_dir: str, is_predefined: bool) -> Optional[Tuple[str, str, str]]:
     """Download complete dataflow: structure, DSD, and data.
     
     Args:
@@ -275,7 +324,8 @@ def download_dataflow(client: sdmx.Client, base_url: str, agency_id: str,
         df_struct_path = download_dataflow_structure(client, base_url,
                                                      agency_id, dataflow_id,
                                                      version,
-                                                     dataflow_download_dir)
+                                                     dataflow_download_dir,
+                                                     is_predefined)
         if df_struct_path is None:
             return None
 
@@ -300,7 +350,7 @@ def download_dataflow(client: sdmx.Client, base_url: str, agency_id: str,
 
             # Download DSD separately (optional, as it's included in structure with references='all')
             dsd_path = download_dsd(client, base_url, dsd_agency, dsd_id,
-                                    dsd_version, dataflow_download_dir)
+                                    dsd_version, dataflow_download_dir, is_predefined)
         except Exception as e:
             logging.warning(
                 f"Could not extract DSD info, using dataflow ID: {e}")
@@ -309,7 +359,7 @@ def download_dataflow(client: sdmx.Client, base_url: str, agency_id: str,
         # Download the actual data
         data_path = download_dataflow_data(client, base_url, agency_id,
                                            dataflow_id, version,
-                                           dataflow_download_dir)
+                                           dataflow_download_dir, is_predefined)
 
         return df_struct_path, dsd_path, data_path
 
@@ -321,7 +371,7 @@ def download_dataflow(client: sdmx.Client, base_url: str, agency_id: str,
 
 
 def download_all_dataflows(client: sdmx.Client, base_url: str, agency_id: str,
-                           download_dir: str) -> str:
+                           download_dir: str, is_predefined: bool) -> str:
     """Download all dataflows for an agency.
     
     Args:
@@ -329,6 +379,7 @@ def download_all_dataflows(client: sdmx.Client, base_url: str, agency_id: str,
         base_url: Base URL of the SDMX endpoint.
         agency_id: Agency identifier.
         download_dir: Directory to save files.
+        is_predefined: Whether using a predefined source.
         
     Returns:
         Path to the saved agency dataflows file.
@@ -344,11 +395,17 @@ def download_all_dataflows(client: sdmx.Client, base_url: str, agency_id: str,
     else:
         logging.info(f"Downloading all dataflows for agency {agency_id}")
         start_time = time.time()
-        url = f"{base_url}/dataflow/{agency_id}"
 
         try:
-            # Get all dataflows using native SDMX client
-            response = client.get(url=url, tofile=save_path)
+            if is_predefined:
+                # Use built-in method for predefined sources
+                logging.info("Using built-in dataflow() method")
+                response = client.dataflow(tofile=save_path)
+            else:
+                # Fall back to manual URL for custom endpoints
+                url = f"{base_url}/dataflow/{agency_id}"
+                response = client.get(url=url, tofile=save_path)
+            
             logging.info(
                 f"Downloaded all dataflows in {time.time() - start_time:.2f} seconds"
             )
@@ -391,7 +448,8 @@ def download_all_dataflows(client: sdmx.Client, base_url: str, agency_id: str,
 
             future = executor.submit(download_dataflow, client, base_url,
                                      agency_id, df_info['id'],
-                                     df_info['version'], agency_download_dir)
+                                     df_info['version'], agency_download_dir, 
+                                     is_predefined)
             futures.append(future)
 
         # Wait for all downloads to complete
@@ -412,13 +470,18 @@ def main(_):
     logging.info("Starting SDMX download using native sdmx1 library")
     start_time = time.time()
 
-    # Create generic SDMX client
-    client = create_sdmx_client(timeout=FLAGS.timeout)
+    # Create SDMX client (predefined or custom)
+    client, is_predefined = create_sdmx_client(
+        source=FLAGS.source,
+        base_url=FLAGS.base_url,
+        agency_id=FLAGS.agency_id,
+        timeout=FLAGS.timeout
+    )
 
     # Download all dataflows for the specified agency
     try:
         download_all_dataflows(client, FLAGS.base_url, FLAGS.agency_id,
-                               FLAGS.download_dir)
+                               FLAGS.download_dir, is_predefined)
 
         logging.info(
             f"Download completed in {time.time() - start_time:.2f} seconds")

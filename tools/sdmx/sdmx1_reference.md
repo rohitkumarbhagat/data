@@ -18,28 +18,52 @@ pip install sdmx1
 
 ## Client Creation
 
+### Named Client (for predefined sources)
+```python
+# Create client for known data sources
+ecb_client = sdmx.Client('ECB')
+imf_client = sdmx.Client('IMF')
+wb_client = sdmx.Client('WB')
+
+# Predefined sources include: ECB, IMF, WB, OECD, ESTAT, INSEE, and many more
+# See full list at: https://github.com/khaeru/sdmx/tree/main/sdmx/sources
+```
+
 ### Generic Client (for arbitrary endpoints)
 ```python
 import sdmx
 
-# Create a generic client that works with any SDMX endpoint
+# Method 1: Create a generic client that works with any SDMX endpoint
 client = sdmx.Client()
 
 # Use with custom URLs
 response = client.get(url="https://your-sdmx-endpoint.com/rest/...")
 ```
 
-### Named Client (for predefined sources)
+### Custom Source Configuration
 ```python
-# Create client for known data sources
-ecb_client = sdmx.Client('ECB')
-wb_client = sdmx.Client('WB')
+# Method 2: Add a custom source using JSON description
+import json
+
+custom_source = {
+    "id": "MYORG",
+    "name": "My Organization",
+    "url": "https://api.myorg.com/sdmx",
+    "api_version": "2.1"
+}
+
+client = sdmx.Client()
+client.add_source(json.dumps(custom_source))
+
+# Now can use the custom source
+client_myorg = sdmx.Client('MYORG')
 ```
 
 ### Client Configuration
 ```python
 # Pass any requests.request() arguments
 client = sdmx.Client(
+    'ECB',  # or omit for generic client
     timeout=300,
     proxies={'http': 'http://proxy.example.com:8080'},
     headers={'User-Agent': 'My App'}
@@ -48,9 +72,54 @@ client = sdmx.Client(
 
 ## Core Operations
 
-### 1. Retrieving All Dataflows
+### Built-in Dataflow Methods (Recommended)
+
+#### Using Predefined Sources
 ```python
-# Get all dataflows from an agency
+# For predefined sources like ECB, IMF, etc.
+ecb = sdmx.Client('ECB')
+
+# Get all dataflows - no URL construction needed!
+flow_msg = ecb.dataflow()
+
+# Get specific dataflow with references
+exr_msg = ecb.dataflow('EXR')  # Automatically includes references='all'
+
+# Convert to pandas for easy exploration
+dataflows = sdmx.to_pandas(flow_msg.dataflow)
+print(dataflows.head())
+# Output:
+# AME    AMECO
+# BKN    Banknotes statistics
+# BLS    Bank Lending Survey Statistics
+# BOP    Euro Area Balance of Payments...
+
+# Search for specific dataflows
+exchange_flows = dataflows[dataflows.str.contains('exchange', case=False)]
+```
+
+#### Using Custom Endpoints
+```python
+# For custom endpoints, configure the source first
+custom_source = {
+    "id": "MYAPI",
+    "name": "My Custom API",
+    "url": "https://api.example.com/sdmx/rest",
+    "api_version": "2.1"
+}
+
+client = sdmx.Client()
+client.add_source(json.dumps(custom_source))
+
+# Now use like a predefined source
+myapi = sdmx.Client('MYAPI')
+flow_msg = myapi.dataflow()
+specific_flow = myapi.dataflow('FLOW_ID')
+```
+
+### 1. Retrieving All Dataflows (Manual Method)
+```python
+# Manual method - still supported for backwards compatibility
 response = client.get(
     url=f"{base_url}/dataflow/{agency_id}",
     resource_type='dataflow'
@@ -64,8 +133,27 @@ for flow_id, flow in response.dataflow.items():
 ```
 
 ### 2. Retrieving Specific Dataflow with References
+
+#### Built-in Method (Recommended)
 ```python
-# Get dataflow with all related structures
+# Using predefined source
+ecb = sdmx.Client('ECB')
+exr_msg = ecb.dataflow('EXR')  # Automatically fetches with references='all'
+
+# Access dataflow and its structure
+dataflow = exr_msg.dataflow.EXR
+dsd = dataflow.structure  # Direct reference to DSD
+print(f"Dataflow: {dataflow.name}")
+print(f"DSD ID: {dsd.id}")
+
+# Explore the structure
+for dim in dsd.dimensions:
+    print(f"Dimension: {dim.id}")
+```
+
+#### Manual Method
+```python
+# Manual method - still supported
 response = client.get(
     url=f"{base_url}/dataflow/{agency_id}/{dataflow_id}/{version}",
     params={'references': 'all'}  # Includes DSD, codelists, concepts
@@ -332,6 +420,40 @@ dsd = dataflow.structure
 # No URN parsing needed - objects linked automatically
 ```
 
+## Advantages of Built-in Methods
+
+### Why Use `.dataflow()` Over Manual URL Construction
+
+1. **Cleaner Code**
+   ```python
+   # Old way
+   url = f"{base_url}/dataflow/{agency_id}/{dataflow_id}/{version}"
+   response = client.get(url=url, params={'references': 'all'})
+   
+   # New way
+   response = ecb.dataflow('EXR')  # Automatic references='all'
+   ```
+
+2. **Automatic Reference Handling**
+   - Built-in methods automatically include `references='all'`
+   - No need to manually specify parameters
+   - All related structures (DSD, codelists) included
+
+3. **Better Error Handling**
+   - Library handles API-specific quirks
+   - Automatic retry logic for known sources
+   - Better error messages
+
+4. **Source-Specific Optimizations**
+   - Each predefined source has optimized settings
+   - Handles source-specific API limitations
+   - Automatic format negotiation
+
+5. **Less Code to Maintain**
+   - No URL construction logic
+   - No manual parameter handling
+   - Focus on data processing, not API mechanics
+
 ## Tips for Migration
 
 1. **Replace requests.get() with client.get()**
@@ -355,3 +477,8 @@ dsd = dataflow.structure
 5. **Leverage 'references' parameter**
    - Use 'all' to get everything in one request
    - Reduces number of API calls significantly
+
+6. **Use Built-in Methods When Possible**
+   - For known sources, use predefined clients
+   - For custom sources, configure once with `add_source()`
+   - Use `.dataflow()` instead of manual URL construction
