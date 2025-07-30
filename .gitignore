@@ -20,6 +20,7 @@ import-automation/executor/config_override.json
 *.sqlite
 *_prompt.txt
 *prompt.md
+test_download/
 
 
 
