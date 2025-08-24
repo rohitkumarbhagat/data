@@ -1,0 +1,14 @@
+key,p1,v1,p2,v2,p3,v3,p4,v4,p5,v5,p6,v6,p7,v7,p8,v8,p9,v9,p10,v10
+ALABAMA State,#Header,StateName,StateName,{Key},,,,,,,,,,,,,,,,
+Abbeville,observationAbout,{Data} {StateName},value,{Data},populationType,CriminalActivities,measuredProperty,count,statType,measuredValue,typeOf,StatisticalVariable,observationDate,2023,observationPeriod,P1Y,,
+2371,observationAbout,{City_Name} {StateName},value,{Data},populationType,Person,measuredProperty,count,statType,measuredValue,typeOf,StatisticalVariable,observationDate,2023,observationPeriod,P1Y,,
+6,observationAbout,{City_Name} {StateName},value,{Data},populationType,CriminalActivities,crimeType,ViolentCrime,measuredProperty,count,statType,measuredValue,typeOf,StatisticalVariable,observationDate,2023,observationPeriod,P1Y
+0,observationAbout,{City_Name} {StateName},value,{Data},populationType,CriminalActivities,crimeType,MurderAndNonNegligentManslaughter,measuredProperty,count,statType,measuredValue,typeOf,StatisticalVariable,observationDate,2023,observationPeriod,P1Y
+0,observationAbout,{City_Name} {StateName},value,{Data},populationType,CriminalActivities,crimeType,ForcibleRape,measuredProperty,count,statType,measuredValue,typeOf,StatisticalVariable,observationDate,2023,observationPeriod,P1Y
+0,observationAbout,{City_Name} {StateName},value,{Data},populationType,CriminalActivities,crimeType,Robbery,measuredProperty,count,statType,measuredValue,typeOf,StatisticalVariable,observationDate,2023,observationPeriod,P1Y
+6,observationAbout,{City_Name} {StateName},value,{Data},populationType,CriminalActivities,crimeType,AggravatedAssault,measuredProperty,count,statType,measuredValue,typeOf,StatisticalVariable,observationDate,2023,observationPeriod,P1Y
+27,observationAbout,{City_Name} {StateName},value,{Data},populationType,CriminalActivities,crimeType,PropertyCrime,measuredProperty,count,statType,measuredValue,typeOf,StatisticalVariable,observationDate,2023,observationPeriod,P1Y
+6,observationAbout,{City_Name} {StateName},value,{Data},populationType,CriminalActivities,crimeType,Burglary,measuredProperty,count,statType,measuredValue,typeOf,StatisticalVariable,observationDate,2023,observationPeriod,P1Y
+21,observationAbout,{City_Name} {StateName},value,{Data},populationType,CriminalActivities,crimeType,LarcenyTheft,measuredProperty,count,statType,measuredValue,typeOf,StatisticalVariable,observationDate,2023,observationPeriod,P1Y
+0,observationAbout,{City_Name} {StateName},value,{Data},populationType,CriminalActivities,crimeType,MotorVehicleTheft,measuredProperty,count,statType,measuredValue,typeOf,StatisticalVariable,observationDate,2023,observationPeriod,P1Y
+0,observationAbout,{City_Name} {StateName},value,{Data},populationType,CriminalActivities,crimeType,Arson,measuredProperty,count,statType,measuredValue,typeOf,StatisticalVariable,observationDate,2023,observationPeriod,P1Y

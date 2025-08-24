@@ -1,0 +1,12 @@
+parameter,value
+url,Generated from FBI UCR data
+description,Offenses Known to Law Enforcement at state and city level for the year 2023
+start_date,2023
+end_date,2023
+release_frequency,Annual
+process,FBI crime data by state and city with various crime categories
+comments,Crime data includes violent and property crime categories following UCR classification
+output_columns,"observationAbout,observationDate,value,variableMeasured,observationPeriod"
+header_rows,3
+multi_value_properties,crimeType
+debug,0

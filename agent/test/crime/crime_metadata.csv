@@ -1,0 +1,5 @@
+url,https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/explorer/crime/crime-trend
+date_range,2023
+process_description,FBI UCR Table 8 - Offenses Known to Law Enforcement by State by City 2023
+output_columns,GeoId,StateName,City_Name,Population,ViolentCrime,Murder,Rape,Robbery,AggravatedAssault,PropertyCrime,Burglary,LarcenyTheft,MotorVehicleTheft,Arson
+multi_value_properties,name|alternateName
