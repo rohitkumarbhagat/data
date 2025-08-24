@@ -1,0 +1,1623 @@
+{
+  "extraction_timestamp": "2025-08-24T11:23:05.523730",
+  "total_imports": 22,
+  "base_path": "/Users/rohit/Documents/github/rohitkumarbhagat/data/statvar_imports",
+  "imports": {
+    "zurich_bev_4031_sex_wiki": {
+      "import_id": "zurich_bev_4031_sex_wiki",
+      "directory_path": "zurich/bev_4031_sex_wiki",
+      "provider": "zurich",
+      "files": {
+        "manifest": null,
+        "pvmap_files": [
+          "zurich/bev_4031_sex_wiki/bev_4031_sex_wiki_pvmap.csv"
+        ],
+        "metadata_files": [
+          "zurich/bev_4031_sex_wiki/bev_4031_sex_wiki_metadata.csv"
+        ],
+        "places_resolved_files": [],
+        "test_inputs": [
+          "zurich/bev_4031_sex_wiki/test_data/sample_input/bev_4031_sex_wiki_data.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "zurich/bev_4031_sex_wiki/test_data/sample_output/zurich_bev_4031_sex_wiki.csv"
+          ],
+          "tmcf": [
+            "zurich/bev_4031_sex_wiki/test_data/sample_output/zurich_bev_4031_sex_wiki.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [],
+      "provenance": {},
+      "categories": {
+        "main_categories": [
+          "Demographics"
+        ],
+        "geographic_level": "City/Metro",
+        "time_period": "Time series",
+        "data_source": "Administrative"
+      }
+    },
+    "zurich_bev_4031_wiki": {
+      "import_id": "zurich_bev_4031_wiki",
+      "directory_path": "zurich/bev_4031_wiki",
+      "provider": "zurich",
+      "files": {
+        "manifest": null,
+        "pvmap_files": [
+          "zurich/bev_4031_wiki/bev_4031_wiki_pvmap.csv"
+        ],
+        "metadata_files": [
+          "zurich/bev_4031_wiki/bev_4031_wiki_metadata.csv"
+        ],
+        "places_resolved_files": [],
+        "test_inputs": [
+          "zurich/bev_4031_wiki/test_data/sample_input/bev_4031_hel_wiki_data.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "zurich/bev_4031_wiki/test_data/sample_output/zurich_bev_4031_wiki.csv"
+          ],
+          "tmcf": [
+            "zurich/bev_4031_wiki/test_data/sample_output/zurich_bev_4031_wiki.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [],
+      "provenance": {},
+      "categories": {
+        "main_categories": [
+          "Demographics"
+        ],
+        "geographic_level": "City/Metro",
+        "time_period": "Time series",
+        "data_source": "Administrative"
+      }
+    },
+    "zurich_bev_4031_hel_wik": {
+      "import_id": "zurich_bev_4031_hel_wik",
+      "directory_path": "zurich/bev_4031_hel_wik",
+      "provider": "zurich",
+      "files": {
+        "manifest": null,
+        "pvmap_files": [
+          "zurich/bev_4031_hel_wik/bev_4031_hel_wiki_pvmap.csv"
+        ],
+        "metadata_files": [
+          "zurich/bev_4031_hel_wik/bev_4031_hel_wiki_metadata.csv"
+        ],
+        "places_resolved_files": [],
+        "test_inputs": [
+          "zurich/bev_4031_hel_wik/test_data/sample_input/bev_4031_hel_wiki - data.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "zurich/bev_4031_hel_wik/test_data/sample_output/zurich_bev_4031_hel_wiki.csv"
+          ],
+          "tmcf": [
+            "zurich/bev_4031_hel_wik/test_data/sample_output/zurich_bev_4031_hel_wiki.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [],
+      "provenance": {},
+      "categories": {
+        "main_categories": [
+          "Demographics"
+        ],
+        "geographic_level": "City/Metro",
+        "time_period": "Time series",
+        "data_source": "Administrative"
+      }
+    },
+    "us_bls_bls_ces": {
+      "import_id": "us_bls_bls_ces",
+      "directory_path": "us_bls/bls_ces",
+      "provider": "us_bls",
+      "files": {
+        "manifest": "us_bls/bls_ces/manifest.json",
+        "pvmap_files": [
+          "us_bls/bls_ces/bls_ces_pvmap.csv"
+        ],
+        "metadata_files": [
+          "us_bls/bls_ces/bls_ces_metadata.csv"
+        ],
+        "places_resolved_files": [],
+        "test_inputs": [
+          "us_bls/bls_ces/test_data/bls_ces_input.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "us_bls/bls_ces/test_data/bls_ces_output.csv"
+          ],
+          "tmcf": [
+            "us_bls/bls_ces/test_data/bls_ces_output.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output/bls_ces.tmcf",
+          "cleaned_csv": "output/bls_ces.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://www.bls.gov/webapps/legacy/cesbtab5.htm",
+        "description": "Industry estimates of nonfarm employment, hours, and earnings of workers on payrolls"
+      },
+      "import_name": "BLS_CES",
+      "cron_schedule": "0 06 * * 1",
+      "scripts": [
+        "../download_bls_ces_data.py --place_type=national --input_folder=bls_ces",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/merged_output.csv --pv_map=bls_ces_pvmap.csv --config_file=bls_ces_metadata.csv --existing_statvar_mcf=gs://unresolved_mcf/scripts/statvar/stat_vars.mcf --output_path=output/bls_ces"
+      ],
+      "categories": {
+        "main_categories": [
+          "Economy"
+        ],
+        "subcategories": [
+          "Employment",
+          "Wages"
+        ],
+        "geographic_level": "National",
+        "time_period": "Monthly",
+        "data_source": "Administrative"
+      }
+    },
+    "us_bls_bls_ces_state": {
+      "import_id": "us_bls_bls_ces_state",
+      "directory_path": "us_bls/bls_ces_state",
+      "provider": "us_bls",
+      "files": {
+        "manifest": "us_bls/bls_ces_state/manifest.json",
+        "pvmap_files": [
+          "us_bls/bls_ces_state/bls_ces_state_pvmap.csv"
+        ],
+        "metadata_files": [
+          "us_bls/bls_ces_state/bls_ces_state_metadata.csv"
+        ],
+        "places_resolved_files": [],
+        "test_inputs": [
+          "us_bls/bls_ces_state/test_data/bls_ces_state_input.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "us_bls/bls_ces_state/test_data/bls_ces_state_output.csv"
+          ],
+          "tmcf": [
+            "us_bls/bls_ces_state/test_data/bls_ces_state_output.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output/bls_ces_state.tmcf",
+          "cleaned_csv": "output/bls_ces_state.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://www.bls.gov/webapps/legacy/cesbtab5.htm",
+        "description": "Industry estimates of nonfarm employment, hours, and earnings of workers on payrolls"
+      },
+      "import_name": "BLS_CES_State",
+      "cron_schedule": "0 06 * * 3",
+      "scripts": [
+        "../download_bls_ces_data.py --place_type=state --input_folder=bls_ces_state",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/merged_output.csv --pv_map=bls_ces_state_pvmap.csv  --config_file=bls_ces_state_metadata.csv --existing_statvar_mcf=gs://unresolved_mcf/scripts/statvar/stat_vars.mcf --output_path=output/bls_ces_state"
+      ],
+      "categories": {
+        "main_categories": [
+          "Economy"
+        ],
+        "subcategories": [
+          "Employment",
+          "Wages"
+        ],
+        "geographic_level": "State",
+        "time_period": "Monthly",
+        "data_source": "Administrative"
+      }
+    },
+    "bis_bis_central_bank_policy_rate": {
+      "import_id": "bis_bis_central_bank_policy_rate",
+      "directory_path": "bis/bis_central_bank_policy_rate",
+      "provider": "bis",
+      "files": {
+        "manifest": "bis/bis_central_bank_policy_rate/manifest.json",
+        "pvmap_files": [
+          "bis/bis_central_bank_policy_rate/central_bank_policy_rate_pvmap.csv"
+        ],
+        "metadata_files": [
+          "bis/bis_central_bank_policy_rate/central_bank_policy_rate_metadata.csv"
+        ],
+        "places_resolved_files": [
+          "bis/bis_central_bank_policy_rate/central_bank_policy_rate_places_resolved_csv.csv"
+        ],
+        "test_inputs": [
+          "bis/bis_central_bank_policy_rate/test_data/WS_CBPOL_csv_flat_input.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "bis/bis_central_bank_policy_rate/test_data/central_bank_policy_rate_output.csv"
+          ],
+          "tmcf": [
+            "bis/bis_central_bank_policy_rate/test_data/central_bank_policy_rate_output.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output/central_bank_policy_rate.tmcf",
+          "cleaned_csv": "output/central_bank_policy_rate.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://data.bis.org/topics/CBPOL/data",
+        "description": "Bank for International Settlements (2025), Central bank policy rates, BIS WS_CBPOL 1.0 (data set)"
+      },
+      "import_name": "BIS_CentralBankPolicyRate",
+      "cron_schedule": "0 05 * * 6",
+      "scripts": [
+        "../../../util/download_util_script.py --download_url=https://data.bis.org/static/bulk/WS_CBPOL_csv_flat.zip --output_folder=input_file/ --unzip=True",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_file/*.csv --pv_map=central_bank_policy_rate_pvmap.csv --config_file=central_bank_policy_rate_metadata.csv --places_resolved_csv=central_bank_policy_rate_places_resolved_csv.csv --output_path=output/central_bank_policy_rate"
+      ],
+      "categories": {
+        "main_categories": [
+          "Economy"
+        ],
+        "subcategories": [
+          "Interest rates",
+          "Monetary policy"
+        ],
+        "geographic_level": "National",
+        "time_period": "Time series",
+        "data_source": "Administrative"
+      }
+    },
+    "us_census_us_monthly_retail_sales": {
+      "import_id": "us_census_us_monthly_retail_sales",
+      "directory_path": "us_census/us_monthly_retail_sales",
+      "provider": "us_census",
+      "files": {
+        "manifest": "us_census/us_monthly_retail_sales/manifest.json",
+        "pvmap_files": [
+          "us_census/us_monthly_retail_sales/monthly_retail_pvmap.csv"
+        ],
+        "metadata_files": [
+          "us_census/us_monthly_retail_sales/monthly_retail_metadata.csv"
+        ],
+        "places_resolved_files": [],
+        "test_inputs": [
+          "us_census/us_monthly_retail_sales/test_data/monthly_retail_sample_input.xlsx"
+        ],
+        "test_outputs": {
+          "csv": [
+            "us_census/us_monthly_retail_sales/test_data/monthly_retail_sample_output.csv"
+          ],
+          "tmcf": [
+            "us_census/us_monthly_retail_sales/test_data/monthly_retail_sample_output.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output/monthly_retail.tmcf",
+          "cleaned_csv": "output/monthly_retail.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://www.census.gov/retail/",
+        "description": "The Advance Monthly and Monthly Retail Trade Surveys (MARTS and MRTS), the Annual Retail Trade Survey (ARTS), and the Quarterly E-Commerce Report work together to produce the most comprehensive data available on retail economic activity in the United States."
+      },
+      "import_name": "USMonthlyRetailSales",
+      "cron_schedule": "30 05 * * 1",
+      "scripts": [
+        "download.py",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_file/monthly_retail.xlsx --pv_map=monthly_retail_pvmap.csv --statvar_dcid_remap_csv=monthly_retail_remap.csv --config_file=monthly_retail_metadata.csv --output_path=output/monthly_retail"
+      ],
+      "categories": {
+        "main_categories": [
+          "Economy"
+        ],
+        "subcategories": [
+          "Retail",
+          "Trade"
+        ],
+        "geographic_level": "National",
+        "time_period": "Monthly",
+        "data_source": "Census/Survey"
+      }
+    },
+    "us_hbcu_data_nces_hbcu_enrollment_import": {
+      "import_id": "us_hbcu_data_nces_hbcu_enrollment_import",
+      "directory_path": "us_hbcu_data/nces_hbcu_enrollment_import",
+      "provider": "us_hbcu_data",
+      "files": {
+        "manifest": "us_hbcu_data/nces_hbcu_enrollment_import/manifest.json",
+        "pvmap_files": [
+          "us_hbcu_data/nces_hbcu_enrollment_import/nces_hbcu_pvmap.csv"
+        ],
+        "metadata_files": [
+          "us_hbcu_data/nces_hbcu_enrollment_import/nces_hbcu_metadata.csv"
+        ],
+        "places_resolved_files": [],
+        "test_inputs": [
+          "us_hbcu_data/nces_hbcu_enrollment_import/testdata/nces_hbcu_input_1_tabn313.30.xlsx",
+          "us_hbcu_data/nces_hbcu_enrollment_import/testdata/nces_hbcu_input_0_tabn313.30.xls"
+        ],
+        "test_outputs": {
+          "csv": [
+            "us_hbcu_data/nces_hbcu_enrollment_import/testdata/nces_hbcu_output_tabn313.30.csv"
+          ],
+          "tmcf": [
+            "us_hbcu_data/nces_hbcu_enrollment_import/testdata/nces_hbcu_output_tabn313.30.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output_files/nces_hbcu_output_tabn313.30.tmcf",
+          "cleaned_csv": "output_files/nces_hbcu_output_tabn313.30.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://nces.ed.gov/programs/digest/d23/tables/dt23_313.30.asp",
+        "description": "TStatistics on degree-granting historically Black colleges and universities, by control and level of institution"
+      },
+      "import_name": "NCES_HBCU_Enrollment_Import",
+      "cron_schedule": "0 07 * * 5",
+      "scripts": [
+        "download_script.py",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/* --pv_map=nces_hbcu_pvmap.csv --config_file=nces_hbcu_metadata.csv --output_path=output_files/nces_hbcu_output_tabn313.30"
+      ],
+      "categories": {
+        "main_categories": [
+          "Education"
+        ],
+        "subcategories": [
+          "Higher education",
+          "Enrollment"
+        ],
+        "geographic_level": "National",
+        "time_period": "Annual",
+        "data_source": "Administrative"
+      }
+    },
+    "world_bank_worldbank_ids": {
+      "import_id": "world_bank_worldbank_ids",
+      "directory_path": "world_bank/worldbank_ids",
+      "provider": "world_bank",
+      "files": {
+        "manifest": "world_bank/worldbank_ids/manifest.json",
+        "pvmap_files": [
+          "world_bank/worldbank_ids/configs/principal_pvmap.csv",
+          "world_bank/worldbank_ids/configs/disbursed_pvmap.csv",
+          "world_bank/worldbank_ids/configs/currency_pvmap.csv",
+          "world_bank/worldbank_ids/configs/interest_pvmap.csv"
+        ],
+        "metadata_files": [
+          "world_bank/worldbank_ids/common_metadata.csv"
+        ],
+        "places_resolved_files": [],
+        "test_inputs": [
+          "world_bank/worldbank_ids/test_data/Currency.csv",
+          "world_bank/worldbank_ids/test_data/sample_input/interest_input.csv",
+          "world_bank/worldbank_ids/test_data/sample_input/principal_input.csv",
+          "world_bank/worldbank_ids/test_data/sample_input/currency_input.csv",
+          "world_bank/worldbank_ids/test_data/sample_input/disbursed_input.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "world_bank/worldbank_ids/test_data/sample_output/Disbursed_Outstanding.csv",
+            "world_bank/worldbank_ids/test_data/sample_output/Currency.csv",
+            "world_bank/worldbank_ids/test_data/sample_output/Interest.csv",
+            "world_bank/worldbank_ids/test_data/sample_output/Principal.csv"
+          ],
+          "tmcf": [
+            "world_bank/worldbank_ids/test_data/Currency.tmcf",
+            "world_bank/worldbank_ids/test_data/sample_output/Disbursed_Outstanding.tmcf",
+            "world_bank/worldbank_ids/test_data/sample_output/Interest.tmcf",
+            "world_bank/worldbank_ids/test_data/sample_output/Currency.tmcf",
+            "world_bank/worldbank_ids/test_data/sample_output/Principal.tmcf"
+          ],
+          "mcf": [
+            "world_bank/worldbank_ids/test_data/Currency_stat_vars.mcf",
+            "world_bank/worldbank_ids/test_data/Currency_stat_vars_schema.mcf"
+          ]
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output/currency/currency.tmcf",
+          "cleaned_csv": "output/currency/currency.csv"
+        },
+        {
+          "template_mcf": "output/interest/interest_output.tmcf",
+          "cleaned_csv": "output/interest/interest_output.csv"
+        },
+        {
+          "template_mcf": "output/principal/principal_output.tmcf",
+          "cleaned_csv": "output/principal/principal_output.csv"
+        },
+        {
+          "template_mcf": "output/disbursed/disbursed_output.tmcf",
+          "cleaned_csv": "output/disbursed/disbursed_output.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://databank.worldbank.org/source/international-debt-statistics",
+        "description": "World Bank principal, currency composition, interest and disbursed and outstanding of debt for different countries."
+      },
+      "import_name": "WorldBank_IDS",
+      "cron_schedule": "00 11 1,15 * *",
+      "scripts": [
+        "download.py",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/currency_input.csv --pv_map=configs/currency_pvmap.csv,country:observationAbout.csv,counterpart_area:InputlendingEntity.csv --output_path=output/currency/currency --config_file=common_metadata.csv",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/interest_input.csv --pv_map=configs/interest_pvmap.csv,country:observationAbout.csv,counterpart_area:InputlendingEntity.csv --output_path=output/interest/interest_output --config_file=common_metadata.csv",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/disbursed_input.csv --pv_map=configs/disbursed_pvmap.csv,country:observationAbout.csv,counterpart_area:InputlendingEntity.csv --output_path=output/disbursed/disbursed_output --config_file=common_metadata.csv",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/principal_input.csv --pv_map=configs/principal_pvmap.csv,country:observationAbout.csv,counterpart_area:InputlendingEntity.csv --output_path=output/principal/principal_output --config_file=common_metadata.csv"
+      ],
+      "categories": {
+        "main_categories": [
+          "Economy"
+        ],
+        "subcategories": [
+          "Debt",
+          "International finance"
+        ],
+        "geographic_level": "National",
+        "time_period": "Annual",
+        "data_source": "Administrative"
+      }
+    },
+    "world_bank_commodity_market": {
+      "import_id": "world_bank_commodity_market",
+      "directory_path": "world_bank/commodity_market",
+      "provider": "world_bank",
+      "files": {
+        "manifest": "world_bank/commodity_market/manifest.json",
+        "pvmap_files": [
+          "world_bank/commodity_market/commodity_annual_price_pvmap_real.csv",
+          "world_bank/commodity_market/commodity_monthly_price_pvmap.csv",
+          "world_bank/commodity_market/commodity_monthly_indices_pvmap.csv",
+          "world_bank/commodity_market/commodity_annual_price_pvmap_nominal.csv",
+          "world_bank/commodity_market/commodity_annual_indices_pvmap_nominal.csv",
+          "world_bank/commodity_market/commodity_annual_indices_pvmap_real.csv"
+        ],
+        "metadata_files": [
+          "world_bank/commodity_market/commodity_monthly_price_metadata.csv",
+          "world_bank/commodity_market/commodity_annual_indices_metadata.csv",
+          "world_bank/commodity_market/commodity_annual_price_metadata.csv",
+          "world_bank/commodity_market/commodity_monthly_indices_metadata.csv"
+        ],
+        "places_resolved_files": [],
+        "test_inputs": [
+          "world_bank/commodity_market/test_data/commodity_monthly_price_data_input.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "world_bank/commodity_market/test_data/commodity_monthly_price_sample_output.csv"
+          ],
+          "tmcf": [],
+          "mcf": [
+            "world_bank/commodity_market/test_data/commodity_statvars.mcf"
+          ]
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "commodity.tmcf",
+          "cleaned_csv": "output/commodity_monthly_price.csv"
+        },
+        {
+          "template_mcf": "commodity.tmcf",
+          "cleaned_csv": "output/commodity_annual_real_price.csv"
+        },
+        {
+          "template_mcf": "commodity.tmcf",
+          "cleaned_csv": "output/commodity_annual_nominal_price.csv"
+        },
+        {
+          "template_mcf": "commodity.tmcf",
+          "cleaned_csv": "output/commodity_monthly_indices.csv"
+        },
+        {
+          "template_mcf": "commodity.tmcf",
+          "cleaned_csv": "output/commodity_annual_real_indices.csv"
+        },
+        {
+          "template_mcf": "commodity.tmcf",
+          "cleaned_csv": "output/commodity_annual_nominal_indices.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://www.worldbank.org/en/research/commodity-markets",
+        "description": "dataset contains commodity price and its index value for monthly and annual"
+      },
+      "import_name": "WB_CommodityMarket",
+      "cron_schedule": "0 10 1,15 * *",
+      "scripts": [
+        "download.py",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input/monthly_prices_data.csv --pv_map=commodity_monthly_price_pvmap.csv --config_file=commodity_monthly_price_metadata.csv -output_path=output/commodity_monthly_price",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input/annual_prices_real_data.csv --pv_map=commodity_annual_price_pvmap_real.csv --config_file=commodity_annual_price_metadata.csv --output_path=output/commodity_annual_real_price",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input/annual_prices_nominal_data.csv --pv_map=commodity_annual_price_pvmap_nominal.csv --config_file=commodity_annual_price_metadata.csv --output_path=output/commodity_annual_nominal_price",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input/monthly_indices_data.csv --pv_map=commodity_monthly_indices_pvmap.csv --config_file=commodity_monthly_indices_metadata.csv --output_path=output/commodity_monthly_indices",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input/annual_indices_nominal_data.csv --pv_map=commodity_annual_indices_pvmap_nominal.csv --config_file=commodity_annual_indices_metadata.csv --output_path=output/commodity_annual_nominal_indices",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input/annual_indices_real_data.csv --pv_map=commodity_annual_indices_pvmap_real.csv --config_file=commodity_annual_indices_metadata.csv --output_path=output/commodity_annual_real_indices"
+      ],
+      "categories": {
+        "main_categories": [
+          "Economy"
+        ],
+        "subcategories": [
+          "Commodity prices",
+          "Markets"
+        ],
+        "geographic_level": "National",
+        "time_period": "Monthly",
+        "data_source": "Administrative"
+      }
+    },
+    "usa_dol_minimum_wage": {
+      "import_id": "usa_dol_minimum_wage",
+      "directory_path": "usa_dol/minimum_wage",
+      "provider": "usa_dol",
+      "files": {
+        "manifest": "usa_dol/minimum_wage/manifest.json",
+        "pvmap_files": [
+          "usa_dol/minimum_wage/us_dol_wages_pvmap.csv"
+        ],
+        "metadata_files": [
+          "usa_dol/minimum_wage/us_dol_wages_metadata.csv"
+        ],
+        "places_resolved_files": [],
+        "test_inputs": [
+          "usa_dol/minimum_wage/test_data/sample_input/us_dol_wages_data.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "usa_dol/minimum_wage/test_data/sample_output/us_dol_wages.csv"
+          ],
+          "tmcf": [
+            "usa_dol/minimum_wage/test_data/sample_output/us_dol_wages.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output/us_dol_wages.tmcf",
+          "cleaned_csv": "output/us_dol_wages.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://www.dol.gov/",
+        "description": "USA minimum wages presents the minimum wages for every year at country and state level. The data comes from the US Department of Labor."
+      },
+      "import_name": "USA_DOL_Wages",
+      "cron_schedule": "30 09 * * 5",
+      "scripts": [
+        "usa_dol_wages_download_script.py",
+        "../../../tools/statvar_importer/stat_var_processor.py --existing_statvar_mcf=gs://unresolved_mcf/scripts/statvar/stat_vars.mcf --input_data=input_files/final_data.csv --pv_map=us_dol_wages_pvmap.csv --config_file=us_dol_wages_metadata.csv --output_path=output/us_dol_wages"
+      ],
+      "categories": {
+        "main_categories": [
+          "Economy"
+        ],
+        "subcategories": [
+          "Wages",
+          "Labor"
+        ],
+        "geographic_level": "State",
+        "time_period": "Annual",
+        "data_source": "Administrative"
+      }
+    },
+    "us_federal_reserve_h15_interest_rates_us_federal_rates": {
+      "import_id": "us_federal_reserve_h15_interest_rates_us_federal_rates",
+      "directory_path": "us_federal_reserve_h15_interest_rates/us_federal_rates",
+      "provider": "us_federal_reserve_h15_interest_rates",
+      "files": {
+        "manifest": "us_federal_reserve_h15_interest_rates/us_federal_rates/manifest.json",
+        "pvmap_files": [
+          "us_federal_reserve_h15_interest_rates/us_federal_rates/us_fed_fund_pvmap.csv",
+          "us_federal_reserve_h15_interest_rates/us_federal_rates/us_fed_interest_rates_pvmap.csv"
+        ],
+        "metadata_files": [
+          "us_federal_reserve_h15_interest_rates/us_federal_rates/us_fed_interest_rates_metadata.csv",
+          "us_federal_reserve_h15_interest_rates/us_federal_rates/us_fed_fund_metadata.csv"
+        ],
+        "places_resolved_files": [],
+        "test_inputs": [
+          "us_federal_reserve_h15_interest_rates/us_federal_rates/testdata/us_fed_input_2.csv",
+          "us_federal_reserve_h15_interest_rates/us_federal_rates/testdata/us_fed_input_1.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "us_federal_reserve_h15_interest_rates/us_federal_rates/testdata/us_fed_fund_output.csv",
+            "us_federal_reserve_h15_interest_rates/us_federal_rates/testdata/us_fed_interest_rate_output.csv"
+          ],
+          "tmcf": [
+            "us_federal_reserve_h15_interest_rates/us_federal_rates/testdata/us_fed_interest_rate_output.tmcf",
+            "us_federal_reserve_h15_interest_rates/us_federal_rates/testdata/us_fed_fund_output.tmcf"
+          ],
+          "mcf": [
+            "us_federal_reserve_h15_interest_rates/us_federal_rates/testdata/us_fed_interest_rate_output_stat_vars_schema.mcf",
+            "us_federal_reserve_h15_interest_rates/us_federal_rates/testdata/us_fed_interest_rate_output_stat_vars.mcf",
+            "us_federal_reserve_h15_interest_rates/us_federal_rates/testdata/us_fed_fund_output_stat_vars.mcf"
+          ]
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output_files/us_fed_interest_rate_output.tmcf",
+          "cleaned_csv": "output_files/us_fed_interest_rate_output.csv"
+        },
+        {
+          "template_mcf": "output_files/us_fed_fund_output.tmcf",
+          "cleaned_csv": "output_files/us_fed_fund_output.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://www.federalreserve.gov/DataDownload/Choose.aspx?rel=H15",
+        "description": "Federal Reserve System H.15 Selected Interest Rates"
+      },
+      "import_name": "US_Federal_Rates",
+      "cron_schedule": "0 06 * * 6",
+      "scripts": [
+        "us_fed_download.py",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/us_fed_input_1.csv --pv_map=us_fed_fund_pvmap.csv --config_file=us_fed_fund_metadata.csv --existing_statvar_mcf=gs://unresolved_mcf/scripts/statvar/stat_vars.mcf --output_path=output_files/us_fed_fund_output",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/us_fed_input_2.csv --pv_map=us_fed_interest_rates_pvmap.csv --config_file=us_fed_interest_rates_metadata.csv --existing_statvar_mcf=gs://unresolved_mcf/scripts/statvar/stat_vars.mcf --output_path=output_files/us_fed_interest_rate_output"
+      ],
+      "categories": {
+        "main_categories": [
+          "Economy"
+        ],
+        "subcategories": [
+          "Interest rates",
+          "Monetary policy"
+        ],
+        "geographic_level": "National",
+        "time_period": "Time series",
+        "data_source": "Administrative"
+      }
+    },
+    "undata": {
+      "import_id": "undata",
+      "directory_path": "undata",
+      "provider": "undata",
+      "files": {
+        "manifest": "undata/manifest.json",
+        "pvmap_files": [
+          "undata/UNData_pvmap.csv"
+        ],
+        "metadata_files": [
+          "undata/UNData_metadata.csv"
+        ],
+        "places_resolved_files": [
+          "undata/UNData_places_resolved_csv.csv"
+        ],
+        "test_inputs": [
+          "undata/test_data/UNData_input.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "undata/test_data/UNData_output.csv",
+            "undata/test_data/UNData_filtered_output.csv"
+          ],
+          "tmcf": [
+            "undata/test_data/UNData_output.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output/UNData.tmcf",
+          "cleaned_csv": "output/filter_undata.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://data.un.org/Data.aspx?q=city+population&d=POP&f=tableCode%3a240",
+        "description": "Population data for countries, capital cities, urban and rural areas not covered by other sources. Outliers were removed from the output"
+      },
+      "import_name": "UNData",
+      "cron_schedule": "0 05 * * 3",
+      "scripts": [
+        "download.py",
+        "../../tools/statvar_importer/stat_var_processor.py --input_data=input_file/*.csv --pv_map=UNData_pvmap.csv --config_file=UNData_metadata.csv --places_resolved_csv=UNData_places_resolved_csv.csv --output_path=output/UNData",
+        "../../tools/statvar_importer/filter_data_outliers.py --filter_data_input=output/UNData.csv --filter_data_output=output/filter_undata.csv --filter_data_min_value=2 --filter_data_max_yearly_change_ratio=0.5 --filter_data_max_change_ratio=1"
+      ],
+      "categories": {
+        "main_categories": [
+          "Demographics"
+        ],
+        "subcategories": [
+          "Population",
+          "Urban/Rural"
+        ],
+        "geographic_level": "National",
+        "time_period": "Annual",
+        "data_source": "Census/Survey"
+      }
+    },
+    "fao_currency_and_exchange_rate_fao_currency_statvar": {
+      "import_id": "fao_currency_and_exchange_rate_fao_currency_statvar",
+      "directory_path": "fao_currency_and_exchange_rate/fao_currency_statvar",
+      "provider": "fao_currency_and_exchange_rate",
+      "files": {
+        "manifest": "fao_currency_and_exchange_rate/fao_currency_statvar/manifest.json",
+        "pvmap_files": [
+          "fao_currency_and_exchange_rate/fao_currency_statvar/CurrencyFAO_pv_map.csv"
+        ],
+        "metadata_files": [
+          "fao_currency_and_exchange_rate/fao_currency_statvar/CurrencyFAO_metadata.csv"
+        ],
+        "places_resolved_files": [
+          "fao_currency_and_exchange_rate/fao_currency_statvar/CurrencyFAO_place_map.csv"
+        ],
+        "test_inputs": [
+          "fao_currency_and_exchange_rate/fao_currency_statvar/testdata/final_input_data.csv",
+          "fao_currency_and_exchange_rate/fao_currency_statvar/testdata/Exchange_rate_E_All_Data.csv",
+          "fao_currency_and_exchange_rate/fao_currency_statvar/testdata/final_input_data_expected.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "fao_currency_and_exchange_rate/fao_currency_statvar/testdata/CurrencyFAO_output.csv"
+          ],
+          "tmcf": [
+            "fao_currency_and_exchange_rate/fao_currency_statvar/testdata/CurrencyFAO_output.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output_files/CurrencyFAO_output.tmcf",
+          "cleaned_csv": "output_files/CurrencyFAO_output.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://bulks-faostat.fao.org/",
+        "description": "The exchange rate of currency broken down by country, currency standardization type, and currency (using ISO 4217 Currency Code)."
+      },
+      "import_name": "FAO_Currency_statvar",
+      "cron_schedule": "0 07 * * 4",
+      "scripts": [
+        "download.sh",
+        "preprocess.py",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_data/final_input_data.csv --pv_map=CurrencyFAO_pv_map.csv --config_file=CurrencyFAO_metadata.csv --places_resolved_csv=CurrencyFAO_place_map.csv --output_path=output_files/CurrencyFAO_output"
+      ],
+      "categories": {
+        "main_categories": [
+          "Economy"
+        ],
+        "subcategories": [
+          "Exchange rates",
+          "Currency"
+        ],
+        "geographic_level": "National",
+        "time_period": "Annual",
+        "data_source": "Administrative"
+      }
+    },
+    "mexico_subnational_population_statistics_mexico_census_aa2": {
+      "import_id": "mexico_subnational_population_statistics_mexico_census_aa2",
+      "directory_path": "mexico_subnational_population_statistics/mexico_census_aa2",
+      "provider": "mexico_subnational_population_statistics",
+      "files": {
+        "manifest": "mexico_subnational_population_statistics/mexico_census_aa2/manifest.json",
+        "pvmap_files": [
+          "mexico_subnational_population_statistics/mexico_census_aa2/mexico_pvmap_adm0.csv",
+          "mexico_subnational_population_statistics/mexico_census_aa2/mexico_pvmap_aa1.csv",
+          "mexico_subnational_population_statistics/mexico_census_aa2/mexico_pvmap_aa2.csv"
+        ],
+        "metadata_files": [
+          "mexico_subnational_population_statistics/mexico_census_aa2/mexico_metadata.csv"
+        ],
+        "places_resolved_files": [
+          "mexico_subnational_population_statistics/mexico_census_aa2/mexico_places.csv"
+        ],
+        "test_inputs": [
+          "mexico_subnational_population_statistics/mexico_census_aa2/testdata/mex_admpop_adm0_2021.csv",
+          "mexico_subnational_population_statistics/mexico_census_aa2/testdata/mex_admpop_adm1_2021.csv",
+          "mexico_subnational_population_statistics/mexico_census_aa2/testdata/mex_admpop_adm0_2024.csv",
+          "mexico_subnational_population_statistics/mexico_census_aa2/testdata/mex_admpop_adm1_2024.csv",
+          "mexico_subnational_population_statistics/mexico_census_aa2/testdata/mex_admpop_adm2_2024.csv",
+          "mexico_subnational_population_statistics/mexico_census_aa2/testdata/mex_admpop_adm2_2021.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "mexico_subnational_population_statistics/mexico_census_aa2/testdata/mexico_output_aa1.csv",
+            "mexico_subnational_population_statistics/mexico_census_aa2/testdata/mexico_output_aa0.csv",
+            "mexico_subnational_population_statistics/mexico_census_aa2/testdata/mexico_output_aa2.csv"
+          ],
+          "tmcf": [
+            "mexico_subnational_population_statistics/mexico_census_aa2/testdata/mexico_output_aa2.tmcf",
+            "mexico_subnational_population_statistics/mexico_census_aa2/testdata/mexico_output_aa0.tmcf",
+            "mexico_subnational_population_statistics/mexico_census_aa2/testdata/mexico_output_aa1.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output_files/mexico_output_aa0.tmcf",
+          "cleaned_csv": "output_files/mexico_output_aa0.csv"
+        },
+        {
+          "template_mcf": "output_files/mexico_output_aa1.tmcf",
+          "cleaned_csv": "output_files/mexico_output_aa1.csv"
+        },
+        {
+          "template_mcf": "output_files/mexico_output_aa2.tmcf",
+          "cleaned_csv": "output_files/mexico_output_aa2.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://data.humdata.org/dataset/cod-ps-mex",
+        "description": "Mexican Demographics data from The Humanitarian Data Exchange(HDX) at Municipal Level."
+      },
+      "import_name": "MexicoCensus_AA2",
+      "cron_schedule": "0 07 * * 3",
+      "scripts": [
+        "mexico_download.py",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/mex_admpop_adm0_*.csv --pv_map=mexico_pvmap_adm0.csv --config_file=mexico_metadata.csv --places_resolved_csv=mexico_places.csv --output_path=output_files/mexico_output_aa0",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/mex_admpop_adm1_*.csv --pv_map=mexico_pvmap_aa1.csv --config_file=mexico_metadata.csv --places_resolved_csv=mexico_places.csv --output_path=output_files/mexico_output_aa1",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/mex_admpop_adm2_*.csv --pv_map=mexico_pvmap_aa2.csv --config_file=mexico_metadata.csv --places_resolved_csv=mexico_places.csv --output_path=output_files/mexico_output_aa2"
+      ],
+      "categories": {
+        "main_categories": [
+          "Demographics"
+        ],
+        "subcategories": [
+          "Population",
+          "Age",
+          "Gender"
+        ],
+        "geographic_level": "County",
+        "time_period": "Annual",
+        "data_source": "Census/Survey"
+      }
+    },
+    "brazil_visdata_FoodBasketDistribution": {
+      "import_id": "brazil_visdata_FoodBasketDistribution",
+      "directory_path": "brazil_visdata/FoodBasketDistribution",
+      "provider": "brazil_visdata",
+      "files": {
+        "manifest": null,
+        "pvmap_files": [
+          "brazil_visdata/FoodBasketDistribution/pv_map/FoodBasket_ExtractiveFamily_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/MunicipalFoodBasket_FishingFamily_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/FoodBasket_FishingFamily_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/FoodBasket_IndigenousFamily_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/MunicipalFoodBasket_IndigenousFamily_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/MunicipalFoodBasket_ExtractiveFamily_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/FoodDistributionAct_FoodBasketByPartners_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/MunicipalFoodBaskets_SettledFamilies_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/FoodBasket_RecycledMaterialCollectorFamily_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/FoodBasket_EmergencyCare_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/MunicipalFoodBasket_GypsyFamily_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/MunicipalFoodBasket_RecycledMaterialCollectorFamily_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/MunicipalFoodBasket_EmergencyCare_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/MunicipalFoodBasket_QuilombolaFamily_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/FoodBasket_QuilombolaFamily_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/FoodBaskets_SettledFamilies_pvmap.csv",
+          "brazil_visdata/FoodBasketDistribution/pv_map/MunicipalFoodDistributionAct_FoodBasketByPartners_pvmap.csv"
+        ],
+        "metadata_files": [
+          "brazil_visdata/FoodBasketDistribution/common_metadata.csv"
+        ],
+        "places_resolved_files": [],
+        "test_inputs": [
+          "brazil_visdata/FoodBasketDistribution/test_data/sample_input/MunicipalFoodBasket_RecycledMaterialCollectorFamily_data.csv",
+          "brazil_visdata/FoodBasketDistribution/test_data/sample_input/FoodDistributionAct_FoodBasketByPartners_data.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "brazil_visdata/FoodBasketDistribution/test_data/sample_output/MunicipalFoodBasket_RecycledMaterialCollectorFamily.csv",
+            "brazil_visdata/FoodBasketDistribution/test_data/sample_output/FoodDistributionAct_FoodBasketByPartners.csv"
+          ],
+          "tmcf": [
+            "brazil_visdata/FoodBasketDistribution/test_data/sample_output/MunicipalFoodBasket_RecycledMaterialCollectorFamily.tmcf",
+            "brazil_visdata/FoodBasketDistribution/test_data/sample_output/FoodDistributionAct_FoodBasketByPartners.tmcf"
+          ],
+          "mcf": [
+            "brazil_visdata/FoodBasketDistribution/test_data/sample_output/FoodDistributionAct_FoodBasketByPartners_stat_vars.mcf",
+            "brazil_visdata/FoodBasketDistribution/test_data/sample_output/MunicipalFoodBasket_RecycledMaterialCollectorFamily_stat_vars_schema.mcf",
+            "brazil_visdata/FoodBasketDistribution/test_data/sample_output/FoodDistributionAct_FoodBasketByPartners_stat_vars_schema.mcf",
+            "brazil_visdata/FoodBasketDistribution/test_data/sample_output/MunicipalFoodBasket_RecycledMaterialCollectorFamily_stat_vars.mcf"
+          ]
+        }
+      },
+      "import_configurations": [],
+      "provenance": {},
+      "categories": {
+        "main_categories": [
+          "Agriculture",
+          "Health"
+        ],
+        "subcategories": [
+          "Food security",
+          "Social welfare"
+        ],
+        "geographic_level": "County",
+        "time_period": "Time series",
+        "data_source": "Administrative"
+      }
+    },
+    "fbi_fbigovcrime": {
+      "import_id": "fbi_fbigovcrime",
+      "directory_path": "fbi/fbigovcrime",
+      "provider": "fbi",
+      "files": {
+        "manifest": "fbi/fbigovcrime/manifest.json",
+        "pvmap_files": [
+          "fbi/fbigovcrime/fbigovcrime_pvmap.csv"
+        ],
+        "metadata_files": [
+          "fbi/fbigovcrime/fbigovcrime_metadata.csv"
+        ],
+        "places_resolved_files": [
+          "fbi/fbigovcrime/fbigovcrime_places_resolved.csv"
+        ],
+        "test_inputs": [
+          "fbi/fbigovcrime/test_data/fbigovcrime_input.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "fbi/fbigovcrime/test_data/fbigovcrime_output.csv"
+          ],
+          "tmcf": [
+            "fbi/fbigovcrime/test_data/fbigovcrime_output.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output/fbi_gov_crime.tmcf",
+          "cleaned_csv": "output/fbi_gov_crime.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/downloads",
+        "description": "Federal Bureau of Investigation (FBI), a part of the U.S. Department of Justice, for their nationwide Uniform Crime Reporting (UCR) Program, which compiles and publishes national crime statistics."
+      },
+      "import_name": "FBIGovCrime",
+      "cron_schedule": "30 05 * * 1",
+      "scripts": [
+        "fbigovcrime_downlod_script.py",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=download_folder/input_files/* --config_file=fbigovcrime_metadata.csv --output_path=output/fbi_gov_crime"
+      ],
+      "categories": {
+        "main_categories": [
+          "Crime"
+        ],
+        "subcategories": [
+          "Crime incidents",
+          "Law enforcement"
+        ],
+        "geographic_level": "State",
+        "time_period": "Annual",
+        "data_source": "Administrative"
+      }
+    },
+    "uae_bayanat_uae_population": {
+      "import_id": "uae_bayanat_uae_population",
+      "directory_path": "uae_bayanat/uae_population",
+      "provider": "uae_bayanat",
+      "files": {
+        "manifest": "uae_bayanat/uae_population/manifest.json",
+        "pvmap_files": [
+          "uae_bayanat/uae_population/uae_population_pvmap.csv"
+        ],
+        "metadata_files": [
+          "uae_bayanat/uae_population/uae_population_metadata.csv"
+        ],
+        "places_resolved_files": [
+          "uae_bayanat/uae_population/uae_population_places_resolved_csv.csv"
+        ],
+        "test_inputs": [
+          "uae_bayanat/uae_population/test_data/uae_populationbyemiratesnationalityandgender.xlsx"
+        ],
+        "test_outputs": {
+          "csv": [
+            "uae_bayanat/uae_population/test_data/uae_population_output.csv"
+          ],
+          "tmcf": [
+            "uae_bayanat/uae_population/test_data/uae_population_output.tmcf"
+          ],
+          "mcf": []
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output/uae_population_output.tmcf",
+          "cleaned_csv": "output/uae_population_output.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://admin.bayanat.ae/Dataset/DownloadDatasetResource?fileId=26585eaf-9a9c-486d-b773-fc51ef0204c9&resourceID=11243",
+        "description": "UAE_Population statical data"
+      },
+      "import_name": "UAE_Population",
+      "cron_schedule": "0 05 * * 1",
+      "scripts": [
+        "uae_download.py",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input/uae_populationbyemiratesnationalityandgender.xlsx --pv_map=uae_population_pvmap.csv --config_file=uae_population_metadata.csv --places_resolved_csv=uae_population_places_resolved_csv.csv --output_path=output/uae_population_output"
+      ],
+      "categories": {
+        "main_categories": [
+          "Demographics"
+        ],
+        "subcategories": [
+          "Population",
+          "Gender",
+          "Nationality"
+        ],
+        "geographic_level": "State",
+        "time_period": "Annual",
+        "data_source": "Administrative"
+      }
+    },
+    "statistics_new_zealand_new_zealand_census": {
+      "import_id": "statistics_new_zealand_new_zealand_census",
+      "directory_path": "statistics_new_zealand/new_zealand_census",
+      "provider": "statistics_new_zealand",
+      "files": {
+        "manifest": "statistics_new_zealand/new_zealand_census/manifest.json",
+        "pvmap_files": [
+          "statistics_new_zealand/new_zealand_census/national_pvmap.csv",
+          "statistics_new_zealand/new_zealand_census/subnational_pvmap.csv"
+        ],
+        "metadata_files": [
+          "statistics_new_zealand/new_zealand_census/subnational_metadata.csv",
+          "statistics_new_zealand/new_zealand_census/national_metadata.csv"
+        ],
+        "places_resolved_files": [
+          "statistics_new_zealand/new_zealand_census/subnational_places_resolved_csv.csv"
+        ],
+        "test_inputs": [
+          "statistics_new_zealand/new_zealand_census/testdata/sub_national_input.csv",
+          "statistics_new_zealand/new_zealand_census/testdata/national_input.xlsx"
+        ],
+        "test_outputs": {
+          "csv": [
+            "statistics_new_zealand/new_zealand_census/testdata/nzl_national_output.csv",
+            "statistics_new_zealand/new_zealand_census/testdata/nzl_subnational_output.csv"
+          ],
+          "tmcf": [
+            "statistics_new_zealand/new_zealand_census/testdata/nzl_national_output.tmcf",
+            "statistics_new_zealand/new_zealand_census/testdata/nzl_subnational_output.tmcf"
+          ],
+          "mcf": [
+            "statistics_new_zealand/new_zealand_census/testdata/nzl_national_output_stat_vars.mcf"
+          ]
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output_files/nzl_national_output.tmcf",
+          "cleaned_csv": "output_files/nzl_national_output.csv"
+        },
+        {
+          "template_mcf": "output_files/nzl_subnational_output.tmcf",
+          "cleaned_csv": "output_files/nzl_subnational_output.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://www.stats.govt.nz/large-datasets/csv-files-for-download/",
+        "description": "Population census and health statistics for New Zealand at country, district and city level"
+      },
+      "import_name": "New_Zealand_Census",
+      "cron_schedule": "0 06 * * 2",
+      "scripts": [
+        "download_script.py",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/Summary-figures-for-the-NZ-population-1991-2023.xlsx --pv_map=national_pvmap.csv --config_file=national_metadata.csv --existing_statvar_mcf=gs://unresolved_mcf/scripts/statvar/stat_vars.mcf --output_path=output_files/nzl_national_output",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/snpe-at30june21-population-table.csv --pv_map=subnational_pvmap.csv --config_file=subnational_metadata.csv --places_resolved_csv=subnational_places_resolved_csv.csv --existing_statvar_mcf=gs://unresolved_mcf/scripts/statvar/stat_vars.mcf --output_path=output_files/nzl_subnational_output"
+      ],
+      "categories": {
+        "main_categories": [
+          "Demographics",
+          "Health"
+        ],
+        "subcategories": [
+          "Population",
+          "Healthcare"
+        ],
+        "geographic_level": "National",
+        "time_period": "Annual",
+        "data_source": "Census/Survey"
+      }
+    },
+    "opendataforafrica_rwanda_census": {
+      "import_id": "opendataforafrica_rwanda_census",
+      "directory_path": "opendataforafrica/rwanda_census",
+      "provider": "opendataforafrica",
+      "files": {
+        "manifest": "opendataforafrica/rwanda_census/manifest.json",
+        "pvmap_files": [
+          "opendataforafrica/rwanda_census/uymcezb_pv_map.csv",
+          "opendataforafrica/rwanda_census/mnoirpd_pv_map.csv",
+          "opendataforafrica/rwanda_census/kwekfdd_pv_map.csv",
+          "opendataforafrica/rwanda_census/qavhudd_pv_map.csv",
+          "opendataforafrica/rwanda_census/ztaoyl_pv_map.csv",
+          "opendataforafrica/rwanda_census/shdirje_pv_map.csv",
+          "opendataforafrica/rwanda_census/kbadgkf_pv_map.csv",
+          "opendataforafrica/rwanda_census/edvtatd_pv_map.csv",
+          "opendataforafrica/rwanda_census/eoefmac_pv_map.csv",
+          "opendataforafrica/rwanda_census/hivlaeg_pv_map.csv",
+          "opendataforafrica/rwanda_census/vafqyfg_pv_map.csv"
+        ],
+        "metadata_files": [
+          "opendataforafrica/rwanda_census/mnoirpd_metadata.csv",
+          "opendataforafrica/rwanda_census/ztaoyl_metadata.csv",
+          "opendataforafrica/rwanda_census/shdirje_metadata.csv",
+          "opendataforafrica/rwanda_census/hivlaeg_metadata.csv",
+          "opendataforafrica/rwanda_census/kbadgkf_metadata.csv",
+          "opendataforafrica/rwanda_census/eoefmac_metadata.csv",
+          "opendataforafrica/rwanda_census/vafqyfg_metadata.csv",
+          "opendataforafrica/rwanda_census/edvtatd_metadata.csv",
+          "opendataforafrica/rwanda_census/kwekfdd_metadata.csv",
+          "opendataforafrica/rwanda_census/uymcezb_metadata.csv",
+          "opendataforafrica/rwanda_census/qavhudd_metadata.csv"
+        ],
+        "places_resolved_files": [
+          "opendataforafrica/rwanda_census/places_resolved_csv.csv"
+        ],
+        "test_inputs": [
+          "opendataforafrica/rwanda_census/test_data/mnoirpd_data.csv",
+          "opendataforafrica/rwanda_census/test_data/mnoirpd.csv",
+          "opendataforafrica/rwanda_census/test_data/kbadgkf_data.csv",
+          "opendataforafrica/rwanda_census/test_data/kwekfdd_data.csv",
+          "opendataforafrica/rwanda_census/test_data/uymcezb.csv",
+          "opendataforafrica/rwanda_census/test_data/ztaoyl.csv",
+          "opendataforafrica/rwanda_census/test_data/edvtatd_data.csv",
+          "opendataforafrica/rwanda_census/test_data/ztaoyl_data.csv",
+          "opendataforafrica/rwanda_census/test_data/hivlaeg.csv",
+          "opendataforafrica/rwanda_census/test_data/qavhudd.csv",
+          "opendataforafrica/rwanda_census/test_data/kbadgkf.csv",
+          "opendataforafrica/rwanda_census/test_data/vafqyfg.csv",
+          "opendataforafrica/rwanda_census/test_data/uymcezb_data.csv",
+          "opendataforafrica/rwanda_census/test_data/kwekfdd.csv",
+          "opendataforafrica/rwanda_census/test_data/vafqyfg_data.csv",
+          "opendataforafrica/rwanda_census/test_data/shdirje_data.csv",
+          "opendataforafrica/rwanda_census/test_data/eoefmac.csv",
+          "opendataforafrica/rwanda_census/test_data/eoefmac_data.csv",
+          "opendataforafrica/rwanda_census/test_data/edvtatd.csv",
+          "opendataforafrica/rwanda_census/test_data/shdirje.csv",
+          "opendataforafrica/rwanda_census/test_data/qavhudd_data.csv",
+          "opendataforafrica/rwanda_census/test_data/hivlaeg_data.csv"
+        ],
+        "test_outputs": {
+          "csv": [],
+          "tmcf": [
+            "opendataforafrica/rwanda_census/test_data/mnoirpd.tmcf",
+            "opendataforafrica/rwanda_census/test_data/hivlaeg.tmcf",
+            "opendataforafrica/rwanda_census/test_data/vafqyfg.tmcf",
+            "opendataforafrica/rwanda_census/test_data/kwekfdd.tmcf",
+            "opendataforafrica/rwanda_census/test_data/shdirje.tmcf",
+            "opendataforafrica/rwanda_census/test_data/uymcezb.tmcf",
+            "opendataforafrica/rwanda_census/test_data/eoefmac.tmcf",
+            "opendataforafrica/rwanda_census/test_data/ztaoyl.tmcf",
+            "opendataforafrica/rwanda_census/test_data/qavhudd.tmcf",
+            "opendataforafrica/rwanda_census/test_data/kbadgkf.tmcf",
+            "opendataforafrica/rwanda_census/test_data/edvtatd.tmcf"
+          ],
+          "mcf": [
+            "opendataforafrica/rwanda_census/test_data/kbadgkf_stat_vars.mcf"
+          ]
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "gcs_output/output/edvtatd.tmcf",
+          "cleaned_csv": "gcs_output/output/edvtatd.csv"
+        },
+        {
+          "template_mcf": "gcs_output/output/eoefmac.tmcf",
+          "cleaned_csv": "gcs_output/output/eoefmac.csv"
+        },
+        {
+          "template_mcf": "gcs_output/output/hivlaeg.tmcf",
+          "cleaned_csv": "gcs_output/output/hivlaeg.csv"
+        },
+        {
+          "template_mcf": "gcs_output/output/kbadgkf.tmcf",
+          "cleaned_csv": "gcs_output/output/kbadgkf.csv"
+        },
+        {
+          "template_mcf": "gcs_output/output/mnoirpd.tmcf",
+          "cleaned_csv": "gcs_output/output/mnoirpd.csv"
+        },
+        {
+          "template_mcf": "gcs_output/output/shdirje.tmcf",
+          "cleaned_csv": "gcs_output/output/shdirje.csv"
+        },
+        {
+          "template_mcf": "gcs_output/output/uymcezb.tmcf",
+          "cleaned_csv": "gcs_output/output/uymcezb.csv"
+        },
+        {
+          "template_mcf": "gcs_output/output/vafqyfg.tmcf",
+          "cleaned_csv": "gcs_output/output/vafqyfg.csv"
+        },
+        {
+          "template_mcf": "gcs_output/output/ztaoyl.tmcf",
+          "cleaned_csv": "gcs_output/output/ztaoyl.csv"
+        },
+        {
+          "template_mcf": "gcs_output/output/qavhudd.tmcf",
+          "cleaned_csv": "gcs_output/output/qavhudd.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://rwanda.opendataforafrica.org/",
+        "description": "Rwanda Census: Demographics, Economy, Education"
+      },
+      "import_name": "Rwanda_Census",
+      "cron_schedule": "30 05 * * 1",
+      "scripts": [
+        "../../../scripts/opendataafrica/download_folder/download.sh 'rwanda' 'edvtatd,eoefmac,hivlaeg,kbadgkf,kwekfdd,mnoirpd,shdirje,uymcezb,vafqyfg,ztaoyl,qavhudd' 'gcs_output/input_files'",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=gcs_output/input_files/edvtatd.csv --pv_map=edvtatd_pv_map.csv --config_file=edvtatd_metadata.csv --output_path=gcs_output/output/edvtatd --statvar_dcid_remap_csv=edvtatd_statvar_remap.csv",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=gcs_output/input_files/eoefmac.csv --pv_map=eoefmac_pv_map.csv --config_file=eoefmac_metadata.csv --output_path=gcs_output/output/eoefmac",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=gcs_output/input_files/hivlaeg.csv --pv_map=hivlaeg_pv_map.csv --config_file=hivlaeg_metadata.csv --output_path=gcs_output/output/hivlaeg",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=gcs_output/input_files/kbadgkf.csv --pv_map=kbadgkf_pv_map.csv --config_file=kbadgkf_metadata.csv --output_path=gcs_output/output/kbadgkf",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=gcs_output/input_files/kwekfdd.csv --pv_map=kwekfdd_pv_map.csv --config_file=kwekfdd_metadata.csv --output_path=gcs_output/output/kwekfdd",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=gcs_output/input_files/mnoirpd.csv --pv_map=mnoirpd_pv_map.csv --config_file=mnoirpd_metadata.csv --output_path=gcs_output/output/mnoirpd",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=gcs_output/input_files/shdirje.csv --pv_map=shdirje_pv_map.csv --config_file=shdirje_metadata.csv --output_path=gcs_output/output/shdirje",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=gcs_output/input_files/uymcezb.csv --pv_map=uymcezb_pv_map.csv --config_file=uymcezb_metadata.csv --output_path=gcs_output/output/uymcezb",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=gcs_output/input_files/vafqyfg.csv --pv_map=vafqyfg_pv_map.csv --config_file=vafqyfg_metadata.csv --output_path=gcs_output/output/vafqyfg",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=gcs_output/input_files/ztaoyl.csv --pv_map=ztaoyl_pv_map.csv --config_file=ztaoyl_metadata.csv --output_path=gcs_output/output/ztaoyl",
+        "qavhudd_process.py",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=gcs_output/input_files/qavhudd_modified.csv --pv_map=qavhudd_pv_map.csv --config_file=qavhudd_metadata.csv --places_resolved_csv=places_resolved_csv.csv --output_path=gcs_output/output/qavhudd"
+      ],
+      "categories": {
+        "main_categories": [
+          "Demographics",
+          "Economy",
+          "Education"
+        ],
+        "subcategories": [
+          "Population",
+          "Employment",
+          "Schools"
+        ],
+        "geographic_level": "County",
+        "time_period": "Annual",
+        "data_source": "Census/Survey"
+      }
+    },
+    "opendataforafrica_kenya_census": {
+      "import_id": "opendataforafrica_kenya_census",
+      "directory_path": "opendataforafrica/kenya_census",
+      "provider": "opendataforafrica",
+      "files": {
+        "manifest": "opendataforafrica/kenya_census/manifest.json",
+        "pvmap_files": [
+          "opendataforafrica/kenya_census/emxkej_pvmap.csv",
+          "opendataforafrica/kenya_census/gxbucsd_pvmap.csv",
+          "opendataforafrica/kenya_census/rsfzlbg_pvmap.csv",
+          "opendataforafrica/kenya_census/vdbvyfd_pvmap.csv",
+          "opendataforafrica/kenya_census/tdxdksf_pvmap.csv",
+          "opendataforafrica/kenya_census/welrttb_pvmap.csv",
+          "opendataforafrica/kenya_census/dlrrjxg_pvmap.csv",
+          "opendataforafrica/kenya_census/egdxgkd_pvmap.csv",
+          "opendataforafrica/kenya_census/fwjfdnc_pvmap.csv",
+          "opendataforafrica/kenya_census/xszlbb_pvmap.csv",
+          "opendataforafrica/kenya_census/srricmg_pvmap.csv",
+          "opendataforafrica/kenya_census/ixdvqrf_pvmap.csv"
+        ],
+        "metadata_files": [
+          "opendataforafrica/kenya_census/emxkej_metadata.csv",
+          "opendataforafrica/kenya_census/gxbucsd_metadata.csv",
+          "opendataforafrica/kenya_census/welrttb_metadata.csv",
+          "opendataforafrica/kenya_census/fwjfdnc_metadata.csv",
+          "opendataforafrica/kenya_census/xszlbb_metadata.csv",
+          "opendataforafrica/kenya_census/vdbvyfd_metadata.csv",
+          "opendataforafrica/kenya_census/srricmg_metadata.csv",
+          "opendataforafrica/kenya_census/rsfzlbg_metadata.csv",
+          "opendataforafrica/kenya_census/egdxgkd_metadata.csv",
+          "opendataforafrica/kenya_census/dlrrjxg_metadata.csv",
+          "opendataforafrica/kenya_census/tdxdksf_metadata.csv",
+          "opendataforafrica/kenya_census/ixdvqrf_metadata.csv"
+        ],
+        "places_resolved_files": [
+          "opendataforafrica/kenya_census/rsfzlbg_places_resolved.csv",
+          "opendataforafrica/kenya_census/fwjfdnc_places_resolved.csv",
+          "opendataforafrica/kenya_census/vdbvyfd_places_resolved.csv",
+          "opendataforafrica/kenya_census/gxbucsd_places_resolved.csv"
+        ],
+        "test_inputs": [
+          "opendataforafrica/kenya_census/test_data/fwjfdnc_input.csv",
+          "opendataforafrica/kenya_census/test_data/srricmg_input.csv",
+          "opendataforafrica/kenya_census/test_data/xszlbb_input.csv",
+          "opendataforafrica/kenya_census/test_data/dlrrjxg1.csv",
+          "opendataforafrica/kenya_census/test_data/dlrrjxg_input.csv",
+          "opendataforafrica/kenya_census/test_data/welrttb_input.csv",
+          "opendataforafrica/kenya_census/test_data/egdxgkd_input.csv",
+          "opendataforafrica/kenya_census/test_data/vdbvyfd_input.csv",
+          "opendataforafrica/kenya_census/test_data/emxkej_input.csv",
+          "opendataforafrica/kenya_census/test_data/fwjfdnc1.csv",
+          "opendataforafrica/kenya_census/test_data/gxbucsd_input.csv",
+          "opendataforafrica/kenya_census/test_data/rsfzlbg_input.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "opendataforafrica/kenya_census/test_data/welrttb_output.csv",
+            "opendataforafrica/kenya_census/test_data/xszlbb_output.csv",
+            "opendataforafrica/kenya_census/test_data/dlrrjxg_output.csv",
+            "opendataforafrica/kenya_census/test_data/rsfzlbg_output.csv",
+            "opendataforafrica/kenya_census/test_data/vdbvyfd_output.csv",
+            "opendataforafrica/kenya_census/test_data/srricmg_output.csv",
+            "opendataforafrica/kenya_census/test_data/fwjfdnc_output.csv",
+            "opendataforafrica/kenya_census/test_data/egdxgkd_output.csv",
+            "opendataforafrica/kenya_census/test_data/emxkej_output.csv",
+            "opendataforafrica/kenya_census/test_data/gxbucsd_output.csv"
+          ],
+          "tmcf": [
+            "opendataforafrica/kenya_census/test_data/srricmg.tmcf",
+            "opendataforafrica/kenya_census/test_data/vdbvyfd.tmcf",
+            "opendataforafrica/kenya_census/test_data/emxkej.tmcf",
+            "opendataforafrica/kenya_census/test_data/dlrrjxg.tmcf",
+            "opendataforafrica/kenya_census/test_data/rsfzlbg.tmcf",
+            "opendataforafrica/kenya_census/test_data/gxbucsd.tmcf",
+            "opendataforafrica/kenya_census/test_data/ixdvqrf.tmcf",
+            "opendataforafrica/kenya_census/test_data/fwjfdnc1.tmcf",
+            "opendataforafrica/kenya_census/test_data/xszlbb.tmcf",
+            "opendataforafrica/kenya_census/test_data/welrttb.tmcf",
+            "opendataforafrica/kenya_census/test_data/fwjfdnc.tmcf",
+            "opendataforafrica/kenya_census/test_data/dlrrjxg1.tmcf",
+            "opendataforafrica/kenya_census/test_data/egdxgkd.tmcf"
+          ],
+          "mcf": [
+            "opendataforafrica/kenya_census/test_data/fwjfdnc1_stat_vars_schema.mcf",
+            "opendataforafrica/kenya_census/test_data/fwjfdnc1_stat_vars.mcf",
+            "opendataforafrica/kenya_census/test_data/dlrrjxg1_stat_vars.mcf"
+          ]
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output/dlrrjxg.tmcf",
+          "cleaned_csv": "output/dlrrjxg.csv"
+        },
+        {
+          "template_mcf": "output/egdxgkd.tmcf",
+          "cleaned_csv": "output/egdxgkd.csv"
+        },
+        {
+          "template_mcf": "output/emxkej.tmcf",
+          "cleaned_csv": "output/emxkej.csv"
+        },
+        {
+          "template_mcf": "output/fwjfdnc.tmcf",
+          "cleaned_csv": "output/fwjfdnc.csv"
+        },
+        {
+          "template_mcf": "output/ixdvqrf.tmcf",
+          "cleaned_csv": "output/ixdvqrf.csv"
+        },
+        {
+          "template_mcf": "output/rsfzlbg.tmcf",
+          "cleaned_csv": "output/rsfzlbg.csv"
+        },
+        {
+          "template_mcf": "output/srricmg.tmcf",
+          "cleaned_csv": "output/srricmg.csv"
+        },
+        {
+          "template_mcf": "output/tdxdksf.tmcf",
+          "cleaned_csv": "output/tdxdksf.csv"
+        },
+        {
+          "template_mcf": "output/vdbvyfd.tmcf",
+          "cleaned_csv": "output/vdbvyfd.csv"
+        },
+        {
+          "template_mcf": "output/welrttb.tmcf",
+          "cleaned_csv": "output/welrttb.csv"
+        },
+        {
+          "template_mcf": "output/xszlbb.tmcf",
+          "cleaned_csv": "output/xszlbb.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://kenya.opendataforafrica.org/",
+        "description": "Kenya Demographics, Health and Education data from Kenya National Bureau Of Statistics by country, county and towns and suburbs."
+      },
+      "import_name": "Kenya_Census",
+      "cron_schedule": "30 05 * * 1",
+      "scripts": [
+        "../../../scripts/opendataafrica/download_folder/download.sh 'kenya' 'dlrrjxg,egdxgkd,emxkej,fwjfdnc,gxbucsd,ixdvqrf,rsfzlbg,srricmg,tdxdksf,vdbvyfd,welrttb,xszlbb'",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/dlrrjxg.csv --pv_map=dlrrjxg_pvmap.csv --config_file=dlrrjxg_metadata.csv --output_path=output/dlrrjxg",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/egdxgkd.csv --pv_map=egdxgkd_pvmap.csv --config_file=egdxgkd_metadata.csv --output_path=output/egdxgkd",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/emxkej.csv --pv_map=emxkej_pvmap.csv --config_file=emxkej_metadata.csv --output_path=output/emxkej",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/fwjfdnc.csv --pv_map=fwjfdnc_pvmap.csv --config_file=fwjfdnc_metadata.csv --output_path=output/fwjfdnc --places_resolved_csv=fwjfdnc_places_resolved.csv",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/gxbucsd.csv --pv_map=gxbucsd_pvmap.csv --config_file=gxbucsd_metadata.csv --output_path=output/gxbucsd --places_resolved_csv=gxbucsd_places_resolved.csv",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/ixdvqrf.csv --pv_map=ixdvqrf_pvmap.csv --config_file=ixdvqrf_metadata.csv --output_path=output/ixdvqrf",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/rsfzlbg.csv --pv_map=rsfzlbg_pvmap.csv --config_file=rsfzlbg_metadata.csv --output_path=output/rsfzlbg --places_resolved_csv=rsfzlbg_places_resolved.csv",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/srricmg.csv --pv_map=srricmg_pvmap.csv --config_file=srricmg_metadata.csv --output_path=output/srricmg",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/tdxdksf.csv --pv_map=tdxdksf_pvmap.csv --config_file=tdxdksf_metadata.csv --output_path=output/tdxdksf",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/vdbvyfd.csv --pv_map=vdbvyfd_pvmap.csv --config_file=vdbvyfd_metadata.csv --output_path=output/vdbvyfd --places_resolved_csv=rsfzlbg_places_resolved.csv",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/welrttb.csv --pv_map=welrttb_pvmap.csv --config_file=welrttb_metadata.csv --output_path=output/welrttb",
+        "../../../tools/statvar_importer/stat_var_processor.py --input_data=input_files/xszlbb.csv --pv_map=xszlbb_pvmap.csv --config_file=xszlbb_metadata.csv --output_path=output/xszlbb"
+      ],
+      "categories": {
+        "main_categories": [
+          "Demographics",
+          "Health",
+          "Education"
+        ],
+        "subcategories": [
+          "Population",
+          "Healthcare",
+          "Schools"
+        ],
+        "geographic_level": "County",
+        "time_period": "Annual",
+        "data_source": "Census/Survey"
+      }
+    },
+    "ireland_census": {
+      "import_id": "ireland_census",
+      "directory_path": "ireland_census",
+      "provider": "ireland_census",
+      "files": {
+        "manifest": "ireland_census/manifest.json",
+        "pvmap_files": [
+          "ireland_census/irl_aa1_aa2_suicide_pvmap.csv",
+          "ireland_census/irl_population_at_each_census_pvmap.csv",
+          "ireland_census/irl_population_by_gender_pvmap.csv",
+          "ireland_census/irl_population_by_religion_pvmap.csv",
+          "ireland_census/irl_deaths_pvmap.csv",
+          "ireland_census/irl_population_by_age_gender_pvmap.csv",
+          "ireland_census/irl_causeofdeath_pvmap.csv",
+          "ireland_census/irl_lifeexpectancy_pvmap.csv",
+          "ireland_census/irl_birth_pvmap.csv",
+          "ireland_census/irl_aa1_aa2_employment_pvmap.csv",
+          "ireland_census/irl_suicide_pvmap.csv"
+        ],
+        "metadata_files": [
+          "ireland_census/irl_metadata.csv"
+        ],
+        "places_resolved_files": [
+          "ireland_census/places_resolver.csv",
+          "ireland_census/places_resolver_each_census.csv",
+          "ireland_census/places_resolver_gender.csv",
+          "ireland_census/places_resolver_religion.csv"
+        ],
+        "test_inputs": [
+          "ireland_census/testdata/population_by_employment.csv",
+          "ireland_census/testdata/population_by_religion.csv",
+          "ireland_census/testdata/population_by_gender.csv",
+          "ireland_census/testdata/deaths_from_external_causes.csv",
+          "ireland_census/testdata/suicides_with_aa1_aa2.csv",
+          "ireland_census/testdata/population_by_age_gender.csv",
+          "ireland_census/testdata/deaths.csv",
+          "ireland_census/testdata/population_at_each_census.csv",
+          "ireland_census/testdata/life_expectancy.csv",
+          "ireland_census/testdata/births.csv",
+          "ireland_census/testdata/suicides.csv"
+        ],
+        "test_outputs": {
+          "csv": [
+            "ireland_census/testdata/irl_life_expectancy_output.csv",
+            "ireland_census/testdata/irl_birth_output.csv",
+            "ireland_census/testdata/irl_population_by_age_gender_output.csv",
+            "ireland_census/testdata/irl_suicide_output.csv",
+            "ireland_census/testdata/irl_aa1_aa2_suicide_output.csv",
+            "ireland_census/testdata/irl_population_by_religion_output.csv",
+            "ireland_census/testdata/irl_aa1_aa2_employment_output.csv",
+            "ireland_census/testdata/irl_population_at_each_census_output.csv",
+            "ireland_census/testdata/irl_death_output.csv",
+            "ireland_census/testdata/irl_population_by_gender_output.csv",
+            "ireland_census/testdata/irl_external_cause_of_death_output.csv"
+          ],
+          "tmcf": [
+            "ireland_census/testdata/irl_aa1_aa2_employment_output.tmcf",
+            "ireland_census/testdata/irl_birth_output.tmcf",
+            "ireland_census/testdata/irl_aa1_aa2_suicide_output.tmcf",
+            "ireland_census/testdata/irl_external_cause_of_death_output.tmcf",
+            "ireland_census/testdata/irl_population_by_gender_output.tmcf",
+            "ireland_census/testdata/irl_death_output.tmcf",
+            "ireland_census/testdata/irl_population_at_each_census_output.tmcf",
+            "ireland_census/testdata/irl_population_by_age_gender_output.tmcf",
+            "ireland_census/testdata/irl_population_by_religion_output.tmcf",
+            "ireland_census/testdata/irl_life_expectancy_output.tmcf",
+            "ireland_census/testdata/irl_suicide_output.tmcf"
+          ],
+          "mcf": [
+            "ireland_census/testdata/irl_population_by_gender_output_stat_vars.mcf",
+            "ireland_census/testdata/irl_population_at_each_census_output_stat_vars.mcf",
+            "ireland_census/testdata/irl_life_expectancy_output_stat_vars.mcf",
+            "ireland_census/testdata/irl_population_by_age_gender_output_stat_vars.mcf"
+          ]
+        }
+      },
+      "import_configurations": [
+        {
+          "template_mcf": "output_files/irl_birth_output.tmcf",
+          "cleaned_csv": "output_files/irl_birth_output.csv"
+        },
+        {
+          "template_mcf": "output_files/irl_death_output.tmcf",
+          "cleaned_csv": "output_files/irl_death_output.csv"
+        },
+        {
+          "template_mcf": "output_files/irl_external_cause_of_death_output.tmcf",
+          "cleaned_csv": "output_files/irl_external_cause_of_death_output.csv"
+        },
+        {
+          "template_mcf": "output_files/irl_life_expectancy_output.tmcf",
+          "cleaned_csv": "output_files/irl_life_expectancy_output.csv"
+        },
+        {
+          "template_mcf": "output_files/irl_suicide_output.tmcf",
+          "cleaned_csv": "output_files/irl_suicide_output.csv"
+        },
+        {
+          "template_mcf": "output_files/irl_aa1_aa2_suicide_output.tmcf",
+          "cleaned_csv": "output_files/irl_aa1_aa2_suicide_output.csv"
+        },
+        {
+          "template_mcf": "output_files/irl_population_by_age_gender_output.tmcf",
+          "cleaned_csv": "output_files/irl_population_by_age_gender_output.csv"
+        },
+        {
+          "template_mcf": "output_files/irl_population_by_religion_output.tmcf",
+          "cleaned_csv": "output_files/irl_population_by_religion_output.csv"
+        },
+        {
+          "template_mcf": "output_files/irl_population_at_each_census_output.tmcf",
+          "cleaned_csv": "output_files/irl_population_at_each_census_output.csv"
+        },
+        {
+          "template_mcf": "output_files/irl_population_by_gender_output.tmcf",
+          "cleaned_csv": "output_files/irl_population_by_gender_output.csv"
+        },
+        {
+          "template_mcf": "output_files/irl_aa1_aa2_employment_output.tmcf",
+          "cleaned_csv": "output_files/irl_aa1_aa2_employment_output.csv"
+        }
+      ],
+      "provenance": {
+        "url": "https://data.cso.ie/",
+        "description": "Ireland Demographics, Health and Economy data from Central Statistics Office(CSO) by country, county and city"
+      },
+      "import_name": "Ireland_Census",
+      "cron_schedule": "0 05 * * 5",
+      "scripts": [
+        "download_script.py",
+        "preprocess.py",
+        "run.sh"
+      ],
+      "categories": {
+        "main_categories": [
+          "Demographics",
+          "Health",
+          "Economy"
+        ],
+        "subcategories": [
+          "Population",
+          "Mortality",
+          "Employment"
+        ],
+        "geographic_level": "County",
+        "time_period": "Annual",
+        "data_source": "Census/Survey"
+      }
+    }
+  }
+}
