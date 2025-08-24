@@ -1,0 +1,312 @@
+level,category_id,category_name,parent_id,parent_name,variable_count,path
+0,dc/g/Root,Data Commons Variables,,,247338,Root
+1,dc/g/Agriculture,Agriculture,dc/g/Root,Data Commons Variables,441,Root > Agriculture
+2,dc/g/Person_EconomicSector,Person by Economic Sector,dc/g/Agriculture,Agriculture,178,Root > Agriculture > Person by Economic Sector
+2,dc/g/Farm,Farm,dc/g/Agriculture,Agriculture,132,Root > Agriculture > Farm
+2,dc/g/FarmInventory,Farm Inventory,dc/g/Agriculture,Agriculture,81,Root > Agriculture > Farm Inventory
+2,dc/g/Agriculture_Miscellaneous,Miscellaneous,dc/g/Agriculture,Agriculture,41,Root > Agriculture > Miscellaneous
+2,dc/g/Person_OwnershipStatus,Person by Ownership Status,dc/g/Agriculture,Agriculture,8,Root > Agriculture > Person by Ownership Status
+1,dc/g/Demographics,Demographics,dc/g/Root,Data Commons Variables,50806,Root > Demographics
+2,dc/g/Person_Age,Person by Age,dc/g/Demographics,Demographics,30498,Root > Demographics > Person by Age
+2,dc/g/Person_AgeGroupClassification,Person by Age Group Classification,dc/g/Demographics,Demographics,8,Root > Demographics > Person by Age Group Classification
+2,dc/g/Person_BenefitProgram,Person by Benefit Program,dc/g/Demographics,Demographics,18,Root > Demographics > Person by Benefit Program
+2,dc/g/Person_BenefitsStatus,Person by Benefits Status,dc/g/Demographics,Demographics,16,Root > Demographics > Person by Benefits Status
+2,dc/g/Person_CarpoolOccupancy,Person by Carpool Occupancy,dc/g/Demographics,Demographics,9,Root > Demographics > Person by Carpool Occupancy
+2,dc/g/Child,Child,dc/g/Demographics,Demographics,19,Root > Demographics > Child
+2,dc/g/Children,Children,dc/g/Demographics,Demographics,33,Root > Demographics > Children
+2,dc/g/Person_ChildrenStatus,Person by Children Status,dc/g/Demographics,Demographics,9,Root > Demographics > Person by Children Status
+2,dc/g/Person_CitizenshipStatus,Person by Citizenship Status,dc/g/Demographics,Demographics,1593,Root > Demographics > Person by Citizenship Status
+2,dc/g/CivicStructure,Civic Structure,dc/g/Demographics,Demographics,4,Root > Demographics > Civic Structure
+2,dc/g/Commute,Commute,dc/g/Demographics,Demographics,471,Root > Demographics > Commute
+2,dc/g/Person_CommuteStartTime,Person by Commute Start Time,dc/g/Demographics,Demographics,70,Root > Demographics > Person by Commute Start Time
+2,dc/g/Person_CommuteType,Person by Commute Type,dc/g/Demographics,Demographics,135,Root > Demographics > Person by Commute Type
+2,dc/g/Person_ComparisonRegion,Person by Comparison Region,dc/g/Demographics,Demographics,53,Root > Demographics > Person by Comparison Region
+2,dc/g/Courthouse,Courthouse,dc/g/Demographics,Demographics,2,Root > Demographics > Courthouse
+2,dc/g/Person_CrashInvolvement,Person by Crash Involvement,dc/g/Demographics,Demographics,4,Root > Demographics > Person by Crash Involvement
+2,dc/g/Person_DateOfEntry,Person by Date of Entry,dc/g/Demographics,Demographics,236,Root > Demographics > Person by Date of Entry
+2,dc/g/Person_DeprivationDomain,Person by Deprivation Domain,dc/g/Demographics,Demographics,45,Root > Demographics > Person by Deprivation Domain
+2,dc/g/Person_DeviceUsed,Person by Device Used,dc/g/Demographics,Demographics,3,Root > Demographics > Person by Device Used
+2,dc/g/Person_DisabilityStatus,Person by Disability Status,dc/g/Demographics,Demographics,545,Root > Demographics > Person by Disability Status
+2,dc/g/Person_Earnings,Person by Earnings,dc/g/Demographics,Demographics,139,Root > Demographics > Person by Earnings
+2,dc/g/Person_ElectronicGadgetUsed,Person by Electronic Gadget Used,dc/g/Demographics,Demographics,407,Root > Demographics > Person by Electronic Gadget Used
+2,dc/g/Person_Employer,Person by Employer,dc/g/Demographics,Demographics,2,Root > Demographics > Person by Employer
+2,dc/g/Person_Ethnicity,Person by Ethnicity,dc/g/Demographics,Demographics,2227,Root > Demographics > Person by Ethnicity
+2,dc/g/Person_Facilities,Person by Facilities,dc/g/Demographics,Demographics,3,Root > Demographics > Person by Facilities
+2,dc/g/Place_Facilities,Place by Facilities,dc/g/Demographics,Demographics,3,Root > Demographics > Place by Facilities
+2,dc/g/Food,Food,dc/g/Demographics,Demographics,10,Root > Demographics > Food
+2,dc/g/FoodBasket,Food Basket,dc/g/Demographics,Demographics,34,Root > Demographics > Food Basket
+2,dc/g/Person_FoodSecurityStatus,Person by Food Security Status,dc/g/Demographics,Demographics,15,Root > Demographics > Person by Food Security Status
+2,dc/g/Person_Gender,Person by Gender,dc/g/Demographics,Demographics,27252,Root > Demographics > Person by Gender
+2,dc/g/Person_GovernmentId,Person by Government Id,dc/g/Demographics,Demographics,2,Root > Demographics > Person by Government Id
+2,dc/g/Person_GovernmentIdentifier,Person by Government Identifier,dc/g/Demographics,Demographics,2,Root > Demographics > Person by Government Identifier
+2,dc/g/Person_HealthInsurance,Person by Health Insurance,dc/g/Demographics,Demographics,2029,Root > Demographics > Person by Health Insurance
+2,dc/g/House,House,dc/g/Demographics,Demographics,3,Root > Demographics > House
+2,dc/g/Household,Household,dc/g/Demographics,Demographics,3522,Root > Demographics > Household
+2,dc/g/Person_HouseholdIncome,Person by Household Income,dc/g/Demographics,Demographics,44,Root > Demographics > Person by Household Income
+2,dc/g/Person_HouseholdType,Person by Household Type,dc/g/Demographics,Demographics,476,Root > Demographics > Person by Household Type
+2,dc/g/Households,Households,dc/g/Demographics,Demographics,47,Root > Demographics > Households
+2,dc/g/Person_IdentityActivity,Person by Identity Activity,dc/g/Demographics,Demographics,2,Root > Demographics > Person by Identity Activity
+2,dc/g/ImmigrationAndCitizenship,Immigration and Citizenship,dc/g/Demographics,Demographics,4001,Root > Demographics > Immigration and Citizenship
+2,dc/g/Person_Income,Person by Income,dc/g/Demographics,Demographics,1974,Root > Demographics > Person by Income
+2,dc/g/Person_IncomeStatus,Person by Income Status,dc/g/Demographics,Demographics,618,Root > Demographics > Person by Income Status
+2,dc/g/Infant,Infant,dc/g/Demographics,Demographics,2,Root > Demographics > Infant
+2,dc/g/Person_InternetAccessStatus,Person by Internet Access Status,dc/g/Demographics,Demographics,5,Root > Demographics > Person by Internet Access Status
+2,dc/g/Person_InternetUsageLocation,Person by Internet Usage Location,dc/g/Demographics,Demographics,406,Root > Demographics > Person by Internet Usage Location
+2,dc/g/Person_IsInternetUser,Person by Is Internet User,dc/g/Demographics,Demographics,407,Root > Demographics > Person by Is Internet User
+2,dc/g/Person_LaborForceStatus,Person by Labor Force Status,dc/g/Demographics,Demographics,4561,Root > Demographics > Person by Labor Force Status
+2,dc/g/Language,Language,dc/g/Demographics,Demographics,511,Root > Demographics > Language
+2,dc/g/Person_LiteracyStatus,Person by Literacy Status,dc/g/Demographics,Demographics,305,Root > Demographics > Person by Literacy Status
+2,dc/g/Person_MaritalStatus,Person by Marital Status,dc/g/Demographics,Demographics,2481,Root > Demographics > Person by Marital Status
+2,dc/g/MaternalMortalityEvent,Maternal Mortality Event,dc/g/Demographics,Demographics,3,Root > Demographics > Maternal Mortality Event
+2,dc/g/Person_MemberStatus,Person by Member Status,dc/g/Demographics,Demographics,96,Root > Demographics > Person by Member Status
+2,dc/g/MilitaryService,Military Service,dc/g/Demographics,Demographics,2403,Root > Demographics > Military Service
+2,dc/g/Demographics_Miscellaneous,Miscellaneous,dc/g/Demographics,Demographics,1546,Root > Demographics > Miscellaneous
+2,dc/g/Mother,Mother,dc/g/Demographics,Demographics,37,Root > Demographics > Mother
+2,dc/g/MunicipalWard,Municipal Ward,dc/g/Demographics,Demographics,3,Root > Demographics > Municipal Ward
+2,dc/g/NonPregnantWoman,Non Pregnant Woman,dc/g/Demographics,Demographics,6,Root > Demographics > Non Pregnant Woman
+2,dc/g/Person_NumberOfVehiclesInHousehold,Person by Number of Vehicles in Household,dc/g/Demographics,Demographics,24,Root > Demographics > Person by Number of Vehicles in Household
+2,dc/g/Place_PlaceType,Place by Place Type,dc/g/Demographics,Demographics,2,Root > Demographics > Place by Place Type
+2,dc/g/Person_PlaceOfBirth,Person by Place of Birth,dc/g/Demographics,Demographics,1958,Root > Demographics > Person by Place of Birth
+2,dc/g/Person_PlaceOfResidenceClassification,Person by Place of Residence Classification,dc/g/Demographics,Demographics,4330,Root > Demographics > Person by Place of Residence Classification
+2,dc/g/Place_PlaceOfResidenceClassification,Place by Place of Residence Classification,dc/g/Demographics,Demographics,4,Root > Demographics > Place by Place of Residence Classification
+2,dc/g/Person_PovertyStatus,Person by Poverty Status,dc/g/Demographics,Demographics,1096,Root > Demographics > Person by Poverty Status
+2,dc/g/Person_Race,Person by Race,dc/g/Demographics,Demographics,21891,Root > Demographics > Person by Race
+2,dc/g/Person_Religion,Person by Religion,dc/g/Demographics,Demographics,2050,Root > Demographics > Person by Religion
+2,dc/g/Residence,Residence,dc/g/Demographics,Demographics,6066,Root > Demographics > Residence
+2,dc/g/Person_ResidentStatus,Person by Resident Status,dc/g/Demographics,Demographics,808,Root > Demographics > Person by Resident Status
+2,dc/g/Place_SocialCondition,Place by Social Condition,dc/g/Demographics,Demographics,2,Root > Demographics > Place by Social Condition
+2,dc/g/Vehicle,Vehicle,dc/g/Demographics,Demographics,5,Root > Demographics > Vehicle
+2,dc/g/VehicleCrashIncident,Vehicle Crash Incident,dc/g/Demographics,Demographics,94,Root > Demographics > Vehicle Crash Incident
+2,dc/g/Person_VehicleOccupantType,Person by Vehicle Occupant Type,dc/g/Demographics,Demographics,4,Root > Demographics > Person by Vehicle Occupant Type
+2,dc/g/Village,Village,dc/g/Demographics,Demographics,2,Root > Demographics > Village
+2,dc/g/Person_VulnerabilityStatus,Person by Vulnerability Status,dc/g/Demographics,Demographics,4,Root > Demographics > Person by Vulnerability Status
+1,dc/g/Economy,Economy,dc/g/Root,Data Commons Variables,122095,Root > Economy
+2,dc/g/Employment,Employment and Business,dc/g/Economy,Economy,66646,Root > Economy > Employment and Business
+2,dc/g/Person_Age,Person by Age,dc/g/Economy,Economy,30498,Root > Economy > Person by Age
+2,dc/g/Amount,Amount,dc/g/Economy,Economy,4,Root > Economy > Amount
+2,dc/g/Person_AssessmentType,Person by Assessment Type,dc/g/Economy,Economy,9,Root > Economy > Person by Assessment Type
+2,dc/g/Person_AssetsOwned,Person by Assets Owned,dc/g/Economy,Economy,6,Root > Economy > Person by Assets Owned
+2,dc/g/Person_BankAccountType,Person by Bank Account Type,dc/g/Economy,Economy,3,Root > Economy > Person by Bank Account Type
+2,dc/g/Person_CandidatesStatus,Person by Candidates Status,dc/g/Economy,Economy,3,Root > Economy > Person by Candidates Status
+2,dc/g/Commodity,Commodity,dc/g/Economy,Economy,173,Root > Economy > Commodity
+2,dc/g/ConsumerGoodsAndServices,Consumer Goods And Services,dc/g/Economy,Economy,2878,Root > Economy > Consumer Goods And Services
+2,dc/g/Currency,Currency,dc/g/Economy,Economy,447,Root > Economy > Currency
+2,dc/g/Debt,Debt,dc/g/Economy,Economy,6252,Root > Economy > Debt
+2,dc/g/EconomicActivity,Economic Activity,dc/g/Economy,Economy,31721,Root > Economy > Economic Activity
+2,dc/g/Person_EconomicActivitySource,Person by Economic Activity Source,dc/g/Economy,Economy,94,Root > Economy > Person by Economic Activity Source
+2,dc/g/ExpenditureActivity,Expenditure Activity,dc/g/Economy,Economy,34,Root > Economy > Expenditure Activity
+2,dc/g/FinancialInstrument,Financial Instrument,dc/g/Economy,Economy,11,Root > Economy > Financial Instrument
+2,dc/g/FinancialTransaction,Financial Transaction,dc/g/Economy,Economy,561,Root > Economy > Financial Transaction
+2,dc/g/Household_HouseholdType,Household by Household Type,dc/g/Economy,Economy,357,Root > Economy > Household by Household Type
+2,dc/g/Household_Income,Household by Income,dc/g/Economy,Economy,1136,Root > Economy > Household by Income
+2,dc/g/Person_Income,Person by Income,dc/g/Economy,Economy,1974,Root > Economy > Person by Income
+2,dc/g/Person_IncomeSource,Person by Income Source,dc/g/Economy,Economy,27,Root > Economy > Person by Income Source
+2,dc/g/Household_IncomeStatus,Household by Income Status,dc/g/Economy,Economy,63,Root > Economy > Household by Income Status
+2,dc/g/Person_IncomeStatus,Person by Income Status,dc/g/Economy,Economy,618,Root > Economy > Person by Income Status
+2,dc/g/Person_IncomeType,Person by Income Type,dc/g/Economy,Economy,3,Root > Economy > Person by Income Type
+2,dc/g/Investment,Investment,dc/g/Economy,Economy,10,Root > Economy > Investment
+2,dc/g/Jobs,Jobs,dc/g/Economy,Economy,2,Root > Economy > Jobs
+2,dc/g/Person_LaborForceStatus,Person by Labor Force Status,dc/g/Economy,Economy,4561,Root > Economy > Person by Labor Force Status
+2,dc/g/Economy_Miscellaneous,Miscellaneous,dc/g/Economy,Economy,1002,Root > Economy > Miscellaneous
+2,dc/g/NetworkSubscriber,Network Subscriber,dc/g/Economy,Economy,14,Root > Economy > Network Subscriber
+2,dc/g/Person_Occupation,Person by Occupation,dc/g/Economy,Economy,5319,Root > Economy > Person by Occupation
+2,dc/g/Person_OccupationalCategory,Person by Occupational Category,dc/g/Economy,Economy,63,Root > Economy > Person by Occupational Category
+2,dc/g/Person_PaymentMethod,Person by Payment Method,dc/g/Economy,Economy,3,Root > Economy > Person by Payment Method
+2,dc/g/Person_PovertyStatus,Person by Poverty Status,dc/g/Economy,Economy,1096,Root > Economy > Person by Poverty Status
+2,dc/g/Person_RegistrationStatus,Person by Registration Status,dc/g/Economy,Economy,6,Root > Economy > Person by Registration Status
+2,dc/g/Remittance,Remittance,dc/g/Economy,Economy,3,Root > Economy > Remittance
+2,dc/g/Stock,Stock,dc/g/Economy,Economy,2,Root > Economy > Stock
+2,dc/g/Transportation,Transportation,dc/g/Economy,Economy,5,Root > Economy > Transportation
+2,dc/g/TreasuryBill,Treasury Bill,dc/g/Economy,Economy,8,Root > Economy > Treasury Bill
+2,dc/g/TreasuryBond,Treasury Bond,dc/g/Economy,Economy,2,Root > Economy > Treasury Bond
+2,dc/g/TreasuryNote,Treasury Note,dc/g/Economy,Economy,5,Root > Economy > Treasury Note
+2,dc/g/TreasurySecurity,Treasury Security,dc/g/Economy,Economy,17,Root > Economy > Treasury Security
+2,dc/g/Person_WealthIndex,Person by Wealth Index,dc/g/Economy,Economy,20,Root > Economy > Person by Wealth Index
+1,dc/g/Education,Education,dc/g/Root,Data Commons Variables,53236,Root > Education
+2,dc/g/AcademicAssessmentEvent,Academic Assessment Event,dc/g/Education,Education,24,Root > Education > Academic Assessment Event
+2,dc/g/Person_AssessmentType,Person by Assessment Type,dc/g/Education,Education,9,Root > Education > Person by Assessment Type
+2,dc/g/Person_BachelorsDegreeMajor,Person by Bachelors Degree Major,dc/g/Education,Education,1695,Root > Education > Person by Bachelors Degree Major
+2,dc/g/Person_CandidatesStatus,Person by Candidates Status,dc/g/Education,Education,3,Root > Education > Person by Candidates Status
+2,dc/g/Person_CitizenshipStatus,Person by Citizenship Status,dc/g/Education,Education,1593,Root > Education > Person by Citizenship Status
+2,dc/g/ClassRoom,Class Room,dc/g/Education,Education,10,Root > Education > Class Room
+2,dc/g/Person_CollegeOrUniversityLevel,Person by College or University Level,dc/g/Education,Education,24,Root > Education > Person by College or University Level
+2,dc/g/Person_CourseSpecialization,Person by Course Specialization,dc/g/Education,Education,66,Root > Education > Person by Course Specialization
+2,dc/g/Person_DisabilityStatus,Person by Disability Status,dc/g/Education,Education,545,Root > Education > Person by Disability Status
+2,dc/g/Person_DoctorateDegreeMajor,Person by Doctorate Degree Major,dc/g/Education,Education,1282,Root > Education > Person by Doctorate Degree Major
+2,dc/g/Person_EducationalAttainment,Person by Educational Attainment,dc/g/Education,Education,6774,Root > Education > Person by Educational Attainment
+2,dc/g/Person_EducationalDegree,Person by Educational Degree,dc/g/Education,Education,114,Root > Education > Person by Educational Degree
+2,dc/g/Person_EnrollmentLevel,Person by Enrollment Level,dc/g/Education,Education,706,Root > Education > Person by Enrollment Level
+2,dc/g/Faculty,Faculty,dc/g/Education,Education,15,Root > Education > Faculty
+2,dc/g/Person_FacultyType,Person by Faculty Type,dc/g/Education,Education,1282,Root > Education > Person by Faculty Type
+2,dc/g/FamilyRole,Family Role,dc/g/Education,Education,35,Root > Education > Family Role
+2,dc/g/Person_InstitutionType,Person by Institution Type,dc/g/Education,Education,15,Root > Education > Person by Institution Type
+2,dc/g/Person_KnowledgeAbout,Person by Knowledge About,dc/g/Education,Education,12,Root > Education > Person by Knowledge About
+2,dc/g/Person_LaborForceStatus,Person by Labor Force Status,dc/g/Education,Education,4561,Root > Education > Person by Labor Force Status
+2,dc/g/Person_LiteracyStatus,Person by Literacy Status,dc/g/Education,Education,305,Root > Education > Person by Literacy Status
+2,dc/g/Person_MinorityServingInstitutionType,Person by Minority Serving Institution Type,dc/g/Education,Education,42,Root > Education > Person by Minority Serving Institution Type
+2,dc/g/Education_Miscellaneous,Miscellaneous,dc/g/Education,Education,702,Root > Education > Miscellaneous
+2,dc/g/Person_RegistrationStatus,Person by Registration Status,dc/g/Education,Education,6,Root > Education > Person by Registration Status
+2,dc/g/School,School,dc/g/Education,Education,1116,Root > Education > School
+2,dc/g/Person_SchoolGradeLevel,Person by School Grade Level,dc/g/Education,Education,18,Root > Education > Person by School Grade Level
+2,dc/g/Person_SchoolingDuration,Person by Schooling Duration,dc/g/Education,Education,6,Root > Education > Person by Schooling Duration
+2,dc/g/Student,Student,dc/g/Education,Education,38839,Root > Education > Student
+2,dc/g/Person_StudentType,Person by Student Type,dc/g/Education,Education,2,Root > Education > Person by Student Type
+2,dc/g/Teacher,Teacher,dc/g/Education,Education,169,Root > Education > Teacher
+2,dc/g/Person_TenureStatus,Person by Tenure Status,dc/g/Education,Education,986,Root > Education > Person by Tenure Status
+2,dc/g/Person_TypeOfSchool,Person by Type of School,dc/g/Education,Education,308,Root > Education > Person by Type of School
+1,dc/g/Energy,Energy,dc/g/Root,Data Commons Variables,9779,Root > Energy
+2,dc/g/Coal,Coal,dc/g/Energy,Energy,207,Root > Energy > Coal
+2,dc/g/CommercialBuilding,Commercial Building,dc/g/Energy,Energy,11,Root > Energy > Commercial Building
+2,dc/g/Energy_ConsumingSector,Energy by Consuming Sector,dc/g/Energy,Energy,86,Root > Energy > Energy by Consuming Sector
+2,dc/g/Consumption,Consumption,dc/g/Energy,Energy,5,Root > Energy > Consumption
+2,dc/g/Electricity,Electricity,dc/g/Energy,Energy,838,Root > Energy > Electricity
+2,dc/g/ElectricityConsumer,Electricity Consumer,dc/g/Energy,Energy,15,Root > Energy > Electricity Consumer
+2,dc/g/EnergyGeneration,Energy Generation,dc/g/Energy,Energy,3,Root > Energy > Energy Generation
+2,dc/g/Energy_EnergySource,Energy by Energy Source,dc/g/Energy,Energy,142,Root > Energy > Energy by Energy Source
+2,dc/g/Fuel,Fuel,dc/g/Energy,Energy,3434,Root > Energy > Fuel
+2,dc/g/Energy_Miscellaneous,Miscellaneous,dc/g/Energy,Energy,18,Root > Energy > Miscellaneous
+2,eia/g/Root,Miscellaneous,dc/g/Energy,Energy,7129,Root > Energy > Miscellaneous
+2,dc/g/Energy_PowerPlantSector,Energy by Power Plant Sector,dc/g/Energy,Energy,31,Root > Energy > Energy by Power Plant Sector
+2,dc/g/Production,Production,dc/g/Energy,Energy,3,Root > Energy > Production
+2,dc/g/Solar,Solar,dc/g/Energy,Energy,10,Root > Energy > Solar
+2,dc/g/Energy_UsedFor,Energy by Used For,dc/g/Energy,Energy,16,Root > Energy > Energy by Used For
+1,dc/g/Environment,Environment,dc/g/Root,Data Commons Variables,3647,Root > Environment
+2,dc/g/Place_AreaType,Place by Area Type,dc/g/Environment,Environment,4,Root > Environment > Place by Area Type
+2,dc/g/Atmosphere,Atmosphere,dc/g/Environment,Environment,72,Root > Environment > Atmosphere
+2,dc/g/BodyOfWater,Body of Water,dc/g/Environment,Environment,64,Root > Environment > Body of Water
+2,dc/g/Disasters,Disasters,dc/g/Environment,Environment,403,Root > Environment > Disasters
+2,dc/g/Emissions,Emissions,dc/g/Environment,Environment,1058,Root > Environment > Emissions
+2,dc/g/LandCover,Land Cover,dc/g/Environment,Environment,25,Root > Environment > Land Cover
+2,dc/g/Environment_Miscellaneous,Miscellaneous,dc/g/Environment,Environment,89,Root > Environment > Miscellaneous
+2,dc/g/NaturalHazardImpact,Natural Hazard Impact,dc/g/Environment,Environment,40,Root > Environment > Natural Hazard Impact
+2,dc/g/Household_NumberOfVehicles,Household by Number of Vehicles,dc/g/Environment,Environment,126,Root > Environment > Household by Number of Vehicles
+2,dc/g/PollutedSites,Polluted Sites,dc/g/Environment,Environment,79,Root > Environment > Polluted Sites
+2,dc/g/SeaBodyOfWater,Sea Body of Water,dc/g/Environment,Environment,53,Root > Environment > Sea Body of Water
+2,dc/g/Household_TransportationType,Household by Transportation Type,dc/g/Environment,Environment,104,Root > Environment > Household by Transportation Type
+2,dc/g/WasteGenerated,Waste Generated,dc/g/Environment,Environment,3,Root > Environment > Waste Generated
+2,dc/g/WasteWater,Waste Water,dc/g/Environment,Environment,4,Root > Environment > Waste Water
+2,dc/g/Water,Water,dc/g/Environment,Environment,76,Root > Environment > Water
+2,dc/g/Person_WaterTreatmentSystem,Person by Water Treatment System,dc/g/Environment,Environment,2,Root > Environment > Person by Water Treatment System
+2,dc/g/Person_WaterTreatmentType,Person by Water Treatment Type,dc/g/Environment,Environment,2,Root > Environment > Person by Water Treatment Type
+2,dc/g/Weather,Weather,dc/g/Environment,Environment,1608,Root > Environment > Weather
+1,dc/g/Health,Health,dc/g/Root,Data Commons Variables,51805,Root > Health
+2,dc/g/COVID-19,COVID-19,dc/g/Health,Health,27,Root > Health > COVID-19
+2,dc/g/Person_ActivityDuration,Person by Activity Duration,dc/g/Health,Health,303,Root > Health > Person by Activity Duration
+2,dc/g/Person_ActivityFrequency,Person by Activity Frequency,dc/g/Health,Health,2433,Root > Health > Person by Activity Frequency
+2,dc/g/Bed,Bed,dc/g/Health,Health,5,Root > Health > Bed
+2,dc/g/Person_BirthControlMethod,Person by Birth Control Method,dc/g/Health,Health,16,Root > Health > Person by Birth Control Method
+2,dc/g/BirthEvent,Birth Event,dc/g/Health,Health,778,Root > Health > Birth Event
+2,dc/g/Births,Births,dc/g/Health,Health,988,Root > Health > Births
+2,dc/g/Person_BreastFeedingPractice,Person by Breast Feeding Practice,dc/g/Health,Health,4,Root > Health > Person by Breast Feeding Practice
+2,dc/g/Person_ComparisonRegion,Person by Comparison Region,dc/g/Health,Health,53,Root > Health > Person by Comparison Region
+2,dc/g/Person_ConsumptionPeriod,Person by Consumption Period,dc/g/Health,Health,8,Root > Health > Person by Consumption Period
+2,dc/g/Person_ConsumptionQuantity,Person by Consumption Quantity,dc/g/Health,Health,339,Root > Health > Person by Consumption Quantity
+2,dc/g/Person_DeprivationDomain,Person by Deprivation Domain,dc/g/Health,Health,45,Root > Health > Person by Deprivation Domain
+2,dc/g/Person_DietType,Person by Diet Type,dc/g/Health,Health,9,Root > Health > Person by Diet Type
+2,dc/g/Person_DisabilityStatus,Person by Disability Status,dc/g/Health,Health,545,Root > Health > Person by Disability Status
+2,dc/g/Person_DiseaseControlMeasure,Person by Disease Control Measure,dc/g/Health,Health,5,Root > Health > Person by Disease Control Measure
+2,dc/g/DrugDistribution,Drug Distribution,dc/g/Health,Health,78,Root > Health > Drug Distribution
+2,dc/g/Person_ExerciseType,Person by Exercise Type,dc/g/Health,Health,408,Root > Health > Person by Exercise Type
+2,dc/g/Person_FamilyPlanningType,Person by Family Planning Type,dc/g/Health,Health,15,Root > Health > Person by Family Planning Type
+2,dc/g/Person_FoodIntakeType,Person by Food Intake Type,dc/g/Health,Health,20,Root > Health > Person by Food Intake Type
+2,dc/g/Person_Gender,Person by Gender,dc/g/Health,Health,27252,Root > Health > Person by Gender
+2,dc/g/Person_GlobalActivityLimitationindicator,Person by Global Activity Limitationindicator,dc/g/Health,Health,264,Root > Health > Person by Global Activity Limitationindicator
+2,WHO/Root,Global Health Observatory (WHO),dc/g/Health,Health,6755,Root > Health > Global Health Observatory (WHO)
+2,dc/g/Person_HealthBehavior,Person by Health Behavior,dc/g/Health,Health,3797,Root > Health > Person by Health Behavior
+2,dc/g/Person_HealthCareAdvice,Person by Health Care Advice,dc/g/Health,Health,3,Root > Health > Person by Health Care Advice
+2,dc/g/HealthEstablishment,Health Establishment,dc/g/Health,Health,27,Root > Health > Health Establishment
+2,dc/g/Household_HealthInsurance,Household by Health Insurance,dc/g/Health,Health,8,Root > Health > Household by Health Insurance
+2,dc/g/Person_HealthInsurance,Person by Health Insurance,dc/g/Health,Health,2029,Root > Health > Person by Health Insurance
+2,dc/g/Person_HealthRelatedSocialNeed,Person by Health Related Social Need,dc/g/Health,Health,21,Root > Health > Person by Health Related Social Need
+2,dc/g/HealthcareWorker,Healthcare Worker,dc/g/Health,Health,5,Root > Health > Healthcare Worker
+2,dc/g/Incident,Incident,dc/g/Health,Health,18,Root > Health > Incident
+2,dc/g/MaternalMortalityEvent,Maternal Mortality Event,dc/g/Health,Health,3,Root > Health > Maternal Mortality Event
+2,dc/g/Person_MedicalCondition,Person by Medical Condition,dc/g/Health,Health,750,Root > Health > Person by Medical Condition
+2,dc/g/MedicalConditionIncident,Medical Condition Incident,dc/g/Health,Health,6789,Root > Health > Medical Condition Incident
+2,dc/g/Person_MedicalSpecialization,Person by Medical Specialization,dc/g/Health,Health,53,Root > Health > Person by Medical Specialization
+2,dc/g/MedicalTest,Medical Test,dc/g/Health,Health,5,Root > Health > Medical Test
+2,dc/g/MedicareEnrollee,Medicare Enrollee,dc/g/Health,Health,10,Root > Health > Medicare Enrollee
+2,dc/g/MenstrualWoman,Menstrual Woman,dc/g/Health,Health,6,Root > Health > Menstrual Woman
+2,dc/g/Health_Miscellaneous,Miscellaneous,dc/g/Health,Health,157,Root > Health > Miscellaneous
+2,dc/g/MortalityEvent,Mortality Event,dc/g/Health,Health,6161,Root > Health > Mortality Event
+2,nhm/g/Root,National Health Mission (NHM) India,dc/g/Health,Health,36,Root > Health > National Health Mission (NHM) India
+2,dc/g/Person_PhysicalActivityEffortLevel,Person by Physical Activity Effort Level,dc/g/Health,Health,156,Root > Health > Person by Physical Activity Effort Level
+2,dc/g/PregnantWoman,Pregnant Woman,dc/g/Health,Health,21,Root > Health > Pregnant Woman
+2,dc/g/Person_PreventiveHealth,Person by Preventive Health,dc/g/Health,Health,49,Root > Health > Person by Preventive Health
+2,dc/g/Person_ResidentStatus,Person by Resident Status,dc/g/Health,Health,808,Root > Health > Person by Resident Status
+2,dc/g/Person_SocialSupportBeneficiaryType,Person by Social Support Beneficiary Type,dc/g/Health,Health,42,Root > Health > Person by Social Support Beneficiary Type
+2,dc/g/Person_SocialSupportLevel,Person by Social Support Level,dc/g/Health,Health,171,Root > Health > Person by Social Support Level
+2,dc/g/Person_SocialSupportType,Person by Social Support Type,dc/g/Health,Health,84,Root > Health > Person by Social Support Type
+2,dc/g/Person_TobaccoUsageType,Person by Tobacco Usage Type,dc/g/Health,Health,168,Root > Health > Person by Tobacco Usage Type
+2,dc/g/Person_VaccinationCentre,Person by Vaccination Centre,dc/g/Health,Health,6,Root > Health > Person by Vaccination Centre
+2,dc/g/Vaccine,Vaccine,dc/g/Health,Health,2,Root > Health > Vaccine
+2,dc/g/Person_VaccineDoseReceived,Person by Vaccine Dose Received,dc/g/Health,Health,36,Root > Health > Person by Vaccine Dose Received
+2,dc/g/Person_VaccineInformation,Person by Vaccine Information,dc/g/Health,Health,6,Root > Health > Person by Vaccine Information
+2,dc/g/Person_VaccineStatus,Person by Vaccine Status,dc/g/Health,Health,63,Root > Health > Person by Vaccine Status
+2,dc/g/Person_VaccineType,Person by Vaccine Type,dc/g/Health,Health,46,Root > Health > Person by Vaccine Type
+2,dc/g/Person_VitaminType,Person by Vitamin Type,dc/g/Health,Health,3,Root > Health > Person by Vitamin Type
+2,dc/g/WHO/PregnantWomen,WHO/Pregnant Women,dc/g/Health,Health,2,Root > Health > WHO/Pregnant Women
+1,dc/g/Housing,Housing,dc/g/Root,Data Commons Variables,4906,Root > Housing
+2,dc/g/HousingUnit_Age,Housing Unit by Age,dc/g/Housing,Housing,8,Root > Housing > Housing Unit by Age
+2,dc/g/HousingUnit_CashRentStatus,Housing Unit by Cash Rent Status,dc/g/Housing,Housing,3,Root > Housing > Housing Unit by Cash Rent Status
+2,dc/g/HousingUnit_CommuteMode,Housing Unit by Commute Mode,dc/g/Housing,Housing,6,Root > Housing > Housing Unit by Commute Mode
+2,dc/g/HousingUnit_DateBuilt,Housing Unit by Date Built,dc/g/Housing,Housing,15,Root > Housing > Housing Unit by Date Built
+2,dc/g/HousingUnit_DateMovedIn,Housing Unit by Date Moved In,dc/g/Housing,Housing,48,Root > Housing > Housing Unit by Date Moved In
+2,dc/g/HousingUnit_Facilities,Housing Unit by Facilities,dc/g/Housing,Housing,4,Root > Housing > Housing Unit by Facilities
+2,dc/g/HousingUnit_GrossRent,Housing Unit by Gross Rent,dc/g/Housing,Housing,57,Root > Housing > Housing Unit by Gross Rent
+2,dc/g/HousingUnit_HomeValue,Housing Unit by Home Value,dc/g/Housing,Housing,33,Root > Housing > Housing Unit by Home Value
+2,dc/g/Person_HouseholdDecisionMaking,Person by Household Decision Making,dc/g/Housing,Housing,3,Root > Housing > Person by Household Decision Making
+2,dc/g/HousingUnit_HouseholderAge,Housing Unit by Householder Age,dc/g/Housing,Housing,21,Root > Housing > Housing Unit by Householder Age
+2,dc/g/HousingUnit_HouseholderEducationalAttainment,Housing Unit by Householder Educational Attainment,dc/g/Housing,Housing,12,Root > Housing > Housing Unit by Householder Educational Attainment
+2,dc/g/HousingUnit_HouseholderRace,Housing Unit by Householder Race,dc/g/Housing,Housing,38,Root > Housing > Housing Unit by Householder Race
+2,dc/g/HousingUnit_LaborForceStatus,Housing Unit by Labor Force Status,dc/g/Housing,Housing,8,Root > Housing > Housing Unit by Labor Force Status
+2,dc/g/HousingUnit_MortgageStatus,Housing Unit by Mortgage Status,dc/g/Housing,Housing,16,Root > Housing > Housing Unit by Mortgage Status
+2,dc/g/HousingUnit_Nativity,Housing Unit by Nativity,dc/g/Housing,Housing,304,Root > Housing > Housing Unit by Nativity
+2,dc/g/HousingUnit_NumberOfBedrooms,Housing Unit by Number of Bedrooms,dc/g/Housing,Housing,6,Root > Housing > Housing Unit by Number of Bedrooms
+2,dc/g/HousingUnit_NumberOfOccupants,Housing Unit by Number of Occupants,dc/g/Housing,Housing,16,Root > Housing > Housing Unit by Number of Occupants
+2,dc/g/HousingUnit_NumberOfRooms,Housing Unit by Number of Rooms,dc/g/Housing,Housing,89,Root > Housing > Housing Unit by Number of Rooms
+2,dc/g/HousingUnit_NumberOfVehicles,Housing Unit by Number of Vehicles,dc/g/Housing,Housing,32,Root > Housing > Housing Unit by Number of Vehicles
+2,dc/g/HousingUnit_OccupancyStatus,Housing Unit by Occupancy Status,dc/g/Housing,Housing,411,Root > Housing > Housing Unit by Occupancy Status
+2,dc/g/Person_OccupancyStatus,Person by Occupancy Status,dc/g/Housing,Housing,18,Root > Housing > Person by Occupancy Status
+2,dc/g/HousingUnit_OccupancyTenure,Housing Unit by Occupancy Tenure,dc/g/Housing,Housing,227,Root > Housing > Housing Unit by Occupancy Tenure
+2,dc/g/HousingUnit_OwnerCost,Housing Unit by Owner Cost,dc/g/Housing,Housing,32,Root > Housing > Housing Unit by Owner Cost
+2,dc/g/HousingUnit_PlaceOfBirth,Housing Unit by Place of Birth,dc/g/Housing,Housing,304,Root > Housing > Housing Unit by Place of Birth
+2,dc/g/Person_PlaceOfResidenceClassification,Person by Place of Residence Classification,dc/g/Housing,Housing,4330,Root > Housing > Person by Place of Residence Classification
+2,dc/g/HousingUnit_PropertyTax,Housing Unit by Property Tax,dc/g/Housing,Housing,12,Root > Housing > Housing Unit by Property Tax
+2,dc/g/HousingUnit_ResidenceType,Housing Unit by Residence Type,dc/g/Housing,Housing,8,Root > Housing > Housing Unit by Residence Type
+2,dc/g/HousingUnit_TelephoneServiceAvailability,Housing Unit by Telephone Service Availability,dc/g/Housing,Housing,16,Root > Housing > Housing Unit by Telephone Service Availability
+1,dc/g/Crime,Crime,dc/g/Root,Data Commons Variables,8637,Root > Crime
+2,dc/g/Person_CrimeType,Person by Crime Type,dc/g/Crime,Crime,11,Root > Crime > Person by Crime Type
+2,dc/g/CriminalActivities,Criminal Activities,dc/g/Crime,Crime,15,Root > Crime > Criminal Activities
+2,dc/g/CriminalIncidents,Criminal Incidents,dc/g/Crime,Crime,5,Root > Crime > Criminal Incidents
+2,dc/g/HateCrimeIncidents,Hate Crime Incidents,dc/g/Crime,Crime,8298,Root > Crime > Hate Crime Incidents
+2,dc/g/IncarcerationsAndReleases,Incarcerations And Releases,dc/g/Crime,Crime,6,Root > Crime > Incarcerations And Releases
+2,dc/g/PrisonerPopulation,Prisoner Population,dc/g/Crime,Crime,299,Root > Crime > Prisoner Population
+2,dc/g/Person_VictimAge,Person by Victim Age,dc/g/Crime,Crime,6,Root > Crime > Person by Victim Age
+1,dc/g/AboutDataCommons,About Data Commons,dc/g/Root,Data Commons Variables,15,Root > About Data Commons
+2,dc/g/StatisticalVariable,Statistical Variable,dc/g/AboutDataCommons,About Data Commons,15,Root > About Data Commons > Statistical Variable
+1,dc/g/UN,12 UN Data Thematic Areas,dc/g/Root,Data Commons Variables,21471,Root > 12 UN Data Thematic Areas
+2,dc/g/UN_THEME_1,1: Poverty and food security,dc/g/UN,12 UN Data Thematic Areas,183,Root > 12 UN Data Thematic Areas > 1: Poverty and food security
+2,dc/g/UN_THEME_2,2: Health,dc/g/UN,12 UN Data Thematic Areas,21442,Root > 12 UN Data Thematic Areas > 2: Health
+2,dc/g/UN_THEME_3,3: Children and youth,dc/g/UN,12 UN Data Thematic Areas,493,Root > 12 UN Data Thematic Areas > 3: Children and youth
+2,dc/g/UN_THEME_4,4: Education and culture,dc/g/UN,12 UN Data Thematic Areas,113,Root > 12 UN Data Thematic Areas > 4: Education and culture
+2,dc/g/UN_THEME_5,5: Equality and human rights,dc/g/UN,12 UN Data Thematic Areas,181,Root > 12 UN Data Thematic Areas > 5: Equality and human rights
+2,dc/g/UN_THEME_6,6: Economic development,dc/g/UN,12 UN Data Thematic Areas,191,Root > 12 UN Data Thematic Areas > 6: Economic development
+1,dc/g/SDG,Sustainable Development Goals,dc/g/Root,Data Commons Variables,4625,Root > Sustainable Development Goals
+2,dc/g/SDG_1,1: No Poverty,dc/g/SDG,Sustainable Development Goals,131,Root > Sustainable Development Goals > 1: No Poverty
+2,dc/g/SDG_2,2: Zero Hunger,dc/g/SDG,Sustainable Development Goals,75,Root > Sustainable Development Goals > 2: Zero Hunger
+2,dc/g/SDG_3,3: Good Health and Well-being,dc/g/SDG,Sustainable Development Goals,152,Root > Sustainable Development Goals > 3: Good Health and Well-being
+2,dc/g/SDG_4,4: Quality Education,dc/g/SDG,Sustainable Development Goals,918,Root > Sustainable Development Goals > 4: Quality Education
+2,dc/g/SDG_5,5: Gender Equality,dc/g/SDG,Sustainable Development Goals,401,Root > Sustainable Development Goals > 5: Gender Equality
+2,dc/g/SDG_6,6: Clean Water and Sanitation,dc/g/SDG,Sustainable Development Goals,94,Root > Sustainable Development Goals > 6: Clean Water and Sanitation
+2,dc/g/SDG_7,7: Affordable and Clean Energy,dc/g/SDG,Sustainable Development Goals,23,Root > Sustainable Development Goals > 7: Affordable and Clean Energy
+2,dc/g/SDG_8,8: Decent Work and Economic Growth,dc/g/SDG,Sustainable Development Goals,277,Root > Sustainable Development Goals > 8: Decent Work and Economic Growth
+2,dc/g/SDG_9,"9: Industry, Innovation and Infrastructure",dc/g/SDG,Sustainable Development Goals,30,"Root > Sustainable Development Goals > 9: Industry, Innovation and Infrastructure"
+2,dc/g/SDG_10,10: Reduced Inequality,dc/g/SDG,Sustainable Development Goals,696,Root > Sustainable Development Goals > 10: Reduced Inequality
+2,dc/g/SDG_11,11: Sustainable Cities and Communities,dc/g/SDG,Sustainable Development Goals,52,Root > Sustainable Development Goals > 11: Sustainable Cities and Communities
+2,dc/g/SDG_12,12: Responsible Consumption and Production,dc/g/SDG,Sustainable Development Goals,202,Root > Sustainable Development Goals > 12: Responsible Consumption and Production
+2,dc/g/SDG_13,13: Climate Action,dc/g/SDG,Sustainable Development Goals,66,Root > Sustainable Development Goals > 13: Climate Action
+2,dc/g/SDG_14,14: Life Below Water,dc/g/SDG,Sustainable Development Goals,319,Root > Sustainable Development Goals > 14: Life Below Water
+2,dc/g/SDG_15,15: Life on Land,dc/g/SDG,Sustainable Development Goals,165,Root > Sustainable Development Goals > 15: Life on Land
+2,dc/g/SDG_16,16: Peace and Justice Strong Institutions,dc/g/SDG,Sustainable Development Goals,1439,Root > Sustainable Development Goals > 16: Peace and Justice Strong Institutions
+2,dc/g/SDG_17,17: Partnerships to achieve the Goal,dc/g/SDG,Sustainable Development Goals,135,Root > Sustainable Development Goals > 17: Partnerships to achieve the Goal

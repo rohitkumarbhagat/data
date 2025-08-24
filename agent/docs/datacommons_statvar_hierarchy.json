@@ -1,0 +1,1590 @@
+{
+  "root": {
+    "name": "Data Commons Variables",
+    "categories": [
+      {
+        "id": "dc/g/Agriculture",
+        "name": "Agriculture",
+        "count": 441,
+        "subcategories": [
+          {
+            "id": "dc/g/Person_EconomicSector",
+            "name": "Person by Economic Sector",
+            "count": 178
+          },
+          {
+            "id": "dc/g/Farm",
+            "name": "Farm",
+            "count": 132
+          },
+          {
+            "id": "dc/g/FarmInventory",
+            "name": "Farm Inventory",
+            "count": 81
+          },
+          {
+            "id": "dc/g/Agriculture_Miscellaneous",
+            "name": "Miscellaneous",
+            "count": 41
+          },
+          {
+            "id": "dc/g/Person_OwnershipStatus",
+            "name": "Person by Ownership Status",
+            "count": 8
+          }
+        ]
+      },
+      {
+        "id": "dc/g/Demographics",
+        "name": "Demographics",
+        "count": 50806,
+        "subcategories": [
+          {
+            "id": "dc/g/Person_Age",
+            "name": "Person by Age",
+            "count": 30498
+          },
+          {
+            "id": "dc/g/Person_AgeGroupClassification",
+            "name": "Person by Age Group Classification",
+            "count": 8
+          },
+          {
+            "id": "dc/g/Person_BenefitProgram",
+            "name": "Person by Benefit Program",
+            "count": 18
+          },
+          {
+            "id": "dc/g/Person_BenefitsStatus",
+            "name": "Person by Benefits Status",
+            "count": 16
+          },
+          {
+            "id": "dc/g/Person_CarpoolOccupancy",
+            "name": "Person by Carpool Occupancy",
+            "count": 9
+          },
+          {
+            "id": "dc/g/Child",
+            "name": "Child",
+            "count": 19
+          },
+          {
+            "id": "dc/g/Children",
+            "name": "Children",
+            "count": 33
+          },
+          {
+            "id": "dc/g/Person_ChildrenStatus",
+            "name": "Person by Children Status",
+            "count": 9
+          },
+          {
+            "id": "dc/g/Person_CitizenshipStatus",
+            "name": "Person by Citizenship Status",
+            "count": 1593
+          },
+          {
+            "id": "dc/g/CivicStructure",
+            "name": "Civic Structure",
+            "count": 4
+          },
+          {
+            "id": "dc/g/Commute",
+            "name": "Commute",
+            "count": 471
+          },
+          {
+            "id": "dc/g/Person_CommuteStartTime",
+            "name": "Person by Commute Start Time",
+            "count": 70
+          },
+          {
+            "id": "dc/g/Person_CommuteType",
+            "name": "Person by Commute Type",
+            "count": 135
+          },
+          {
+            "id": "dc/g/Person_ComparisonRegion",
+            "name": "Person by Comparison Region",
+            "count": 53
+          },
+          {
+            "id": "dc/g/Courthouse",
+            "name": "Courthouse",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Person_CrashInvolvement",
+            "name": "Person by Crash Involvement",
+            "count": 4
+          },
+          {
+            "id": "dc/g/Person_DateOfEntry",
+            "name": "Person by Date of Entry",
+            "count": 236
+          },
+          {
+            "id": "dc/g/Person_DeprivationDomain",
+            "name": "Person by Deprivation Domain",
+            "count": 45
+          },
+          {
+            "id": "dc/g/Person_DeviceUsed",
+            "name": "Person by Device Used",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Person_DisabilityStatus",
+            "name": "Person by Disability Status",
+            "count": 545
+          },
+          {
+            "id": "dc/g/Person_Earnings",
+            "name": "Person by Earnings",
+            "count": 139
+          },
+          {
+            "id": "dc/g/Person_ElectronicGadgetUsed",
+            "name": "Person by Electronic Gadget Used",
+            "count": 407
+          },
+          {
+            "id": "dc/g/Person_Employer",
+            "name": "Person by Employer",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Person_Ethnicity",
+            "name": "Person by Ethnicity",
+            "count": 2227
+          },
+          {
+            "id": "dc/g/Person_Facilities",
+            "name": "Person by Facilities",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Place_Facilities",
+            "name": "Place by Facilities",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Food",
+            "name": "Food",
+            "count": 10
+          },
+          {
+            "id": "dc/g/FoodBasket",
+            "name": "Food Basket",
+            "count": 34
+          },
+          {
+            "id": "dc/g/Person_FoodSecurityStatus",
+            "name": "Person by Food Security Status",
+            "count": 15
+          },
+          {
+            "id": "dc/g/Person_Gender",
+            "name": "Person by Gender",
+            "count": 27252
+          },
+          {
+            "id": "dc/g/Person_GovernmentId",
+            "name": "Person by Government Id",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Person_GovernmentIdentifier",
+            "name": "Person by Government Identifier",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Person_HealthInsurance",
+            "name": "Person by Health Insurance",
+            "count": 2029
+          },
+          {
+            "id": "dc/g/House",
+            "name": "House",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Household",
+            "name": "Household",
+            "count": 3522
+          },
+          {
+            "id": "dc/g/Person_HouseholdIncome",
+            "name": "Person by Household Income",
+            "count": 44
+          },
+          {
+            "id": "dc/g/Person_HouseholdType",
+            "name": "Person by Household Type",
+            "count": 476
+          },
+          {
+            "id": "dc/g/Households",
+            "name": "Households",
+            "count": 47
+          },
+          {
+            "id": "dc/g/Person_IdentityActivity",
+            "name": "Person by Identity Activity",
+            "count": 2
+          },
+          {
+            "id": "dc/g/ImmigrationAndCitizenship",
+            "name": "Immigration and Citizenship",
+            "count": 4001
+          },
+          {
+            "id": "dc/g/Person_Income",
+            "name": "Person by Income",
+            "count": 1974
+          },
+          {
+            "id": "dc/g/Person_IncomeStatus",
+            "name": "Person by Income Status",
+            "count": 618
+          },
+          {
+            "id": "dc/g/Infant",
+            "name": "Infant",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Person_InternetAccessStatus",
+            "name": "Person by Internet Access Status",
+            "count": 5
+          },
+          {
+            "id": "dc/g/Person_InternetUsageLocation",
+            "name": "Person by Internet Usage Location",
+            "count": 406
+          },
+          {
+            "id": "dc/g/Person_IsInternetUser",
+            "name": "Person by Is Internet User",
+            "count": 407
+          },
+          {
+            "id": "dc/g/Person_LaborForceStatus",
+            "name": "Person by Labor Force Status",
+            "count": 4561
+          },
+          {
+            "id": "dc/g/Language",
+            "name": "Language",
+            "count": 511
+          },
+          {
+            "id": "dc/g/Person_LiteracyStatus",
+            "name": "Person by Literacy Status",
+            "count": 305
+          },
+          {
+            "id": "dc/g/Person_MaritalStatus",
+            "name": "Person by Marital Status",
+            "count": 2481
+          },
+          {
+            "id": "dc/g/MaternalMortalityEvent",
+            "name": "Maternal Mortality Event",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Person_MemberStatus",
+            "name": "Person by Member Status",
+            "count": 96
+          },
+          {
+            "id": "dc/g/MilitaryService",
+            "name": "Military Service",
+            "count": 2403
+          },
+          {
+            "id": "dc/g/Demographics_Miscellaneous",
+            "name": "Miscellaneous",
+            "count": 1546
+          },
+          {
+            "id": "dc/g/Mother",
+            "name": "Mother",
+            "count": 37
+          },
+          {
+            "id": "dc/g/MunicipalWard",
+            "name": "Municipal Ward",
+            "count": 3
+          },
+          {
+            "id": "dc/g/NonPregnantWoman",
+            "name": "Non Pregnant Woman",
+            "count": 6
+          },
+          {
+            "id": "dc/g/Person_NumberOfVehiclesInHousehold",
+            "name": "Person by Number of Vehicles in Household",
+            "count": 24
+          },
+          {
+            "id": "dc/g/Place_PlaceType",
+            "name": "Place by Place Type",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Person_PlaceOfBirth",
+            "name": "Person by Place of Birth",
+            "count": 1958
+          },
+          {
+            "id": "dc/g/Person_PlaceOfResidenceClassification",
+            "name": "Person by Place of Residence Classification",
+            "count": 4330
+          },
+          {
+            "id": "dc/g/Place_PlaceOfResidenceClassification",
+            "name": "Place by Place of Residence Classification",
+            "count": 4
+          },
+          {
+            "id": "dc/g/Person_PovertyStatus",
+            "name": "Person by Poverty Status",
+            "count": 1096
+          },
+          {
+            "id": "dc/g/Person_Race",
+            "name": "Person by Race",
+            "count": 21891
+          },
+          {
+            "id": "dc/g/Person_Religion",
+            "name": "Person by Religion",
+            "count": 2050
+          },
+          {
+            "id": "dc/g/Residence",
+            "name": "Residence",
+            "count": 6066
+          },
+          {
+            "id": "dc/g/Person_ResidentStatus",
+            "name": "Person by Resident Status",
+            "count": 808
+          },
+          {
+            "id": "dc/g/Place_SocialCondition",
+            "name": "Place by Social Condition",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Vehicle",
+            "name": "Vehicle",
+            "count": 5
+          },
+          {
+            "id": "dc/g/VehicleCrashIncident",
+            "name": "Vehicle Crash Incident",
+            "count": 94
+          },
+          {
+            "id": "dc/g/Person_VehicleOccupantType",
+            "name": "Person by Vehicle Occupant Type",
+            "count": 4
+          },
+          {
+            "id": "dc/g/Village",
+            "name": "Village",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Person_VulnerabilityStatus",
+            "name": "Person by Vulnerability Status",
+            "count": 4
+          }
+        ]
+      },
+      {
+        "id": "dc/g/Economy",
+        "name": "Economy",
+        "count": 122095,
+        "subcategories": [
+          {
+            "id": "dc/g/Employment",
+            "name": "Employment and Business",
+            "count": 66646
+          },
+          {
+            "id": "dc/g/Person_Age",
+            "name": "Person by Age",
+            "count": 30498
+          },
+          {
+            "id": "dc/g/Amount",
+            "name": "Amount",
+            "count": 4
+          },
+          {
+            "id": "dc/g/Person_AssessmentType",
+            "name": "Person by Assessment Type",
+            "count": 9
+          },
+          {
+            "id": "dc/g/Person_AssetsOwned",
+            "name": "Person by Assets Owned",
+            "count": 6
+          },
+          {
+            "id": "dc/g/Person_BankAccountType",
+            "name": "Person by Bank Account Type",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Person_CandidatesStatus",
+            "name": "Person by Candidates Status",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Commodity",
+            "name": "Commodity",
+            "count": 173
+          },
+          {
+            "id": "dc/g/ConsumerGoodsAndServices",
+            "name": "Consumer Goods And Services",
+            "count": 2878
+          },
+          {
+            "id": "dc/g/Currency",
+            "name": "Currency",
+            "count": 447
+          },
+          {
+            "id": "dc/g/Debt",
+            "name": "Debt",
+            "count": 6252
+          },
+          {
+            "id": "dc/g/EconomicActivity",
+            "name": "Economic Activity",
+            "count": 31721
+          },
+          {
+            "id": "dc/g/Person_EconomicActivitySource",
+            "name": "Person by Economic Activity Source",
+            "count": 94
+          },
+          {
+            "id": "dc/g/ExpenditureActivity",
+            "name": "Expenditure Activity",
+            "count": 34
+          },
+          {
+            "id": "dc/g/FinancialInstrument",
+            "name": "Financial Instrument",
+            "count": 11
+          },
+          {
+            "id": "dc/g/FinancialTransaction",
+            "name": "Financial Transaction",
+            "count": 561
+          },
+          {
+            "id": "dc/g/Household_HouseholdType",
+            "name": "Household by Household Type",
+            "count": 357
+          },
+          {
+            "id": "dc/g/Household_Income",
+            "name": "Household by Income",
+            "count": 1136
+          },
+          {
+            "id": "dc/g/Person_Income",
+            "name": "Person by Income",
+            "count": 1974
+          },
+          {
+            "id": "dc/g/Person_IncomeSource",
+            "name": "Person by Income Source",
+            "count": 27
+          },
+          {
+            "id": "dc/g/Household_IncomeStatus",
+            "name": "Household by Income Status",
+            "count": 63
+          },
+          {
+            "id": "dc/g/Person_IncomeStatus",
+            "name": "Person by Income Status",
+            "count": 618
+          },
+          {
+            "id": "dc/g/Person_IncomeType",
+            "name": "Person by Income Type",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Investment",
+            "name": "Investment",
+            "count": 10
+          },
+          {
+            "id": "dc/g/Jobs",
+            "name": "Jobs",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Person_LaborForceStatus",
+            "name": "Person by Labor Force Status",
+            "count": 4561
+          },
+          {
+            "id": "dc/g/Economy_Miscellaneous",
+            "name": "Miscellaneous",
+            "count": 1002
+          },
+          {
+            "id": "dc/g/NetworkSubscriber",
+            "name": "Network Subscriber",
+            "count": 14
+          },
+          {
+            "id": "dc/g/Person_Occupation",
+            "name": "Person by Occupation",
+            "count": 5319
+          },
+          {
+            "id": "dc/g/Person_OccupationalCategory",
+            "name": "Person by Occupational Category",
+            "count": 63
+          },
+          {
+            "id": "dc/g/Person_PaymentMethod",
+            "name": "Person by Payment Method",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Person_PovertyStatus",
+            "name": "Person by Poverty Status",
+            "count": 1096
+          },
+          {
+            "id": "dc/g/Person_RegistrationStatus",
+            "name": "Person by Registration Status",
+            "count": 6
+          },
+          {
+            "id": "dc/g/Remittance",
+            "name": "Remittance",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Stock",
+            "name": "Stock",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Transportation",
+            "name": "Transportation",
+            "count": 5
+          },
+          {
+            "id": "dc/g/TreasuryBill",
+            "name": "Treasury Bill",
+            "count": 8
+          },
+          {
+            "id": "dc/g/TreasuryBond",
+            "name": "Treasury Bond",
+            "count": 2
+          },
+          {
+            "id": "dc/g/TreasuryNote",
+            "name": "Treasury Note",
+            "count": 5
+          },
+          {
+            "id": "dc/g/TreasurySecurity",
+            "name": "Treasury Security",
+            "count": 17
+          },
+          {
+            "id": "dc/g/Person_WealthIndex",
+            "name": "Person by Wealth Index",
+            "count": 20
+          }
+        ]
+      },
+      {
+        "id": "dc/g/Education",
+        "name": "Education",
+        "count": 53236,
+        "subcategories": [
+          {
+            "id": "dc/g/AcademicAssessmentEvent",
+            "name": "Academic Assessment Event",
+            "count": 24
+          },
+          {
+            "id": "dc/g/Person_AssessmentType",
+            "name": "Person by Assessment Type",
+            "count": 9
+          },
+          {
+            "id": "dc/g/Person_BachelorsDegreeMajor",
+            "name": "Person by Bachelors Degree Major",
+            "count": 1695
+          },
+          {
+            "id": "dc/g/Person_CandidatesStatus",
+            "name": "Person by Candidates Status",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Person_CitizenshipStatus",
+            "name": "Person by Citizenship Status",
+            "count": 1593
+          },
+          {
+            "id": "dc/g/ClassRoom",
+            "name": "Class Room",
+            "count": 10
+          },
+          {
+            "id": "dc/g/Person_CollegeOrUniversityLevel",
+            "name": "Person by College or University Level",
+            "count": 24
+          },
+          {
+            "id": "dc/g/Person_CourseSpecialization",
+            "name": "Person by Course Specialization",
+            "count": 66
+          },
+          {
+            "id": "dc/g/Person_DisabilityStatus",
+            "name": "Person by Disability Status",
+            "count": 545
+          },
+          {
+            "id": "dc/g/Person_DoctorateDegreeMajor",
+            "name": "Person by Doctorate Degree Major",
+            "count": 1282
+          },
+          {
+            "id": "dc/g/Person_EducationalAttainment",
+            "name": "Person by Educational Attainment",
+            "count": 6774
+          },
+          {
+            "id": "dc/g/Person_EducationalDegree",
+            "name": "Person by Educational Degree",
+            "count": 114
+          },
+          {
+            "id": "dc/g/Person_EnrollmentLevel",
+            "name": "Person by Enrollment Level",
+            "count": 706
+          },
+          {
+            "id": "dc/g/Faculty",
+            "name": "Faculty",
+            "count": 15
+          },
+          {
+            "id": "dc/g/Person_FacultyType",
+            "name": "Person by Faculty Type",
+            "count": 1282
+          },
+          {
+            "id": "dc/g/FamilyRole",
+            "name": "Family Role",
+            "count": 35
+          },
+          {
+            "id": "dc/g/Person_InstitutionType",
+            "name": "Person by Institution Type",
+            "count": 15
+          },
+          {
+            "id": "dc/g/Person_KnowledgeAbout",
+            "name": "Person by Knowledge About",
+            "count": 12
+          },
+          {
+            "id": "dc/g/Person_LaborForceStatus",
+            "name": "Person by Labor Force Status",
+            "count": 4561
+          },
+          {
+            "id": "dc/g/Person_LiteracyStatus",
+            "name": "Person by Literacy Status",
+            "count": 305
+          },
+          {
+            "id": "dc/g/Person_MinorityServingInstitutionType",
+            "name": "Person by Minority Serving Institution Type",
+            "count": 42
+          },
+          {
+            "id": "dc/g/Education_Miscellaneous",
+            "name": "Miscellaneous",
+            "count": 702
+          },
+          {
+            "id": "dc/g/Person_RegistrationStatus",
+            "name": "Person by Registration Status",
+            "count": 6
+          },
+          {
+            "id": "dc/g/School",
+            "name": "School",
+            "count": 1116
+          },
+          {
+            "id": "dc/g/Person_SchoolGradeLevel",
+            "name": "Person by School Grade Level",
+            "count": 18
+          },
+          {
+            "id": "dc/g/Person_SchoolingDuration",
+            "name": "Person by Schooling Duration",
+            "count": 6
+          },
+          {
+            "id": "dc/g/Student",
+            "name": "Student",
+            "count": 38839
+          },
+          {
+            "id": "dc/g/Person_StudentType",
+            "name": "Person by Student Type",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Teacher",
+            "name": "Teacher",
+            "count": 169
+          },
+          {
+            "id": "dc/g/Person_TenureStatus",
+            "name": "Person by Tenure Status",
+            "count": 986
+          },
+          {
+            "id": "dc/g/Person_TypeOfSchool",
+            "name": "Person by Type of School",
+            "count": 308
+          }
+        ]
+      },
+      {
+        "id": "dc/g/Energy",
+        "name": "Energy",
+        "count": 9779,
+        "subcategories": [
+          {
+            "id": "dc/g/Coal",
+            "name": "Coal",
+            "count": 207
+          },
+          {
+            "id": "dc/g/CommercialBuilding",
+            "name": "Commercial Building",
+            "count": 11
+          },
+          {
+            "id": "dc/g/Energy_ConsumingSector",
+            "name": "Energy by Consuming Sector",
+            "count": 86
+          },
+          {
+            "id": "dc/g/Consumption",
+            "name": "Consumption",
+            "count": 5
+          },
+          {
+            "id": "dc/g/Electricity",
+            "name": "Electricity",
+            "count": 838
+          },
+          {
+            "id": "dc/g/ElectricityConsumer",
+            "name": "Electricity Consumer",
+            "count": 15
+          },
+          {
+            "id": "dc/g/EnergyGeneration",
+            "name": "Energy Generation",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Energy_EnergySource",
+            "name": "Energy by Energy Source",
+            "count": 142
+          },
+          {
+            "id": "dc/g/Fuel",
+            "name": "Fuel",
+            "count": 3434
+          },
+          {
+            "id": "dc/g/Energy_Miscellaneous",
+            "name": "Miscellaneous",
+            "count": 18
+          },
+          {
+            "id": "eia/g/Root",
+            "name": "Miscellaneous",
+            "count": 7129
+          },
+          {
+            "id": "dc/g/Energy_PowerPlantSector",
+            "name": "Energy by Power Plant Sector",
+            "count": 31
+          },
+          {
+            "id": "dc/g/Production",
+            "name": "Production",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Solar",
+            "name": "Solar",
+            "count": 10
+          },
+          {
+            "id": "dc/g/Energy_UsedFor",
+            "name": "Energy by Used For",
+            "count": 16
+          }
+        ]
+      },
+      {
+        "id": "dc/g/Environment",
+        "name": "Environment",
+        "count": 3647,
+        "subcategories": [
+          {
+            "id": "dc/g/Place_AreaType",
+            "name": "Place by Area Type",
+            "count": 4
+          },
+          {
+            "id": "dc/g/Atmosphere",
+            "name": "Atmosphere",
+            "count": 72
+          },
+          {
+            "id": "dc/g/BodyOfWater",
+            "name": "Body of Water",
+            "count": 64
+          },
+          {
+            "id": "dc/g/Disasters",
+            "name": "Disasters",
+            "count": 403
+          },
+          {
+            "id": "dc/g/Emissions",
+            "name": "Emissions",
+            "count": 1058
+          },
+          {
+            "id": "dc/g/LandCover",
+            "name": "Land Cover",
+            "count": 25
+          },
+          {
+            "id": "dc/g/Environment_Miscellaneous",
+            "name": "Miscellaneous",
+            "count": 89
+          },
+          {
+            "id": "dc/g/NaturalHazardImpact",
+            "name": "Natural Hazard Impact",
+            "count": 40
+          },
+          {
+            "id": "dc/g/Household_NumberOfVehicles",
+            "name": "Household by Number of Vehicles",
+            "count": 126
+          },
+          {
+            "id": "dc/g/PollutedSites",
+            "name": "Polluted Sites",
+            "count": 79
+          },
+          {
+            "id": "dc/g/SeaBodyOfWater",
+            "name": "Sea Body of Water",
+            "count": 53
+          },
+          {
+            "id": "dc/g/Household_TransportationType",
+            "name": "Household by Transportation Type",
+            "count": 104
+          },
+          {
+            "id": "dc/g/WasteGenerated",
+            "name": "Waste Generated",
+            "count": 3
+          },
+          {
+            "id": "dc/g/WasteWater",
+            "name": "Waste Water",
+            "count": 4
+          },
+          {
+            "id": "dc/g/Water",
+            "name": "Water",
+            "count": 76
+          },
+          {
+            "id": "dc/g/Person_WaterTreatmentSystem",
+            "name": "Person by Water Treatment System",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Person_WaterTreatmentType",
+            "name": "Person by Water Treatment Type",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Weather",
+            "name": "Weather",
+            "count": 1608
+          }
+        ]
+      },
+      {
+        "id": "dc/g/Health",
+        "name": "Health",
+        "count": 51805,
+        "subcategories": [
+          {
+            "id": "dc/g/COVID-19",
+            "name": "COVID-19",
+            "count": 27
+          },
+          {
+            "id": "dc/g/Person_ActivityDuration",
+            "name": "Person by Activity Duration",
+            "count": 303
+          },
+          {
+            "id": "dc/g/Person_ActivityFrequency",
+            "name": "Person by Activity Frequency",
+            "count": 2433
+          },
+          {
+            "id": "dc/g/Bed",
+            "name": "Bed",
+            "count": 5
+          },
+          {
+            "id": "dc/g/Person_BirthControlMethod",
+            "name": "Person by Birth Control Method",
+            "count": 16
+          },
+          {
+            "id": "dc/g/BirthEvent",
+            "name": "Birth Event",
+            "count": 778
+          },
+          {
+            "id": "dc/g/Births",
+            "name": "Births",
+            "count": 988
+          },
+          {
+            "id": "dc/g/Person_BreastFeedingPractice",
+            "name": "Person by Breast Feeding Practice",
+            "count": 4
+          },
+          {
+            "id": "dc/g/Person_ComparisonRegion",
+            "name": "Person by Comparison Region",
+            "count": 53
+          },
+          {
+            "id": "dc/g/Person_ConsumptionPeriod",
+            "name": "Person by Consumption Period",
+            "count": 8
+          },
+          {
+            "id": "dc/g/Person_ConsumptionQuantity",
+            "name": "Person by Consumption Quantity",
+            "count": 339
+          },
+          {
+            "id": "dc/g/Person_DeprivationDomain",
+            "name": "Person by Deprivation Domain",
+            "count": 45
+          },
+          {
+            "id": "dc/g/Person_DietType",
+            "name": "Person by Diet Type",
+            "count": 9
+          },
+          {
+            "id": "dc/g/Person_DisabilityStatus",
+            "name": "Person by Disability Status",
+            "count": 545
+          },
+          {
+            "id": "dc/g/Person_DiseaseControlMeasure",
+            "name": "Person by Disease Control Measure",
+            "count": 5
+          },
+          {
+            "id": "dc/g/DrugDistribution",
+            "name": "Drug Distribution",
+            "count": 78
+          },
+          {
+            "id": "dc/g/Person_ExerciseType",
+            "name": "Person by Exercise Type",
+            "count": 408
+          },
+          {
+            "id": "dc/g/Person_FamilyPlanningType",
+            "name": "Person by Family Planning Type",
+            "count": 15
+          },
+          {
+            "id": "dc/g/Person_FoodIntakeType",
+            "name": "Person by Food Intake Type",
+            "count": 20
+          },
+          {
+            "id": "dc/g/Person_Gender",
+            "name": "Person by Gender",
+            "count": 27252
+          },
+          {
+            "id": "dc/g/Person_GlobalActivityLimitationindicator",
+            "name": "Person by Global Activity Limitationindicator",
+            "count": 264
+          },
+          {
+            "id": "WHO/Root",
+            "name": "Global Health Observatory (WHO)",
+            "count": 6755
+          },
+          {
+            "id": "dc/g/Person_HealthBehavior",
+            "name": "Person by Health Behavior",
+            "count": 3797
+          },
+          {
+            "id": "dc/g/Person_HealthCareAdvice",
+            "name": "Person by Health Care Advice",
+            "count": 3
+          },
+          {
+            "id": "dc/g/HealthEstablishment",
+            "name": "Health Establishment",
+            "count": 27
+          },
+          {
+            "id": "dc/g/Household_HealthInsurance",
+            "name": "Household by Health Insurance",
+            "count": 8
+          },
+          {
+            "id": "dc/g/Person_HealthInsurance",
+            "name": "Person by Health Insurance",
+            "count": 2029
+          },
+          {
+            "id": "dc/g/Person_HealthRelatedSocialNeed",
+            "name": "Person by Health Related Social Need",
+            "count": 21
+          },
+          {
+            "id": "dc/g/HealthcareWorker",
+            "name": "Healthcare Worker",
+            "count": 5
+          },
+          {
+            "id": "dc/g/Incident",
+            "name": "Incident",
+            "count": 18
+          },
+          {
+            "id": "dc/g/MaternalMortalityEvent",
+            "name": "Maternal Mortality Event",
+            "count": 3
+          },
+          {
+            "id": "dc/g/Person_MedicalCondition",
+            "name": "Person by Medical Condition",
+            "count": 750
+          },
+          {
+            "id": "dc/g/MedicalConditionIncident",
+            "name": "Medical Condition Incident",
+            "count": 6789
+          },
+          {
+            "id": "dc/g/Person_MedicalSpecialization",
+            "name": "Person by Medical Specialization",
+            "count": 53
+          },
+          {
+            "id": "dc/g/MedicalTest",
+            "name": "Medical Test",
+            "count": 5
+          },
+          {
+            "id": "dc/g/MedicareEnrollee",
+            "name": "Medicare Enrollee",
+            "count": 10
+          },
+          {
+            "id": "dc/g/MenstrualWoman",
+            "name": "Menstrual Woman",
+            "count": 6
+          },
+          {
+            "id": "dc/g/Health_Miscellaneous",
+            "name": "Miscellaneous",
+            "count": 157
+          },
+          {
+            "id": "dc/g/MortalityEvent",
+            "name": "Mortality Event",
+            "count": 6161
+          },
+          {
+            "id": "nhm/g/Root",
+            "name": "National Health Mission (NHM) India",
+            "count": 36
+          },
+          {
+            "id": "dc/g/Person_PhysicalActivityEffortLevel",
+            "name": "Person by Physical Activity Effort Level",
+            "count": 156
+          },
+          {
+            "id": "dc/g/PregnantWoman",
+            "name": "Pregnant Woman",
+            "count": 21
+          },
+          {
+            "id": "dc/g/Person_PreventiveHealth",
+            "name": "Person by Preventive Health",
+            "count": 49
+          },
+          {
+            "id": "dc/g/Person_ResidentStatus",
+            "name": "Person by Resident Status",
+            "count": 808
+          },
+          {
+            "id": "dc/g/Person_SocialSupportBeneficiaryType",
+            "name": "Person by Social Support Beneficiary Type",
+            "count": 42
+          },
+          {
+            "id": "dc/g/Person_SocialSupportLevel",
+            "name": "Person by Social Support Level",
+            "count": 171
+          },
+          {
+            "id": "dc/g/Person_SocialSupportType",
+            "name": "Person by Social Support Type",
+            "count": 84
+          },
+          {
+            "id": "dc/g/Person_TobaccoUsageType",
+            "name": "Person by Tobacco Usage Type",
+            "count": 168
+          },
+          {
+            "id": "dc/g/Person_VaccinationCentre",
+            "name": "Person by Vaccination Centre",
+            "count": 6
+          },
+          {
+            "id": "dc/g/Vaccine",
+            "name": "Vaccine",
+            "count": 2
+          },
+          {
+            "id": "dc/g/Person_VaccineDoseReceived",
+            "name": "Person by Vaccine Dose Received",
+            "count": 36
+          },
+          {
+            "id": "dc/g/Person_VaccineInformation",
+            "name": "Person by Vaccine Information",
+            "count": 6
+          },
+          {
+            "id": "dc/g/Person_VaccineStatus",
+            "name": "Person by Vaccine Status",
+            "count": 63
+          },
+          {
+            "id": "dc/g/Person_VaccineType",
+            "name": "Person by Vaccine Type",
+            "count": 46
+          },
+          {
+            "id": "dc/g/Person_VitaminType",
+            "name": "Person by Vitamin Type",
+            "count": 3
+          },
+          {
+            "id": "dc/g/WHO/PregnantWomen",
+            "name": "WHO/Pregnant Women",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "dc/g/Housing",
+        "name": "Housing",
+        "count": 4906,
+        "subcategories": [
+          {
+            "id": "dc/g/HousingUnit_Age",
+            "name": "Housing Unit by Age",
+            "count": 8
+          },
+          {
+            "id": "dc/g/HousingUnit_CashRentStatus",
+            "name": "Housing Unit by Cash Rent Status",
+            "count": 3
+          },
+          {
+            "id": "dc/g/HousingUnit_CommuteMode",
+            "name": "Housing Unit by Commute Mode",
+            "count": 6
+          },
+          {
+            "id": "dc/g/HousingUnit_DateBuilt",
+            "name": "Housing Unit by Date Built",
+            "count": 15
+          },
+          {
+            "id": "dc/g/HousingUnit_DateMovedIn",
+            "name": "Housing Unit by Date Moved In",
+            "count": 48
+          },
+          {
+            "id": "dc/g/HousingUnit_Facilities",
+            "name": "Housing Unit by Facilities",
+            "count": 4
+          },
+          {
+            "id": "dc/g/HousingUnit_GrossRent",
+            "name": "Housing Unit by Gross Rent",
+            "count": 57
+          },
+          {
+            "id": "dc/g/HousingUnit_HomeValue",
+            "name": "Housing Unit by Home Value",
+            "count": 33
+          },
+          {
+            "id": "dc/g/Person_HouseholdDecisionMaking",
+            "name": "Person by Household Decision Making",
+            "count": 3
+          },
+          {
+            "id": "dc/g/HousingUnit_HouseholderAge",
+            "name": "Housing Unit by Householder Age",
+            "count": 21
+          },
+          {
+            "id": "dc/g/HousingUnit_HouseholderEducationalAttainment",
+            "name": "Housing Unit by Householder Educational Attainment",
+            "count": 12
+          },
+          {
+            "id": "dc/g/HousingUnit_HouseholderRace",
+            "name": "Housing Unit by Householder Race",
+            "count": 38
+          },
+          {
+            "id": "dc/g/HousingUnit_LaborForceStatus",
+            "name": "Housing Unit by Labor Force Status",
+            "count": 8
+          },
+          {
+            "id": "dc/g/HousingUnit_MortgageStatus",
+            "name": "Housing Unit by Mortgage Status",
+            "count": 16
+          },
+          {
+            "id": "dc/g/HousingUnit_Nativity",
+            "name": "Housing Unit by Nativity",
+            "count": 304
+          },
+          {
+            "id": "dc/g/HousingUnit_NumberOfBedrooms",
+            "name": "Housing Unit by Number of Bedrooms",
+            "count": 6
+          },
+          {
+            "id": "dc/g/HousingUnit_NumberOfOccupants",
+            "name": "Housing Unit by Number of Occupants",
+            "count": 16
+          },
+          {
+            "id": "dc/g/HousingUnit_NumberOfRooms",
+            "name": "Housing Unit by Number of Rooms",
+            "count": 89
+          },
+          {
+            "id": "dc/g/HousingUnit_NumberOfVehicles",
+            "name": "Housing Unit by Number of Vehicles",
+            "count": 32
+          },
+          {
+            "id": "dc/g/HousingUnit_OccupancyStatus",
+            "name": "Housing Unit by Occupancy Status",
+            "count": 411
+          },
+          {
+            "id": "dc/g/Person_OccupancyStatus",
+            "name": "Person by Occupancy Status",
+            "count": 18
+          },
+          {
+            "id": "dc/g/HousingUnit_OccupancyTenure",
+            "name": "Housing Unit by Occupancy Tenure",
+            "count": 227
+          },
+          {
+            "id": "dc/g/HousingUnit_OwnerCost",
+            "name": "Housing Unit by Owner Cost",
+            "count": 32
+          },
+          {
+            "id": "dc/g/HousingUnit_PlaceOfBirth",
+            "name": "Housing Unit by Place of Birth",
+            "count": 304
+          },
+          {
+            "id": "dc/g/Person_PlaceOfResidenceClassification",
+            "name": "Person by Place of Residence Classification",
+            "count": 4330
+          },
+          {
+            "id": "dc/g/HousingUnit_PropertyTax",
+            "name": "Housing Unit by Property Tax",
+            "count": 12
+          },
+          {
+            "id": "dc/g/HousingUnit_ResidenceType",
+            "name": "Housing Unit by Residence Type",
+            "count": 8
+          },
+          {
+            "id": "dc/g/HousingUnit_TelephoneServiceAvailability",
+            "name": "Housing Unit by Telephone Service Availability",
+            "count": 16
+          }
+        ]
+      },
+      {
+        "id": "dc/g/Crime",
+        "name": "Crime",
+        "count": 8637,
+        "subcategories": [
+          {
+            "id": "dc/g/Person_CrimeType",
+            "name": "Person by Crime Type",
+            "count": 11
+          },
+          {
+            "id": "dc/g/CriminalActivities",
+            "name": "Criminal Activities",
+            "count": 15
+          },
+          {
+            "id": "dc/g/CriminalIncidents",
+            "name": "Criminal Incidents",
+            "count": 5
+          },
+          {
+            "id": "dc/g/HateCrimeIncidents",
+            "name": "Hate Crime Incidents",
+            "count": 8298
+          },
+          {
+            "id": "dc/g/IncarcerationsAndReleases",
+            "name": "Incarcerations And Releases",
+            "count": 6
+          },
+          {
+            "id": "dc/g/PrisonerPopulation",
+            "name": "Prisoner Population",
+            "count": 299
+          },
+          {
+            "id": "dc/g/Person_VictimAge",
+            "name": "Person by Victim Age",
+            "count": 6
+          }
+        ]
+      },
+      {
+        "id": "dc/g/AboutDataCommons",
+        "name": "About Data Commons",
+        "count": 15,
+        "subcategories": [
+          {
+            "id": "dc/g/StatisticalVariable",
+            "name": "Statistical Variable",
+            "count": 15
+          }
+        ]
+      },
+      {
+        "id": "dc/g/UN",
+        "name": "12 UN Data Thematic Areas",
+        "count": 21471,
+        "subcategories": [
+          {
+            "id": "dc/g/UN_THEME_1",
+            "name": "1: Poverty and food security",
+            "count": 183
+          },
+          {
+            "id": "dc/g/UN_THEME_2",
+            "name": "2: Health",
+            "count": 21442
+          },
+          {
+            "id": "dc/g/UN_THEME_3",
+            "name": "3: Children and youth",
+            "count": 493
+          },
+          {
+            "id": "dc/g/UN_THEME_4",
+            "name": "4: Education and culture",
+            "count": 113
+          },
+          {
+            "id": "dc/g/UN_THEME_5",
+            "name": "5: Equality and human rights",
+            "count": 181
+          },
+          {
+            "id": "dc/g/UN_THEME_6",
+            "name": "6: Economic development",
+            "count": 191
+          }
+        ]
+      },
+      {
+        "id": "dc/g/SDG",
+        "name": "Sustainable Development Goals",
+        "count": 4625,
+        "subcategories": [
+          {
+            "id": "dc/g/SDG_1",
+            "name": "1: No Poverty",
+            "count": 131
+          },
+          {
+            "id": "dc/g/SDG_2",
+            "name": "2: Zero Hunger",
+            "count": 75
+          },
+          {
+            "id": "dc/g/SDG_3",
+            "name": "3: Good Health and Well-being",
+            "count": 152
+          },
+          {
+            "id": "dc/g/SDG_4",
+            "name": "4: Quality Education",
+            "count": 918
+          },
+          {
+            "id": "dc/g/SDG_5",
+            "name": "5: Gender Equality",
+            "count": 401
+          },
+          {
+            "id": "dc/g/SDG_6",
+            "name": "6: Clean Water and Sanitation",
+            "count": 94
+          },
+          {
+            "id": "dc/g/SDG_7",
+            "name": "7: Affordable and Clean Energy",
+            "count": 23
+          },
+          {
+            "id": "dc/g/SDG_8",
+            "name": "8: Decent Work and Economic Growth",
+            "count": 277
+          },
+          {
+            "id": "dc/g/SDG_9",
+            "name": "9: Industry, Innovation and Infrastructure",
+            "count": 30
+          },
+          {
+            "id": "dc/g/SDG_10",
+            "name": "10: Reduced Inequality",
+            "count": 696
+          },
+          {
+            "id": "dc/g/SDG_11",
+            "name": "11: Sustainable Cities and Communities",
+            "count": 52
+          },
+          {
+            "id": "dc/g/SDG_12",
+            "name": "12: Responsible Consumption and Production",
+            "count": 202
+          },
+          {
+            "id": "dc/g/SDG_13",
+            "name": "13: Climate Action",
+            "count": 66
+          },
+          {
+            "id": "dc/g/SDG_14",
+            "name": "14: Life Below Water",
+            "count": 319
+          },
+          {
+            "id": "dc/g/SDG_15",
+            "name": "15: Life on Land",
+            "count": 165
+          },
+          {
+            "id": "dc/g/SDG_16",
+            "name": "16: Peace and Justice Strong Institutions",
+            "count": 1439
+          },
+          {
+            "id": "dc/g/SDG_17",
+            "name": "17: Partnerships to achieve the Goal",
+            "count": 135
+          }
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "extracted_at": "2025-08-24T12:47:43.650075",
+    "source": "Data Commons API (https://datacommons.org/api/variable-group/info)",
+    "version": "1.0",
+    "total_main_categories": 12,
+    "total_subcategories": 298,
+    "total_variables": 247338,
+    "extraction_method": "API traversal with 2-level depth"
+  }
+}
