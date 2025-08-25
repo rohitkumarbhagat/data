@@ -1,0 +1,17 @@
+{
+  "import_id": "uae_bayanat_uae_population",
+  "input_data_csv": "",
+  "pv_map_csv": "key,prop,val,p1,v1,p2,v2,p3,v3\nEmirates_EN,observationAbout,{Data},populationType,Person,,,,\n value  ,value,{Number},,,,,,\nValue,value,{Number},,,,,,\nyear ,observationDate,{Number},,,,,,\nMale,gender,Male,gender,\"\"\"\"\"\",#Aggregate,Sum,,\nfemale ,gender,Female,gender,\"\"\"\"\"\",#Aggregate,Sum,,\nNational,citizenship,Citizen,citizenship,\"\"\"\"\"\",#Aggregate,Sum,,\nNon-National,citizenship,NotACitizen,citizenship,\"\"\"\"\"\",#Aggregate,Sum,,",
+  "metadata_csv": "parameter,value\nurl,https://admin.bayanat.ae/Dataset/DownloadDatasetResource?fileId=26585eaf-9a9c-486d-b773-fc51ef0204c9&resourceID=11243\ndescription,UAEPopulationByEmiratesNationalityandgender\n#place_type,Country\n#places_within,country/ARE\nstart_date,1975\nend_date,2005\nrelease_frequency,P1Y\nprocess,\ncomments,\noutput_columns,\"observationAbout,observationDate,variableMeasured,value,observationPeriod,measurementMethod\"\nheader_rows,1\n#drop_statvars_without_svobs,0\nmapped_columns,5\nmapped_rows,1\nmulti_value_properties,\"gender,citizenship\"",
+  "place_resolved_csv": "place_name,dcid\nAbu Dhabi,wikidataId/Q187712\nDubai,wikidataId/Q613\nAl Sharjah,wikidataId/Q188810\nAjman,wikidataId/Q159477\nUmm Al - Quwain,wikidataId/Q175021\nRas Al Khaima,wikidataId/Q170024\nAl Fujairah,wikidataId/Q4091",
+  "tmcf": "Node: E:uae_population_output->E0\nobservationAbout: C:uae_population_output->observationAbout\nobservationDate: C:uae_population_output->observationDate\nvariableMeasured: C:uae_population_output->variableMeasured\nvalue: C:uae_population_output->value\nobservationPeriod: C:uae_population_output->observationPeriod\nmeasurementMethod: C:uae_population_output->measurementMethod\ntypeOf: dcs:StatVarObservation\n",
+  "output_csv": "observationAbout,observationDate,variableMeasured,value,observationPeriod,measurementMethod\ndcid:wikidataId/Q187712,1975,dcid:Count_Person,211812,,dcs:DataCommonsAggregate\ndcid:wikidataId/Q187712,1975,dcid:Count_Person_Male,155058,,dcs:DataCommonsAggregate\ndcid:wikidataId/Q187712,1975,dcid:Count_Person_Citizen,54886,,dcs:DataCommonsAggregate\ndcid:wikidataId/Q187712,1975,dcid:Count_Person_Citizen_Male,29238,,\ndcid:wikidataId/Q613,1975,dcid:Count_Person,183187,,dcs:DataCommonsAggregate\ndcid:wikidataId/Q613,1975,dcid:Count_Person_Male,128821,,dcs:DataCommonsAggregate\ndcid:wikidataId/Q613,1975,dcid:Count_Person_Citizen,50816,,dcs:DataCommonsAggregate\ndcid:wikidataId/Q613,1975,dcid:Count_Person_Citizen_Male,26096,,\ndcid:wikidataId/Q188810,1975,dcid:Count_Person,78790,,dcs:DataCommonsAggregate",
+  "categories": [
+    "Demographics"
+  ],
+  "subcategories": [
+    "Population",
+    "Gender",
+    "Nationality"
+  ]
+}

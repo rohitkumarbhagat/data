@@ -1,0 +1,13 @@
+{
+  "import_id": "zurich_bev_4031_wiki",
+  "input_data_csv": "Zeit,Hel,bir,wikiID,place\n2012,Swiss,112,Q677710,wikidataId/Q677710\n1998,Swiss,109,Q677710,wikidataId/Q677710\n2011,Foreign,49,Q677710,wikidataId/Q677710\n2004,Foreign,33,Q677710,wikidataId/Q677710\n2011,Swiss,125,Q677710,wikidataId/Q677710\n2004,Swiss,108,Q677710,wikidataId/Q677710\n2023,Foreign,83,Q677710,wikidataId/Q677710\n2010,Foreign,55,Q677710,wikidataId/Q677710\n2023,Swiss,93,Q677710,wikidataId/Q677710",
+  "pv_map_csv": "key,prop,val,p1,v1\nZeit,observationDate,{Number},,\nbir,value,{Number},populationType,BirthEvent\nplace,observationAbout,{Data},,",
+  "metadata_csv": "parameter,value\nurl,https://www.stadt-zuerich.ch/content/dam/web/de/politik-verwaltung/statistik-und-daten/linked-open-data/datacommons/bev_4031_wiki.csv\ndescription,\nplace_type,Country\n#places_within,\nstart_date,\nend_date,\nrelease_frequency,\nprocess,\ncomments,\noutput_columns,\"observationAbout,observationDate,value,variableMeasured,unit\"\nheader_rows,1\n#input_rows,10",
+  "place_resolved_csv": "",
+  "tmcf": "Node: E:zurich-Copy_of_bev_4031_wiki->E0\nobservationAbout: C:zurich-Copy_of_bev_4031_wiki->observationAbout\nobservationDate: C:zurich-Copy_of_bev_4031_wiki->observationDate\nvalue: C:zurich-Copy_of_bev_4031_wiki->value\nvariableMeasured: C:zurich-Copy_of_bev_4031_wiki->variableMeasured\nunit: C:zurich-Copy_of_bev_4031_wiki->unit\ntypeOf: dcs:StatVarObservation\n",
+  "output_csv": "observationAbout,observationDate,value,variableMeasured,unit\nwikidataId/Q677133,2015,333,dcid:Count_BirthEvent,\nwikidataId/Q677133,2006,290,dcid:Count_BirthEvent,\nwikidataId/Q677133,2014,361,dcid:Count_BirthEvent,\nwikidataId/Q677133,2013,339,dcid:Count_BirthEvent,\nwikidataId/Q677133,2005,282,dcid:Count_BirthEvent,\nwikidataId/Q677133,2001,282,dcid:Count_BirthEvent,\nwikidataId/Q677133,2012,316,dcid:Count_BirthEvent,\nwikidataId/Q677133,2011,323,dcid:Count_BirthEvent,\nwikidataId/Q677133,2004,260,dcid:Count_BirthEvent,",
+  "categories": [
+    "Demographics"
+  ],
+  "subcategories": []
+}

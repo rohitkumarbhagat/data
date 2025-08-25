@@ -1,0 +1,19 @@
+{
+  "import_id": "ireland_census",
+  "input_data_csv": "﻿STATISTIC,Statistic Label,C02704V03272,Principal Economic Status,C02199V02655,Sex,C02779V03348,Province County or City,TLIST(A1),CensusYear,UNIT,VALUE\nCNA22,Population aged 15 years and over,801,All persons aged 15 years and over,-,Both sexes,-,State,1981,1981,Number,2399676\nCNA22,Population aged 15 years and over,801,All persons aged 15 years and over,-,Both sexes,-,State,1986,1986,Number,2515942\nCNA22,Population aged 15 years and over,801,All persons aged 15 years and over,-,Both sexes,A,Leinster,1991,1991,Number,1368688\nCNA22,Population aged 15 years and over,801,All persons aged 15 years and over,-,Both sexes,A,Leinster,2016,2016,Number,2074876\nCNA22,Population aged 15 years and over,801,All persons aged 15 years and over,-,Both sexes,24,Dún Laoghaire-Rathdown,1991,1991,Number,143762\nCNA22,Population aged 15 years and over,801,All persons aged 15 years and over,-,Both sexes,23,Fingal,2002,2002,Number,151821\nCNA22,Population aged 15 years and over,801,All persons aged 15 years and over,1,Male,7,Louth,1991,1991,Number,31922\nCNA22,Population aged 15 years and over,801,All persons aged 15 years and over,1,Male,7,Louth,2002,2002,Number,38667\nCNA22,Population aged 15 years and over,801,All persons aged 15 years and over,1,Male,11,Wexford,2002,2002,Number,44656",
+  "pv_map_csv": "mapped_rows,1,,,,,\nmapped_columns,9,,,,,\nkey,p1,v1,p2,v2,p3,v3\nYear,observationDate,{Number},,,,\nArea of Residence,observationAbout,{Data},,,,\nSuicides,measuredProperty,count,populationType,MortalityEvent,causeOfDeath,Suicide\nVALUE,value,{Number},,,,\nMale,gender,Male,,,,\nFemale,gender,Female,,,,",
+  "metadata_csv": "parameter,value\nurl,\"https://data.cso.ie/table/FY002, https://data.cso.ie/table/VSD30, https://data.cso.ie/table/VSD31, https://data.cso.ie/table/VSA30, https://data.cso.ie/table/VSA09, https://data.cso.ie/table/VSD24, https://data.cso.ie/table/VSA03, https://data.cso.ie/table/FY003B, https://data.cso.ie/table/FY001, https://data.cso.ie/table/FY031, https://data.cso.ie/table/CNA22\"\ndescription,Population by religion at county and country level\nrelease_frequency,5 Year\noutput_columns,\"observationAbout,observationDate,value,variableMeasured,unit,scalingFactor\"\nheader_rows,1",
+  "place_resolved_csv": "place_name,dcid\nState,country/IRL\nCarlow,wikidataId/Q181882\nDublin,wikidataId/Q1761\nDublin City,wikidataId/Q4169280\nDún Laoghaire-Rathdown,wikidataId/Q538417\nFingal,wikidataId/Q520000\nSouth Dublin,wikidataId/Q822865\nKildare,wikidataId/Q173332\nKilkenny,wikidataId/Q180231",
+  "tmcf": "Node: E:irl_aa1_aa2_employment_output->E0\nobservationAbout: C:irl_aa1_aa2_employment_output->observationAbout\nobservationDate: C:irl_aa1_aa2_employment_output->observationDate\nvalue: C:irl_aa1_aa2_employment_output->value\nvariableMeasured: C:irl_aa1_aa2_employment_output->variableMeasured\nunit: C:irl_aa1_aa2_employment_output->unit\nscalingFactor: C:irl_aa1_aa2_employment_output->scalingFactor\ntypeOf: dcs:StatVarObservation\n",
+  "output_csv": "observationAbout,observationDate,value,variableMeasured,unit,scalingFactor\ncountry/IRL,1871,49.6,dcid:LifeExpectancy_Person_Male,Year,\ncountry/IRL,1882,49.4,dcid:LifeExpectancy_Person_Male,Year,\ncountry/IRL,1891,49.1,dcid:LifeExpectancy_Person_Male,Year,\ncountry/IRL,1901,49.3,dcid:LifeExpectancy_Person_Male,Year,\ncountry/IRL,1911,53.6,dcid:LifeExpectancy_Person_Male,Year,\ncountry/IRL,1926,57.4,dcid:LifeExpectancy_Person_Male,Year,\ncountry/IRL,1936,58.2,dcid:LifeExpectancy_Person_Male,Year,\ncountry/IRL,1941,59,dcid:LifeExpectancy_Person_Male,Year,\ncountry/IRL,1946,60.5,dcid:LifeExpectancy_Person_Male,Year,",
+  "categories": [
+    "Demographics",
+    "Health",
+    "Economy"
+  ],
+  "subcategories": [
+    "Population",
+    "Mortality",
+    "Employment"
+  ]
+}

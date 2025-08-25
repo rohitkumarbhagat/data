@@ -1,7 +1,7 @@
 {
   "extraction_timestamp": "2025-08-24T11:23:05.523730",
   "total_imports": 22,
-  "base_path": "/Users/rohit/Documents/github/rohitkumarbhagat/data/statvar_imports",
+  "base_path": "/home/rohitrkumar/Documents/github/rohitkumarbhagat/data/statvar_imports",
   "imports": {
     "zurich_bev_4031_sex_wiki": {
       "import_id": "zurich_bev_4031_sex_wiki",

@@ -1,0 +1,13 @@
+{
+  "import_id": "zurich_bev_4031_sex_wiki",
+  "input_data_csv": "Zeit,Sex,bir,wikiID,place\n2001,M,212,Q456159,wikidataId/Q456159\n2005,M,238,Q456159,wikidataId/Q456159\n2013,M,293,Q456159,wikidataId/Q456159\n2012,F,317,Q456159,wikidataId/Q456159\n2012,M,301,Q456159,wikidataId/Q456159\n2004,F,226,Q456159,wikidataId/Q456159\n2011,F,295,Q456159,wikidataId/Q456159\n2004,M,237,Q456159,wikidataId/Q456159\n2011,M,294,Q456159,wikidataId/Q456159",
+  "pv_map_csv": "key,prop,val,p1,v1\nZeit,observationDate,{Number},,\nbir,value,{Number},populationType,BirthEvent\nplace,observationAbout,{Data},,\nSex:M,gender,dcs:Male,,\nSex:F,gender,dcs:Female,,",
+  "metadata_csv": "parameter,value\nurl,https://www.stadt-zuerich.ch/content/dam/web/de/politik-verwaltung/statistik-und-daten/linked-open-data/datacommons/bev_4031_sex_wiki.csv\ndescription,\nplace_type,Country\n#places_within,\nstart_date,\nend_date,\nrelease_frequency,\nprocess,\ncomments,\noutput_columns,\"observationAbout,observationDate,value,variableMeasured,unit\"\nheader_rows,1\n#input_rows,10",
+  "place_resolved_csv": "",
+  "tmcf": "Node: E:zurich-Copy_of_bev_4031_sex_wiki->E0\nobservationAbout: C:zurich-Copy_of_bev_4031_sex_wiki->observationAbout\nobservationDate: C:zurich-Copy_of_bev_4031_sex_wiki->observationDate\nvalue: C:zurich-Copy_of_bev_4031_sex_wiki->value\nvariableMeasured: C:zurich-Copy_of_bev_4031_sex_wiki->variableMeasured\nunit: C:zurich-Copy_of_bev_4031_sex_wiki->unit\ntypeOf: dcs:StatVarObservation\n",
+  "output_csv": "observationAbout,observationDate,value,variableMeasured,unit\nwikidataId/Q456159,2001,212,dcid:Count_BirthEvent_Male,\nwikidataId/Q456159,2005,238,dcid:Count_BirthEvent_Male,\nwikidataId/Q456159,2013,293,dcid:Count_BirthEvent_Male,\nwikidataId/Q456159,2012,317,dcid:Count_BirthEvent_Female,\nwikidataId/Q456159,2012,301,dcid:Count_BirthEvent_Male,\nwikidataId/Q456159,2004,226,dcid:Count_BirthEvent_Female,\nwikidataId/Q456159,2011,295,dcid:Count_BirthEvent_Female,\nwikidataId/Q456159,2004,237,dcid:Count_BirthEvent_Male,\nwikidataId/Q456159,2011,294,dcid:Count_BirthEvent_Male,",
+  "categories": [
+    "Demographics"
+  ],
+  "subcategories": []
+}
