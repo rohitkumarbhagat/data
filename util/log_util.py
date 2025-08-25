@@ -14,6 +14,10 @@
 """Utility functions for logging."""
 
 import json
+import logging
+import os
+import sys
+from google.cloud.logging.handlers import StructuredLogHandler
 
 
 def log_struct(level: str, message: str, labels: dict):
@@ -61,3 +65,42 @@ def log_metric(log_type: str, level: str, message: str, metric_labels: dict):
               maintain consistency in the labels used to guarantee correct population of log labels.
     """
     log_struct(level, message, {"log_type": log_type, **metric_labels})
+
+
+def configure_cloud_logging():
+    """Configure a structured log handler to send logs to stdout.
+
+    This is the standard way to get structured logs with correct severity
+    in Google Cloud environments like Cloud Run, Cloud Functions, and Batch.
+    The logs are captured from stdout by the environment's logging agent.
+
+    It also removes any existing handlers to prevent log duplication.
+    """
+    # Remove all existing handlers from the root logger.
+    root = logging.getLogger()
+    if root.handlers:
+        for handler in root.handlers:
+            root.removeHandler(handler)
+
+    # Add a handler that formats logs as JSON and sends them to stdout.
+    handler = StructuredLogHandler(stream=sys.stdout)
+
+    root.addHandler(handler)
+    root.setLevel(logging.INFO)  # Set root logger level
+
+
+def running_on_cloud() -> bool:
+    """Check if running on Cloud.
+    
+    Returns:
+        bool: True if running on Cloud services or jobs, False otherwise.
+    """
+    return bool(os.getenv('K_SERVICE')) or bool(
+        os.getenv('CLOUD_RUN_JOB')) or bool(os.getenv('BATCH_JOB_UID'))
+
+
+def configure_logging(enable_cloud_logging: bool):
+    running_on_cloud_result = running_on_cloud()
+    if enable_cloud_logging or running_on_cloud_result:
+        configure_cloud_logging()
+        logging.info("Google Cloud Logging configured.")

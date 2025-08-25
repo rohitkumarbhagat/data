@@ -70,6 +70,8 @@ class ExecutorConfig:
     # The content of latest_version.txt would be a single line of
     # '2020_07_15T12_07_17_365264_07_00'.
     storage_version_filename: str = 'latest_version.txt'
+    # File with list of historical versions with the most recent at the top
+    storage_version_history_filename: str = 'version_history.txt'
     # Name of the file that contains the import_metadata_mcf for the import.
     # These files are stored at the same level as the storage_version_filename.
     import_metadata_mcf_filename: str = 'import_metadata_mcf.mcf'
@@ -117,20 +119,26 @@ class ExecutorConfig:
     local_repo_dir: str = '/data'
     # Location of the import tool jar.
     import_tool_path: str = '/import-tool.jar'
-    # Location of the differ tool jar.
-    differ_tool_path: str = '/differ-tool.jar'
+    # Cloud workflow id.
+    cloud_workflow_id: str = 'import-automation-workflow'
     # Maximum time a user script can run for in seconds.
-    user_script_timeout: float = 3600
+    user_script_timeout: float = 36000
     # Arguments for the user script
     user_script_args: List[str] = ()
     # Environment variables for the user script
     user_script_env: dict = None
+    # Invoke import tool genmcf.
+    invoke_import_tool: bool = True
+    # Invoke differ tool.
+    invoke_differ_tool: bool = True
     # Invoke validations before upload.
     invoke_import_validation: bool = True
     # Ignore validation status during import.
     ignore_validation_status: bool = True
     # Import validation config file path (relative to data repo).
     validation_config_file: str = 'tools/import_validation/validation_config.json'
+    # Latest import version (overwrite)
+    import_version_override: str = ''
     # Maximum time venv creation can take in seconds.
     venv_create_timeout: float = 3600
     # Maximum time downloading a file can take in seconds.
@@ -152,8 +160,8 @@ class ExecutorConfig:
     # delete an import can take in seconds.
     importer_delete_timeout: float = 10 * 60
     # Executor type depends on where the executor runs
-    # Suppports one of: "GKE", "GAE", "CLOUD_RUN"
-    executor_type: str = 'CLOUD_RUN'
+    # Suppports one of: "GKE", "GAE", "CLOUD_RUN", "CLOUD_BATCH"
+    executor_type: str = 'CLOUD_BATCH'
 
     def get_data_refresh_config(self):
         """Returns the config used for Cloud Scheduler data refresh jobs."""
