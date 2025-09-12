@@ -8,36 +8,48 @@ The ADK implementation provides a systematic approach to converting input data (
 
 ### Migration Phases
 
-- **Phase 1** (Current): Basic Setup & File Reading ✅
+- **Phase 1** (Complete): Basic Setup & File Reading ✅
   - Simple CSV reading agent
   - Basic data analysis tools
   - Foundation for incremental migration
 
-- **Phase 2** (Planned): Data Analysis Agent
-  - Column type identification
-  - Pattern recognition
+- **Phase 2** (Complete): Data Analysis Agent ✅
+  - Column type identification (numeric, year, categorical, text)
+  - Pattern recognition and data structure analysis
   - Data Commons property suggestions
+  - Integration with Phase 1 components
 
-- **Phase 3+** (Future): Full workflow agents
-  - PVMap creation
+- **Phase 3** (Next): PVMap Creation Agent
+  - Property-value mapping generation
+  - Special mapping handling (#Eval, #Filter, #Format)
+  - Validation against DC schema
+
+- **Phase 4+** (Future): Full workflow agents
   - Metadata generation
   - Processor execution with iteration control
+  - Complete replacement of Gemini CLI approach
 
-## Current Implementation (Phase 1)
+## Current Implementation (Phases 1-2)
 
 ### Files
 
-- `simple_agent.py`: Basic agent with CSV reading capability
-- `tools.py`: Shared utility functions (planned)
+- `simple_agent.py`: Basic agent with CSV reading capability (Phase 1)
+- `analyzer.py`: Data analysis agent with DC property mapping (Phase 2)
+- `tools.py`: Shared utility functions for data analysis
+- `tests/`: Comprehensive test suite (22 tests)
 - `requirements.txt`: ADK-specific dependencies
 - `README.md`: This documentation
 
 ### Features
 
 - **CSV Reading**: Read and analyze CSV file structure
+- **Column Analysis**: Detect column types (numeric, year, categorical, text)
+- **DC Property Mapping**: Suggest Data Commons properties for columns
+- **Pattern Recognition**: Identify date formats and data patterns
 - **Error Handling**: Graceful handling of missing files/dependencies
 - **Structured Output**: Consistent response format
 - **Type Safety**: Optional type hints and validation
+- **Test Coverage**: 22 passing tests across both phases
 
 ## Setup
 
@@ -92,14 +104,57 @@ Expected output:
 }
 ```
 
+### Data Analysis (Phase 2 Features)
+
+```python
+from agent.analyzer import analyze_column_types, suggest_dc_mappings
+
+# Analyze column types and patterns
+analysis = analyze_column_types('testdata/sample.csv', sample_rows=50)
+print(analysis)
+
+# Get Data Commons property suggestions
+mappings = suggest_dc_mappings(analysis)
+print(mappings)
+```
+
+Expected output:
+```python
+# Column Analysis
+{
+    'status': 'success',
+    'column_analysis': {
+        'Year': {'type': 'year', 'dc_suggestion': 'observationDate'},
+        'Location': {'type': 'categorical', 'dc_suggestion': 'geoId'},
+        'Population': {'type': 'numeric', 'dc_suggestion': 'measuredProperty'},
+        'Education_Level': {'type': 'categorical', 'dc_suggestion': 'constraint'}
+    }
+}
+
+# DC Mappings
+{
+    'status': 'success',
+    'mappings': {
+        'populationType': 'Person',
+        'statType': 'measuredValue',
+        'constraintProperties': ['Location', 'Education_Level'],
+        'measuredProperties': ['Population', 'Employment_Rate', 'Median_Income']
+    }
+}
+```
+
 ### Agent Usage (Requires ADK + API Key)
 
 ```python
 from agent.simple_agent import data_reader
+from agent.analyzer import data_analyzer
 
-# Use agent for intelligent analysis
+# Use Phase 1 agent for basic CSV reading
 result = data_reader.run('Read and analyze testdata/sample.csv')
-print(result)
+
+# Use Phase 2 agent for advanced analysis
+analysis = data_analyzer.run('Analyze the structure and suggest DC mappings for testdata/sample.csv')
+print(analysis)
 ```
 
 ## Testing
@@ -111,8 +166,12 @@ Use existing test files from the `testdata/` directory or create new ones for sp
 ### Running Tests
 
 ```bash
-# From tools/agentic_import directory
-pytest tests/test_phase1.py -v
+# From tools/agentic_import directory (with .env activated)
+pytest agent/tests/test_agent.py -v      # Phase 1 tests (10 tests)
+pytest agent/tests/test_analyzer.py -v   # Phase 2 tests (12 tests)
+
+# Run all tests
+pytest agent/tests/ -v                   # All 22 tests
 ```
 
 ## Integration with Existing System
@@ -130,12 +189,17 @@ pytest tests/test_phase1.py -v
 tools/agentic_import/
 ├── pvmap_generator.py         # Existing Gemini CLI version
 ├── agent/                      # NEW: ADK implementation
-│   ├── simple_agent.py        # Phase 1 implementation
-│   ├── tools.py               # Shared utilities (planned)
+│   ├── simple_agent.py        # Phase 1: Basic CSV reading
+│   ├── analyzer.py            # Phase 2: Data analysis & DC mapping
+│   ├── tools.py               # Shared utility functions
+│   ├── tests/                 # Test suite (22 tests)
+│   │   ├── test_agent.py      # Phase 1 tests (10 tests)
+│   │   └── test_analyzer.py   # Phase 2 tests (12 tests)
+│   ├── testdata/              # Sample CSV for testing
 │   ├── README.md              # This file
 │   └── requirements.txt       # Dependencies
-├── testdata/                  # Test CSV files
-└── tests/                     # Unit tests
+├── testdata/                  # Additional test CSV files
+└── templates/                 # Existing Jinja2 templates
 ```
 
 ## Error Handling
@@ -169,23 +233,27 @@ Follows project conventions:
 - Integration tests for agent workflows
 - Validation against existing system outputs
 
-## Future Phases
+## Next Phase
 
-### Phase 2: Data Analysis
-- Column type detection
-- Pattern recognition
-- Data Commons property suggestions
-
-### Phase 3: PVMap Creation
-- Property-value mapping generation
-- Special mapping handling (#Eval, #Filter, #Format)
+### Phase 3: PVMap Creation Agent (Next)
+- Property-value mapping generation based on Phase 2 analysis
+- Special mapping handling (#Eval, #Filter, #Format, #Regex)
+- Constraint property creation
+- StatVar structure generation
 - Validation against DC schema
 
-### Phase 4+: Full Migration
-- Metadata generation
-- Processor execution
+### Phase 4+: Full Migration (Future)
+- Metadata configuration generation
+- Processor execution with structured error handling
 - Iteration control and error recovery
 - Complete replacement of Gemini CLI approach
+
+## Migration Progress
+
+- ✅ **Phase 1**: CSV reading and basic tools
+- ✅ **Phase 2**: Data analysis and DC property mapping  
+- 🔄 **Phase 3**: PVMap creation (next milestone)
+- ⏳ **Phase 4+**: Full workflow integration
 
 ## Troubleshooting
 

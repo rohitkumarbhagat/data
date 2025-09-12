@@ -365,3 +365,82 @@ def extract_processor_errors(log_content: str) -> List[str]:
                 break
     
     return errors
+
+
+# Column analysis utilities for Phase 2+
+
+def detect_column_data_type(series: pd.Series) -> str:
+    """Detect the data type of a pandas Series.
+    
+    Args:
+        series: Pandas Series to analyze
+        
+    Returns:
+        String indicating data type: 'numeric', 'date', 'categorical', 'text'
+    """
+    clean_series = series.dropna()
+    if len(clean_series) == 0:
+        return 'empty'
+    
+    # Check numeric
+    numeric_count = pd.to_numeric(clean_series, errors='coerce').notna().sum()
+    if numeric_count / len(clean_series) > 0.9:
+        return 'numeric'
+    
+    # Check categorical (small number of unique values or high repetition)
+    unique_count = len(clean_series.unique())
+    if unique_count < 50 and unique_count < len(clean_series) * 0.8:
+        return 'categorical'
+    
+    return 'text'
+
+
+def is_date_column(column_name: str, series: pd.Series) -> bool:
+    """Check if a column likely contains date information.
+    
+    Args:
+        column_name: Name of the column
+        series: Pandas Series to check
+        
+    Returns:
+        True if column appears to contain dates
+    """
+    name_indicators = ['year', 'date', 'time']
+    if any(indicator in column_name.lower() for indicator in name_indicators):
+        # Check if values look like years (4-digit numbers)
+        year_pattern = series.astype(str).str.match(r'^\d{4}$')
+        if year_pattern.any():
+            return True
+    
+    return False
+
+
+def get_dc_property_suggestions(column_name: str, data_type: str) -> Optional[str]:
+    """Get Data Commons property suggestion based on column name and type.
+    
+    Args:
+        column_name: Name of the column
+        data_type: Detected data type
+        
+    Returns:
+        Suggested DC property or None
+    """
+    name_lower = column_name.lower()
+    
+    # Date/time columns
+    if 'year' in name_lower or 'date' in name_lower:
+        return 'observationDate'
+    
+    # Geographic columns
+    if any(geo in name_lower for geo in ['location', 'place', 'state', 'country', 'city']):
+        return 'geoId'
+    
+    # Numeric columns are potential measured properties
+    if data_type == 'numeric':
+        return 'measuredProperty'
+    
+    # Categorical columns are potential constraints
+    if data_type == 'categorical':
+        return 'constraint'
+    
+    return None

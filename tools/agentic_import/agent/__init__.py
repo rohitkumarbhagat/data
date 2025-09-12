@@ -26,14 +26,16 @@ __author__ = "Data Commons Team"
 # Import tool functions (always available)
 try:
     from .simple_agent import read_csv_sample
-    __all__ = ["read_csv_sample"]
+    from .analyzer import analyze_column_types, suggest_dc_mappings
+    __all__ = ["read_csv_sample", "analyze_column_types", "suggest_dc_mappings"]
 except ImportError:
     __all__ = []
 
 # Import agents (optional - requires ADK)
 try:
     from .simple_agent import data_reader
-    __all__.append("data_reader")
+    from .analyzer import data_analyzer
+    __all__.extend(["data_reader", "data_analyzer"])
 except ImportError:
     # ADK not installed or configured
     pass
