@@ -1,1 +1,0 @@
-# Test package for ADK-based PVMap generator

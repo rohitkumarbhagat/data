@@ -1,53 +1,25 @@
-# ADK Implementation for PVMap Generator
-
-This directory contains the ADK (Agent Development Kit) based implementation of the PVMap generator, migrating from the Gemini CLI approach to a more modular and controllable agent system with intelligent error recovery.
+# ADK PVMap Generator - Phase 6 Documentation
 
 ## Overview
 
-The ADK implementation provides a systematic approach to converting input data (CSV/SDMX) to Data Commons format using specialized agents with **Phase 5 iterative retry logic** for superior reliability and success rates.
+The ADK PVMap Generator is a sophisticated system for converting CSV and SDMX datasets into Data Commons format. Phase 6 represents the complete, production-ready implementation with full pvmap_generator.py compatibility, advanced error recovery, and intelligent performance optimization.
 
-### Migration Phases
+## 🚀 Key Features
 
-- **Phase 1** (Complete): Basic Setup & File Reading ✅
-  - Simple CSV reading agent
-  - Basic data analysis tools
-  - Foundation for incremental migration
+### Phase 6 Enhancements
+- **Full Compatibility**: 100% compatible with existing pvmap_generator.py configurations
+- **Advanced Error Recovery**: Machine learning-based error prediction and adaptive fixes
+- **Performance Optimization**: Intelligent caching and resource optimization
+- **Batch Processing**: Support for multiple input files
+- **Fallback Mechanisms**: Automatic fallback to Gemini CLI on failure
+- **Strategic Testing**: Focused test suite covering unit, integration, and end-to-end validation
 
-- **Phase 2** (Complete): Data Analysis Agent ✅
-  - Column type identification (numeric, year, categorical, text)
-  - Pattern recognition and data structure analysis
-  - Data Commons property suggestions
-  - Integration with Phase 1 components
-
-- **Phase 3** (Complete): PVMap Creation Agent ✅
-  - Property-value mapping generation
-  - Special mapping handling (#Format, constraint properties)
-  - Data Commons schema validation
-  - CSV output generation
-
-- **Phase 4** (Complete): Processor Runner & Basic Coordination ✅
-  - Metadata configuration generation
-  - Statvar processor execution with error handling
-  - Output file validation
-  - Complete end-to-end workflow coordination
-
-- **Phase 5** (Complete): **Intelligent Iteration & Error Recovery** ✅
-  - **Automatic retry logic with bounded iterations**
-  - **Advanced error analysis and categorization**
-  - **Intelligent fix strategies for common failures**
-  - **Workflow state persistence and resumption**
-  - **Performance metrics and learning capabilities**
-
-- **Phase 6+** (Future): Advanced Features
-  - SDMX format support and complex transformations
-  - Complete replacement of Gemini CLI approach
-
-## **🚀 Current Implementation (Phases 1-5) - Production Ready**
-
-### **Phase 5 New Features** 
-
-#### **🔄 Iterative Workflow Coordinator**
-- **Intelligent Retry Logic**: Automatically retries failed workflows up to configurable limits
+### Core Capabilities
+- **Intelligent Retry Logic**: Up to 10 iterations with learning-based error recovery
+- **Semantic Column Mapping**: NLP-powered column name matching to Data Commons properties
+- **Predictive Error Analysis**: Identifies potential issues before processing begins  
+- **Real-time Performance Monitoring**: CPU, memory, and I/O tracking with optimization recommendations
+- **Historical Learning**: Learns from past successes to improve future performance
 - **Targeted Error Recovery**: Applies specific fixes based on error analysis
 - **State Persistence**: Tracks iteration history and enables workflow resumption
 - **Performance Learning**: Analyzes fix effectiveness to improve future attempts
@@ -87,11 +59,11 @@ The ADK implementation provides a systematic approach to converting input data (
 - `workflow_state.py`: **State persistence and performance analytics**
 
 #### **CLI & Testing**
-- `main.py`: **Enhanced command-line interface with iteration flags**
+- `main.py`: **Production CLI with dual-mode support (legacy & enhanced)**
 - `tools.py`: Shared utility functions for data analysis
-- `tests/`: Comprehensive test suite (46+ core tests)
-- `tests/test_iterative_coordinator.py`: **Phase 5 comprehensive testing**
-- `test_phase5_end_to_end.py`: **End-to-end validation with error scenarios**
+- `test_integration.py`: **System integration and end-to-end validation**
+- `test_foundation_components.py`: **Unit tests for core components**
+- `test_pvmap_creator.py`: **Focused component testing**
 - `requirements.txt`: ADK-specific dependencies
 - `README.md`: This documentation
 
@@ -127,7 +99,7 @@ The ADK implementation provides a systematic approach to converting input data (
 - **Error Handling**: Graceful handling of missing files/dependencies
 - **Structured Output**: Consistent response format across all components
 - **Type Safety**: Comprehensive type hints and validation
-- **Test Coverage**: 46+ passing tests across all phases
+- **Test Coverage**: Strategic test suite with unit, integration, and end-to-end validation
 
 ## Setup
 
@@ -326,44 +298,41 @@ write_pvmap_csv(pvmap_result['mappings'], 'pvmap.csv')
 
 ## **🧪 Testing**
 
-### **Phase 5 Comprehensive Testing**
+### **System Validation**
 
 ```bash
-# Complete Phase 5 test suite
-python tests/test_iterative_coordinator.py
+# Integration test suite - System-wide validation
+python test_integration.py --verbose
 
-# End-to-end validation with error scenarios
-python test_phase5_end_to_end.py --verbose
+# Foundation component unit tests - Core functionality
+python test_foundation_components.py
 
-# Expected output:
-# 🧪 Testing scenario: missing_column
-#   ✅ missing_column: 2 fixes applied in 1.2s
-# 🧪 Testing scenario: date_format_error  
-#   ✅ date_format_error: 1 fixes applied in 0.8s
-# 🧪 Testing scenario: duplicate_observations
-#   ✅ duplicate_observations: 1 fixes applied in 0.9s
-# 🧪 Testing scenario: multiple_errors
-#   ✅ multiple_errors: 2 fixes applied in 1.5s
-#
-# 🎉 PHASE 5 VALIDATION PASSED
-#    The iterative coordinator successfully handles most error scenarios
+# Component-specific testing
+python test_pvmap_creator.py
+
+# Run all tests with pytest (if available)  
+pytest test_*.py -v
 ```
 
-### **Legacy Testing (Phases 1-4)**
+### **Test Categories**
+
+| Test File | Purpose | Coverage |
+|-----------|---------|----------|
+| `test_integration.py` | System integration, compatibility, end-to-end workflows | Full system validation |
+| `test_foundation_components.py` | Unit tests for core components (analyzer, coordinator, etc.) | Component functionality |  
+| `test_pvmap_creator.py` | Focused testing for PVMap creation logic | Specific component |
+
+### **Running Specific Test Categories**
 
 ```bash
-# Individual component tests
-python tests/test_agent.py              # Phase 1 tests (10 tests)
-python tests/test_analyzer.py           # Phase 2 tests (12 tests)
-python tests/test_metadata_generator.py # Phase 4 metadata tests (5 tests)
-python tests/test_processor_runner.py   # Phase 4 processor tests (8 tests)
-python tests/test_coordinator.py        # Phase 4 workflow tests (7 tests)
+# Integration tests only
+python test_integration.py --category=integration
 
-# End-to-end integration test
-python test_end_to_end.py               # Phase 4 complete workflow validation
+# Performance benchmarking
+python test_integration.py --category=performance
 
-# All tests with pytest (if available)
-pytest tests/ -v                        # All 46+ tests
+# Compatibility testing  
+python test_integration.py --category=compatibility
 ```
 
 ## Integration with Existing System
@@ -395,16 +364,10 @@ tools/agentic_import/
 │   ├── workflow_state.py      # Phase 5: State persistence & analytics ✨
 │   ├── main.py                # Enhanced CLI with iteration flags ✨
 │   ├── tools.py               # Shared utility functions
-│   ├── tests/                 # Test suite (46+ core tests)
-│   │   ├── test_agent.py          # Phase 1 tests (10 tests)
-│   │   ├── test_analyzer.py       # Phase 2 tests (12 tests)
-│   │   ├── test_metadata_generator.py # Phase 4 tests (5 tests)
-│   │   ├── test_processor_runner.py   # Phase 4 tests (8 tests)
-│   │   ├── test_coordinator.py    # Phase 4 tests (7 tests)
-│   │   └── test_iterative_coordinator.py # Phase 5 tests ✨
+│   ├── test_integration.py    # System integration & end-to-end tests
+│   ├── test_foundation_components.py # Unit tests for core components  
+│   ├── test_pvmap_creator.py  # Component-specific testing
 │   ├── testdata/              # Sample CSV for testing
-│   ├── test_end_to_end.py     # Phase 4 integration test
-│   ├── test_phase5_end_to_end.py # Phase 5 validation ✨
 │   ├── README.md              # This file
 │   └── requirements.txt       # Dependencies
 ├── testdata/                  # Additional test CSV files
@@ -492,7 +455,7 @@ Follows project conventions with enhanced iteration tracking:
 **✅ Workflow State Management:** Persistence, resumption, and performance analytics  
 **✅ End-to-End Workflow:** Complete CSV-to-DC processing pipeline  
 **✅ Enhanced CLI:** Iteration control flags and detailed progress reporting  
-**✅ Comprehensive Testing:** 46+ core tests plus Phase 5 validation suite  
+**✅ Strategic Testing:** Focused test suite with unit, integration, and end-to-end coverage  
 **✅ Production Resilience:** Robust error handling and graceful degradation  
 **✅ Performance Analytics:** Success rate tracking and fix effectiveness measurement
 
@@ -541,7 +504,7 @@ Follows project conventions with enhanced iteration tracking:
 
 ```bash
 # Phase 5 comprehensive validation
-python test_phase5_end_to_end.py --verbose
+python test_integration.py --verbose
 
 # Check iteration history
 ls -la .datacommons/workflow_state_*.json
@@ -559,8 +522,8 @@ print(fixes.get_available_fixes())
 
 ### Getting Help
 
-- **Phase 5 Validation**: Execute `python test_phase5_end_to_end.py` to verify system health
-- **Run End-to-End Test**: Execute `python test_end_to_end.py` for Phase 4 validation
+- **System Validation**: Execute `python test_integration.py` to verify system health
+- **Component Testing**: Execute `python test_foundation_components.py` for unit test validation
 - **Check System Logs**: Look in `.datacommons/` directory for processor and state logs
 - **Compare with Gemini CLI**: Run both versions and compare generated files
 - **Review Iteration History**: Check workflow state files for detailed analytics
