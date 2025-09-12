@@ -1,13 +1,11 @@
-Year,Location,Population,Employment_Rate,Median_Income,Education_Level
-2020,California,39538223,95.2,75235,Bachelor
-2020,Texas,29145505,96.1,62012,High School
-2020,Florida,21538187,94.8,55661,Bachelor
-2020,New York,20201249,93.7,70696,Master
-2021,California,39613493,95.8,77320,Bachelor
-2021,Texas,29183290,96.4,63850,High School
-2021,Florida,21781128,95.1,57210,Bachelor
-2021,New York,20215751,94.2,72450,Master
-2022,California,39029342,96.1,78925,Bachelor
-2022,Texas,30029572,96.7,65200,High School
-2022,Florida,22244823,95.4,58750,Bachelor
-2022,New York,19336776,94.5,74125,Master
+Year,State,Employment_Count,Industry
+2020,California,1500000,Technology
+2020,Texas,1200000,Technology
+2020,New York,800000,Technology
+2021,California,1550000,Technology
+2021,Texas,1250000,Technology
+2021,New York,820000,Technology
+2020,California,500000,Healthcare
+2020,Texas,400000,Healthcare
+2021,California,520000,Healthcare
+2021,Texas,410000,Healthcare

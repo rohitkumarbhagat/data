@@ -1,11 +1,30 @@
 from __future__ import annotations
 
 import pandas as pd
-from google.adk.agents import LlmAgent
-from absl import logging
+import logging
 from typing import Dict, Any, List
 
-from .simple_agent import read_csv_sample
+try:
+    from google.adk.agents import LlmAgent
+    from absl import logging
+    from .simple_agent import read_csv_sample
+    ADK_AVAILABLE = True
+except ImportError:
+    import logging
+    ADK_AVAILABLE = False
+    
+    def read_csv_sample(file_path: str, rows: int = 20) -> Dict[str, Any]:
+        """Fallback CSV reader when simple_agent unavailable."""
+        try:
+            df = pd.read_csv(file_path, nrows=rows)
+            return {
+                "status": "success",
+                "columns": df.columns.tolist(),
+                "sample": df.head(5).to_dict("records"),
+                "shape": {"rows": len(df), "cols": len(df.columns)}
+            }
+        except Exception as e:
+            return {"status": "error", "error_message": str(e)}
 
 
 def analyze_column_types(file_path: str, sample_rows: int = 50) -> Dict[str, Any]:
@@ -101,16 +120,19 @@ def suggest_dc_mappings(column_analysis: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "error_message": str(e)}
 
 
-# Data Analyzer Agent
-data_analyzer = LlmAgent(
-    name="data_analyzer",
-    model="gemini-2.0-flash", 
-    description="Analyzes CSV data structure and suggests Data Commons mappings",
-    instruction=(
-        "Analyze the CSV file structure and content. "
-        "Use analyze_column_types to understand column types and patterns. "
-        "Use suggest_dc_mappings to recommend Data Commons property mappings. "
-        "Return structured analysis suitable for PVMap generation."
-    ),
-    tools=[read_csv_sample, analyze_column_types, suggest_dc_mappings]
-)
+# Data Analyzer Agent (only if ADK is available)
+if ADK_AVAILABLE:
+    data_analyzer = LlmAgent(
+        name="data_analyzer",
+        model="gemini-2.0-flash", 
+        description="Analyzes CSV data structure and suggests Data Commons mappings",
+        instruction=(
+            "Analyze the CSV file structure and content. "
+            "Use analyze_column_types to understand column types and patterns. "
+            "Use suggest_dc_mappings to recommend Data Commons property mappings. "
+            "Return structured analysis suitable for PVMap generation."
+        ),
+        tools=[read_csv_sample, analyze_column_types, suggest_dc_mappings]
+    )
+else:
+    data_analyzer = None
