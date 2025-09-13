@@ -57,6 +57,11 @@ flags.DEFINE_boolean(
     'Enable sandboxing for Gemini CLI (default: True on macOS, False elsewhere)'
 )
 
+flags.DEFINE_boolean(
+    'use_adk', False,
+    'Use ADK agent system instead of Gemini CLI (experimental)'
+)
+
 
 @dataclass
 class DataConfig:
@@ -75,6 +80,7 @@ class Config:
     max_iterations: int = 10
     skip_confirmation: bool = False
     enable_sandboxing: bool = False
+    use_adk: bool = False
 
 
 class PVMapGenerator:
@@ -189,6 +195,10 @@ class PVMapGenerator:
                 f"Currently only single CSV file is supported. "
                 f"Found {len(self.config.data_config.input_data)} files in input_data."
             )
+
+        # Use ADK backend if requested
+        if self.config.use_adk:
+            return self._run_adk_backend()
 
         # Generate the prompt as the first step
         prompt_file = self._generate_prompt()
@@ -331,12 +341,74 @@ class PVMapGenerator:
         logging.info("Generated prompt written to: %s", output_file)
         return output_file
 
+    def _run_adk_backend(self) -> None:
+        """Run ADK agent system instead of Gemini CLI."""
+        logging.info("Using ADK agent system for PV map generation")
+        
+        # Create temporary data config file for ADK (flat format, not nested)
+        temp_config = {
+            "input_data": self.config.data_config.input_data,
+            "input_metadata": self.config.data_config.input_metadata,
+            "is_sdmx_dataset": self.config.data_config.is_sdmx_dataset
+        }
+        
+        temp_config_path = os.path.join(self.run_dir, 'adk_data_config.json')
+        with open(temp_config_path, 'w') as f:
+            json.dump(temp_config, f, indent=2)
+        
+        # Build ADK command with environment activation
+        python_env = os.path.join(os.path.dirname(_SCRIPT_DIR), '..', '.env', 'bin', 'python')
+        adk_command = [
+            python_env, '-m', 'agent.main',
+            '--data_config', temp_config_path,
+            '--max_iterations', str(self.config.max_iterations),
+            '--auto_fix',
+            '--skip_confirmation',  # Always skip confirmation for automated mode
+            '--use_enhanced_coordinator'
+        ]
+
+        # Add dry_run flag if pvmap_generator is in dry run mode
+        if self.config.dry_run:
+            adk_command.append('--dry_run')
+
+        # Set working directory to agentic_import directory (not agent subdirectory)
+        agentic_import_dir = _SCRIPT_DIR
+        
+        logging.info(f"Running ADK command: {' '.join(adk_command)}")
+        logging.info(f"Working directory: {agentic_import_dir}")
+
+        try:
+            # Run ADK agent system
+            result = subprocess.run(
+                adk_command,
+                cwd=agentic_import_dir,
+                capture_output=False,  # Let output stream to terminal
+                text=True
+            )
+            
+            if result.returncode == 0:
+                logging.info("ADK agent system completed successfully")
+            else:
+                logging.error(f"ADK agent system failed with exit code: {result.returncode}")
+                raise RuntimeError(f"ADK execution failed with exit code {result.returncode}")
+                
+        except Exception as e:
+            logging.error(f"Error running ADK backend: {str(e)}")
+            raise RuntimeError(f"ADK backend execution failed: {str(e)}")
+
 
 def load_data_config(config_path: str) -> DataConfig:
     """Load import configuration from JSON file."""
     with open(config_path, 'r') as f:
         data = json.load(f)
-    return DataConfig(**data)
+
+    # Handle nested data_config structure
+    if 'data_config' in data:
+        data_config_data = data['data_config']
+    else:
+        data_config_data = data
+
+    return DataConfig(**data_config_data)
 
 
 def prepare_config() -> Config:
@@ -348,7 +420,8 @@ def prepare_config() -> Config:
                   dc_api_key=FLAGS.dc_api_key,
                   max_iterations=FLAGS.max_iterations,
                   skip_confirmation=FLAGS.skip_confirmation,
-                  enable_sandboxing=FLAGS.enable_sandboxing)
+                  enable_sandboxing=FLAGS.enable_sandboxing,
+                  use_adk=FLAGS.use_adk)
 
 
 def main(argv):

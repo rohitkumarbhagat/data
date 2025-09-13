@@ -131,6 +131,40 @@ export ANTHROPIC_API_KEY='your-key'  # For Anthropic
 export OPENAI_API_KEY='your-key'     # For OpenAI
 ```
 
+## **🚀 Quick Start**
+
+### **Phase 7: ADK Integration (NEW)**
+
+Use the ADK system through the existing pvmap_generator.py:
+
+```bash
+# Activate project environment
+source ./.env/bin/activate
+cd tools/agentic_import
+
+# Use ADK instead of Gemini CLI (experimental)
+python pvmap_generator.py --data_config=your_config.json --use_adk
+
+# Test with sample data
+python pvmap_generator.py --data_config=agent/testdata/test_data_config.json --use_adk --dry_run
+```
+
+### **Direct ADK Usage**
+
+Run the ADK system directly:
+
+```bash
+# Activate project environment
+source ./.env/bin/activate
+cd tools/agentic_import
+
+# Basic configuration mode
+python -m agent.main --data_config=agent/testdata/test_adk_config.json --max_iterations=1 --skip_confirmation
+
+# With error recovery
+python -m agent.main --data_config=agent/testdata/test_adk_config.json --max_iterations=3 --auto_fix --skip_confirmation
+```
+
 ## **🚀 Usage - Phase 5 Enhanced**
 
 ### **Iterative Mode (Recommended for Production)**
