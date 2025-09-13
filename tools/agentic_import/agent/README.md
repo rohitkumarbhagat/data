@@ -1,12 +1,20 @@
-# ADK PVMap Generator - Phase 6 Documentation
+# ADK PVMap Generator - Phase 8 Documentation
 
 ## Overview
 
-The ADK PVMap Generator is a sophisticated system for converting CSV and SDMX datasets into Data Commons format. Phase 6 represents the complete, production-ready implementation with full pvmap_generator.py compatibility, advanced error recovery, and intelligent performance optimization.
+The ADK PVMap Generator is a sophisticated system for converting CSV and SDMX datasets into Data Commons format. Phase 8 includes enhanced metadata generation with intelligent header detection, automatic date format recognition, and comprehensive validation capabilities.
 
 ## 🚀 Key Features
 
-### Phase 6 Enhancements
+### Phase 8 Enhancements
+- **Enhanced Metadata Generation**: Intelligent header detection (1-10 rows) with confidence scoring
+- **Automatic Date Format Recognition**: Supports 15+ date formats (ISO, US, EU, quarters, fiscal years)
+- **Smart Aggregation Rules**: Automatic duplicate detection and aggregation strategy generation
+- **Comprehensive Validation**: File and PVMap validation with intelligent parameter inference
+- **Geographic & Unit Inference**: Automatic detection of geographic scope and scaling factors
+- **Backward Compatibility**: Seamless integration with existing metadata_generator workflow
+
+### Phase 6-7 Features (Previously Implemented)
 - **Full Compatibility**: 100% compatible with existing pvmap_generator.py configurations
 - **Advanced Error Recovery**: Machine learning-based error prediction and adaptive fixes
 - **Performance Optimization**: Intelligent caching and resource optimization
@@ -48,9 +56,16 @@ The ADK PVMap Generator is a sophisticated system for converting CSV and SDMX da
 - `simple_agent.py`: Basic agent with CSV reading capability (Phase 1)
 - `analyzer.py`: Data analysis agent with DC property mapping (Phase 2)
 - `pvmap_creator.py`: Property-value mapping generation (Phase 3)
-- `metadata_generator.py`: Processor configuration generation (Phase 4)
+- `metadata_generator.py`: Enhanced processor configuration generation (Phase 4 + 8)
 - `processor_runner.py`: Statvar processor execution (Phase 4)
 - `coordinator.py`: End-to-end workflow orchestration (Phase 4)
+
+#### **Phase 8 Enhanced Metadata Components**
+- `enhanced_metadata.py`: **Intelligent header detection and file structure analysis**
+- `date_detector.py`: **Automatic date format recognition and configuration**
+- `aggregation_analyzer.py`: **Duplicate detection and aggregation rule generation**
+- `metadata_validator.py`: **Comprehensive validation and parameter inference**
+- `test_enhanced_metadata.py`: **Test suite for enhanced metadata features**
 
 #### **Phase 5 New Components**
 - `iterative_coordinator.py`: **Intelligent retry logic and error recovery**
@@ -132,6 +147,32 @@ export OPENAI_API_KEY='your-key'     # For OpenAI
 ```
 
 ## **🚀 Quick Start**
+
+### **Phase 8: Enhanced Metadata Generation (Latest)**
+
+Test the enhanced metadata capabilities:
+
+```bash
+# Activate project environment
+source ./.env/bin/activate
+cd tools/agentic_import/agent
+
+# Test enhanced metadata generation
+python -c "
+from metadata_generator import analyze_csv_comprehensively, generate_enhanced_metadata_config
+
+# Comprehensive analysis
+result = analyze_csv_comprehensively('testdata/sample.csv')
+print(f'Analysis: {result[\"status\"]}')
+
+# Generate enhanced configuration
+config = generate_enhanced_metadata_config('testdata/sample.csv')
+print(f'Config generated: {len(config.get(\"config\", {}))} parameters')
+"
+
+# Run enhanced metadata test suite
+python test_enhanced_metadata.py
+```
 
 ### **Phase 7: ADK Integration (Production Ready)**
 
@@ -483,46 +524,43 @@ Follows project conventions with enhanced iteration tracking:
 ### Current Status
 
 - ✅ **Phase 1**: CSV reading and basic tools (COMPLETE)
-- ✅ **Phase 2**: Data analysis and DC property mapping (COMPLETE)  
+- ✅ **Phase 2**: Data analysis and DC property mapping (COMPLETE)
 - ✅ **Phase 3**: PVMap creation with DC mappings (COMPLETE)
 - ✅ **Phase 4**: Processor execution & workflow coordination (COMPLETE)
-- ✅ **Phase 5**: **Intelligent iteration & error recovery** (COMPLETE) 🎉
-- 🔄 **Phase 6**: Advanced features and SDMX support (NEXT)
-- ⏳ **Phase 7**: Production deployment and performance optimization
-- ⏳ **Phase 8**: Complete Gemini CLI replacement
+- ✅ **Phase 5**: **Intelligent iteration & error recovery** (COMPLETE)
+- ✅ **Phase 6**: Advanced features and performance optimization (COMPLETE)
+- ✅ **Phase 7**: ADK integration with pvmap_generator (COMPLETE)
+- ✅ **Phase 8**: **Enhanced metadata generation** (COMPLETE) 🎉
 
-### **Current Capabilities (Phase 5 - Production Ready)**
+### **Current Capabilities (Phase 8 - Enhanced Metadata)**
 
-**✅ Intelligent Error Recovery:** Automatic retry with targeted fix strategies  
-**✅ Advanced Error Analysis:** Pattern recognition and confidence-scored categorization  
-**✅ Workflow State Management:** Persistence, resumption, and performance analytics  
-**✅ End-to-End Workflow:** Complete CSV-to-DC processing pipeline  
-**✅ Enhanced CLI:** Iteration control flags and detailed progress reporting  
-**✅ Strategic Testing:** Focused test suite with unit, integration, and end-to-end coverage  
-**✅ Production Resilience:** Robust error handling and graceful degradation  
+**✅ Enhanced Metadata Generation:** Intelligent header detection, date format recognition, and aggregation rules
+**✅ Intelligent Error Recovery:** Automatic retry with targeted fix strategies
+**✅ Advanced Error Analysis:** Pattern recognition and confidence-scored categorization
+**✅ Comprehensive Validation:** File and PVMap validation with parameter inference
+**✅ Smart Parameter Detection:** Geographic scope, scaling factors, and measurement methods
+**✅ Workflow State Management:** Persistence, resumption, and performance analytics
+**✅ End-to-End Workflow:** Complete CSV-to-DC processing pipeline
+**✅ Enhanced CLI:** Iteration control flags and detailed progress reporting
+**✅ Strategic Testing:** Focused test suite with unit, integration, and end-to-end coverage
+**✅ Production Resilience:** Robust error handling and graceful degradation
 **✅ Performance Analytics:** Success rate tracking and fix effectiveness measurement
 
-### Phase 6+ Roadmap
+### Future Roadmap
 
-#### **Phase 6: Advanced Features (Next Priority)**
-- SDMX format support (beyond CSV)
-- Advanced date format detection and conversion
-- Complex constraint property handling
-- Integration with Data Commons API for validation
-- Multi-language support and internationalization
+#### **Next Priorities (Phase 9+)**
+- **SDMX Support**: Full SDMX format processing capabilities
+- **Advanced Date Handling**: Complex date format conversion and normalization
+- **API Integration**: Direct integration with Data Commons API for validation
+- **Performance Optimization**: Memory management and distributed processing for large datasets
+- **Multi-language Support**: Internationalization and multi-language data processing
 
-#### **Phase 7: Production Integration & Optimization**
-- Performance optimization and memory management
-- Distributed processing for large datasets
-- Full feature parity with existing Gemini CLI version
-- Comprehensive benchmarking and validation
-- Production deployment and monitoring
-
-#### **Phase 8: Migration Completion**
-- Complete replacement of Gemini CLI approach
-- Legacy system deprecation and cleanup
-- Documentation and training materials
-- Long-term maintenance and enhancement plan
+#### **Long-term Goals**
+- Complete replacement of legacy Gemini CLI approach
+- Advanced machine learning for data pattern recognition
+- Real-time data processing and streaming capabilities
+- Comprehensive benchmarking and performance optimization
+- Enterprise deployment and monitoring tools
 
 ## Troubleshooting
 
