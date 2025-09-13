@@ -133,21 +133,30 @@ export OPENAI_API_KEY='your-key'     # For OpenAI
 
 ## **🚀 Quick Start**
 
-### **Phase 7: ADK Integration (NEW)**
+### **Phase 7: ADK Integration (Production Ready)**
 
 Use the ADK system through the existing pvmap_generator.py:
 
 ```bash
-# Activate project environment
-source ./.env/bin/activate
-cd tools/agentic_import
-
-# Use ADK instead of Gemini CLI (experimental)
+# Basic usage - replace Gemini CLI with ADK backend
 python pvmap_generator.py --data_config=your_config.json --use_adk
 
-# Test with sample data
-python pvmap_generator.py --data_config=agent/testdata/test_data_config.json --use_adk --dry_run
+# Recommended production usage with retry logic
+python pvmap_generator.py --data_config=your_config.json --use_adk --max_iterations=3 --skip_confirmation
+
+# Dry run (analysis only, no processing)
+python pvmap_generator.py --data_config=your_config.json --use_adk --dry_run
+
+# Test integration
+python simple_integration_test.py
 ```
+
+**Benefits of `--use_adk`:**
+- ✅ Intelligent retry logic (up to 10 iterations)
+- ✅ Automatic error recovery with fix strategies
+- ✅ Enhanced error analysis and reporting
+- ✅ Performance optimization with caching
+- ✅ Same config format, enhanced backend
 
 ### **Direct ADK Usage**
 

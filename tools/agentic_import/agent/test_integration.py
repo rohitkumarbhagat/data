@@ -421,13 +421,17 @@ class ADKIntegrationTestSuite:
             })
             
         return tests
-        
+
     def _run_compatibility_tests(self):
         """Run compatibility tests with existing pvmap_generator."""
-        
+
         print("  🔄 Testing pvmap_generator.py compatibility...")
         compat_tests = self._test_pvmap_generator_compatibility()
         self.test_results["compatibility_tests"].extend(compat_tests)
+
+        print("  🔄 Testing ADK backend invocation...")
+        adk_tests = self._test_adk_backend_invocation()
+        self.test_results["compatibility_tests"].extend(adk_tests)
         
     def _test_pvmap_generator_compatibility(self) -> List[Dict[str, Any]]:
         """Test compatibility with original pvmap_generator.py."""
@@ -486,7 +490,115 @@ class ADKIntegrationTestSuite:
             })
             
         return tests
-        
+
+    def _test_adk_backend_invocation(self) -> List[Dict[str, Any]]:
+        """Test ADK backend invocation via pvmap_generator.py --use_adk flag."""
+        tests = []
+
+        try:
+            # Create test data directory within testdata
+            testdata_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'testdata', 'adk_integration')
+            os.makedirs(testdata_dir, exist_ok=True)
+
+            # Create simple test CSV
+            csv_path = os.path.join(testdata_dir, "test_data.csv")
+            data = {
+                "Year": [2020, 2021],
+                "State": ["California", "Texas"],
+                "Employment_Count": [1500000, 1200000],
+                "Industry": ["Technology", "Technology"]
+            }
+            df = pd.DataFrame(data)
+            df.to_csv(csv_path, index=False)
+
+            # Create test config
+            config_path = os.path.join(testdata_dir, "test_config.json")
+            config = {
+                "data_config": {
+                    "input_data": [csv_path],
+                    "input_metadata": [],
+                    "is_sdmx_dataset": False
+                }
+            }
+
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=2)
+
+            # Get python environment path
+            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            python_env = os.path.join(os.path.dirname(script_dir), '..', '.env', 'bin', 'python')
+
+            # Run pvmap_generator with ADK backend
+            cmd = [
+                python_env, 'pvmap_generator.py',
+                '--data_config', config_path,
+                '--use_adk',
+                '--max_iterations', '1',
+                '--skip_confirmation'
+            ]
+
+            result = subprocess.run(
+                cmd,
+                cwd=script_dir,
+                capture_output=True,
+                text=True,
+                timeout=120  # 2 minute timeout
+            )
+
+            # Combine outputs for analysis
+            full_output = result.stdout + result.stderr
+
+            # Check for integration markers
+            integration_markers = {
+                "Config loaded": "Loaded config with" in full_output,
+                "ADK backend invoked": "Using ADK agent system" in full_output,
+                "Command constructed": "Running ADK command:" in full_output,
+                "Temp config created": "adk_data_config.json" in full_output
+            }
+
+            # Count successes
+            success_count = sum(integration_markers.values())
+            total_markers = len(integration_markers)
+
+            if integration_markers["ADK backend invoked"] and integration_markers["Command constructed"]:
+                tests.append({
+                    "name": "ADK backend invocation: Core integration",
+                    "status": "pass",
+                    "details": f"Successfully invoked ADK backend ({success_count}/{total_markers} markers found)"
+                })
+            else:
+                tests.append({
+                    "name": "ADK backend invocation: Core integration",
+                    "status": "fail",
+                    "error": f"ADK backend not properly invoked ({success_count}/{total_markers} markers found)"
+                })
+
+            # Cleanup test files
+            try:
+                if os.path.exists(csv_path):
+                    os.remove(csv_path)
+                if os.path.exists(config_path):
+                    os.remove(config_path)
+                if os.path.exists(testdata_dir):
+                    os.rmdir(testdata_dir)
+            except:
+                pass  # Ignore cleanup errors
+
+        except subprocess.TimeoutExpired:
+            tests.append({
+                "name": "ADK backend invocation: Timeout",
+                "status": "fail",
+                "error": "Test timed out after 2 minutes"
+            })
+        except Exception as e:
+            tests.append({
+                "name": "ADK backend invocation: Exception",
+                "status": "fail",
+                "error": str(e)
+            })
+
+        return tests
+
     def _run_performance_tests(self):
         """Run performance benchmarking tests."""
         
