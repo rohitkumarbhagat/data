@@ -47,6 +47,12 @@ from .coordinator import execute_workflow, get_workflow_summary
 from .iterative_coordinator import IterativeCoordinator, IterationState, ErrorAnalyzer, FixStrategies
 from .advanced_fixes import AdvancedFixStrategies, ErrorPrediction, ColumnMapping
 
+# Import SDMX components
+from .sdmx_reader import read_sdmx_file
+from .sdmx_analyzer import analyze_sdmx_structure
+from .sdmx_pvmap_creator import create_sdmx_pvmap_from_file
+from .sdmx_metadata_generator import create_sdmx_metadata_from_file
+
 
 class EnhancedIterationState(IterationState):
     """Extended state tracking with advanced fix capabilities."""
@@ -492,8 +498,325 @@ class EnhancedIterativeCoordinator:
             return {"error": str(e)}
 
 
-def create_enhanced_coordinator(max_iterations: int = 3, auto_fix: bool = True, 
-                              use_advanced_fixes: bool = True, 
+    def _detect_dataset_type(self, input_file: str, metadata_files: List[str] = None) -> str:
+        """Detect if dataset is SDMX or CSV format.
+
+        Args:
+            input_file: Path to input file
+            metadata_files: Optional list of metadata files
+
+        Returns:
+            'sdmx' or 'csv'
+        """
+        try:
+            file_ext = os.path.splitext(input_file)[1].lower()
+
+            # Check file extension first
+            if file_ext in ['.xml', '.sdmx']:
+                return 'sdmx'
+            elif file_ext == '.csv':
+                # Check if CSV has SDMX characteristics
+                return self._analyze_csv_for_sdmx_patterns(input_file)
+            else:
+                # Try to read as SDMX
+                sdmx_result = read_sdmx_file(input_file)
+                if sdmx_result.get("status") == "success":
+                    return 'sdmx'
+
+            return 'csv'  # Default fallback
+
+        except Exception as e:
+            logging.warning(f"Dataset type detection failed: {e}. Defaulting to CSV.")
+            return 'csv'
+
+    def _analyze_csv_for_sdmx_patterns(self, csv_file: str) -> str:
+        """Analyze CSV file for SDMX-like patterns."""
+        try:
+            df = pd.read_csv(csv_file, nrows=10)  # Sample first 10 rows
+            columns = [col.upper() for col in df.columns]
+
+            # Check for standard SDMX columns
+            sdmx_indicators = [
+                'REF_AREA', 'TIME_PERIOD', 'FREQ', 'INDICATOR',
+                'OBS_VALUE', 'UNIT_MEASURE', 'OBS_STATUS'
+            ]
+
+            matches = sum(1 for indicator in sdmx_indicators if indicator in columns)
+
+            # If 3+ SDMX columns present, likely SDMX-CSV
+            if matches >= 3:
+                return 'sdmx'
+
+            return 'csv'
+
+        except Exception:
+            return 'csv'
+
+    def process_with_sdmx_support(self, input_file: str, output_dir: str,
+                                 working_dir: str = None, metadata_files: List[str] = None,
+                                 force_dataset_type: str = None) -> Dict[str, Any]:
+        """Execute workflow with SDMX dataset support.
+
+        Args:
+            input_file: Path to input file
+            output_dir: Directory for output files
+            working_dir: Working directory (defaults to output_dir)
+            metadata_files: Optional list of SDMX metadata files
+            force_dataset_type: Force 'sdmx' or 'csv' detection
+
+        Returns:
+            Dictionary with comprehensive workflow results
+        """
+        if working_dir is None:
+            working_dir = output_dir
+
+        # Detect dataset type
+        dataset_type = force_dataset_type or self._detect_dataset_type(input_file, metadata_files)
+
+        logging.info(f"Detected dataset type: {dataset_type.upper()}")
+
+        if dataset_type == 'sdmx':
+            return self._process_sdmx_dataset(input_file, output_dir, working_dir, metadata_files)
+        else:
+            return self.process_with_advanced_retry(input_file, output_dir, working_dir)
+
+    def _process_sdmx_dataset(self, input_file: str, output_dir: str,
+                             working_dir: str, metadata_files: List[str] = None) -> Dict[str, Any]:
+        """Process SDMX dataset with specialized handling.
+
+        Args:
+            input_file: Path to SDMX input file
+            output_dir: Directory for output files
+            working_dir: Working directory
+            metadata_files: Optional SDMX metadata files
+
+        Returns:
+            Dictionary with SDMX processing results
+        """
+        # Initialize enhanced state for SDMX
+        state = EnhancedIterationState(input_file, output_dir, working_dir, self.use_advanced_fixes)
+        state.dataset_type = 'sdmx'
+        state.metadata_files = metadata_files or []
+
+        logging.info(f"🌐 Starting SDMX dataset processing")
+        logging.info(f"Input: {input_file}")
+        if metadata_files:
+            logging.info(f"Metadata files: {len(metadata_files)}")
+
+        try:
+            for attempt in range(1, self.max_iterations + 1):
+                logging.info(f"\n🔄 SDMX PROCESSING ATTEMPT {attempt}/{self.max_iterations}")
+
+                # Execute SDMX-specific workflow
+                result = self._execute_sdmx_workflow(input_file, output_dir, working_dir,
+                                                   metadata_files, attempt)
+
+                # Check if successful
+                if result.get("status") == "success":
+                    logging.info(f"✅ SDMX processing successful on attempt {attempt}!")
+                    state.add_iteration(attempt, result)
+
+                    # Add SDMX-specific summary
+                    enhanced_result = {
+                        **result,
+                        "dataset_type": "sdmx",
+                        "processing_mode": "sdmx_specialized",
+                        "enhanced_summary": state.get_enhanced_summary(),
+                        "sdmx_analysis": result.get("sdmx_analysis")
+                    }
+
+                    return enhanced_result
+
+                # Failure - analyze and attempt fixes
+                logging.info(f"❌ SDMX attempt {attempt} failed: {result.get('error_message')}")
+
+                if self.auto_fix and attempt < self.max_iterations:
+                    fixes_applied = self._apply_sdmx_fixes(result, working_dir, state, attempt)
+                    if fixes_applied:
+                        logging.info(f"Applied {len(fixes_applied)} SDMX-specific fixes")
+
+                state.add_iteration(attempt, result)
+
+            # All attempts exhausted
+            logging.error(f"⛔ SDMX processing failed after {self.max_iterations} attempts")
+            return {
+                "status": "error",
+                "error_message": f"SDMX processing failed after {self.max_iterations} attempts",
+                "dataset_type": "sdmx",
+                "enhanced_summary": state.get_enhanced_summary()
+            }
+
+        except Exception as e:
+            logging.error(f"SDMX processing exception: {str(e)}")
+            return {
+                "status": "error",
+                "error_message": str(e),
+                "dataset_type": "sdmx",
+                "enhanced_summary": state.get_enhanced_summary()
+            }
+
+    def _execute_sdmx_workflow(self, input_file: str, output_dir: str, working_dir: str,
+                              metadata_files: List[str], attempt: int) -> Dict[str, Any]:
+        """Execute SDMX-specific workflow steps."""
+
+        try:
+            # Step 1: Analyze SDMX structure
+            logging.info("📊 Analyzing SDMX data structure...")
+            metadata_path = metadata_files[0] if metadata_files else None
+            analysis_result = analyze_sdmx_structure(input_file, metadata_path)
+
+            if analysis_result["status"] != "success":
+                return {
+                    "status": "error",
+                    "error_step": "sdmx_analysis",
+                    "error_message": f"SDMX analysis failed: {analysis_result.get('error_message')}"
+                }
+
+            # Step 2: Create SDMX PVMap
+            logging.info("🗺️ Generating SDMX PVMap...")
+            pvmap_path = os.path.join(working_dir, f"pvmap_attempt_{attempt}.csv")
+            pvmap_result = create_sdmx_pvmap_from_file(input_file, metadata_path, pvmap_path)
+
+            if pvmap_result["status"] != "success":
+                return {
+                    "status": "error",
+                    "error_step": "sdmx_pvmap_creation",
+                    "error_message": f"SDMX PVMap creation failed: {pvmap_result.get('error_message')}"
+                }
+
+            # Step 3: Generate SDMX metadata configuration
+            logging.info("⚙️ Generating SDMX metadata configuration...")
+            metadata_config_path = os.path.join(working_dir, f"metadata_attempt_{attempt}.csv")
+            metadata_result = create_sdmx_metadata_from_file(input_file, metadata_path, metadata_config_path)
+
+            if metadata_result["status"] != "success":
+                return {
+                    "status": "error",
+                    "error_step": "sdmx_metadata_generation",
+                    "error_message": f"SDMX metadata generation failed: {metadata_result.get('error_message')}"
+                }
+
+            # Step 4: Run statvar processor with SDMX configurations
+            logging.info("🔧 Running statvar processor with SDMX configuration...")
+            processor_result = self._run_processor_with_sdmx_config(
+                input_file, pvmap_path, metadata_config_path, output_dir
+            )
+
+            if processor_result["status"] == "success":
+                # Copy final files to standard locations
+                final_pvmap = os.path.join(working_dir, "pvmap.csv")
+                final_metadata = os.path.join(working_dir, "metadata.csv")
+
+                if not os.path.exists(final_pvmap):
+                    os.system(f"cp {pvmap_path} {final_pvmap}")
+                if not os.path.exists(final_metadata):
+                    os.system(f"cp {metadata_config_path} {final_metadata}")
+
+                return {
+                    "status": "success",
+                    "sdmx_analysis": analysis_result["analysis"],
+                    "pvmap_info": pvmap_result,
+                    "metadata_info": metadata_result,
+                    "processor_result": processor_result,
+                    "files_generated": {
+                        "pvmap": final_pvmap,
+                        "metadata": final_metadata,
+                        "output": processor_result.get("output_files", {})
+                    }
+                }
+            else:
+                return {
+                    "status": "error",
+                    "error_step": "statvar_processor",
+                    "error_message": processor_result.get("error_message"),
+                    "processor_details": processor_result
+                }
+
+        except Exception as e:
+            logging.error(f"SDMX workflow execution failed: {str(e)}")
+            return {
+                "status": "error",
+                "error_step": "sdmx_workflow_execution",
+                "error_message": str(e)
+            }
+
+    def _run_processor_with_sdmx_config(self, input_file: str, pvmap_path: str,
+                                       metadata_path: str, output_dir: str) -> Dict[str, Any]:
+        """Run statvar processor with SDMX-generated configurations."""
+
+        try:
+            # Import processor runner
+            from .processor_runner import run_statvar_processor
+
+            # Configure processor parameters for SDMX
+            processor_config = {
+                "input_data": input_file,
+                "pv_map": pvmap_path,
+                "config_file": metadata_path,
+                "output_path": os.path.join(output_dir, "output"),
+                "python_interpreter": "python3",
+                "processor_path": "../../statvar_importer/stat_var_processor.py"
+            }
+
+            # Execute processor
+            result = run_statvar_processor(processor_config)
+
+            return result
+
+        except Exception as e:
+            logging.error(f"Processor execution failed: {str(e)}")
+            return {
+                "status": "error",
+                "error_message": str(e)
+            }
+
+    def _apply_sdmx_fixes(self, result: Dict[str, Any], working_dir: str,
+                         state: EnhancedIterationState, attempt: int) -> List[str]:
+        """Apply SDMX-specific error fixes."""
+
+        fixes_applied = []
+        error_step = result.get("error_step", "")
+        error_message = result.get("error_message", "")
+
+        try:
+            # SDMX analysis fixes
+            if error_step == "sdmx_analysis":
+                if "metadata" in error_message.lower():
+                    logging.info("🔧 Attempting SDMX analysis without metadata...")
+                    fixes_applied.append("retry_without_metadata")
+
+            # PVMap creation fixes
+            elif error_step == "sdmx_pvmap_creation":
+                if "mapping" in error_message.lower():
+                    logging.info("🔧 Applying generic dimension mappings...")
+                    fixes_applied.append("generic_dimension_mapping")
+
+            # Metadata generation fixes
+            elif error_step == "sdmx_metadata_generation":
+                if "frequency" in error_message.lower():
+                    logging.info("🔧 Using default frequency settings...")
+                    fixes_applied.append("default_frequency_config")
+
+            # Processor fixes (use existing processor error handling)
+            elif error_step == "statvar_processor":
+                if self.use_advanced_fixes:
+                    basic_analysis = self.basic_error_analyzer.analyze_failure(result)
+                    advanced_fixes = self._apply_advanced_fixes(result, working_dir, state, basic_analysis)
+                    fixes_applied.extend(advanced_fixes)
+                else:
+                    # Apply basic fixes
+                    basic_fixes = self.basic_fix_strategies.apply_fixes(result, working_dir)
+                    fixes_applied.extend(basic_fixes)
+
+            return fixes_applied
+
+        except Exception as e:
+            logging.error(f"SDMX fix application failed: {str(e)}")
+            return fixes_applied
+
+
+def create_enhanced_coordinator(max_iterations: int = 3, auto_fix: bool = True,
+                              use_advanced_fixes: bool = True,
                               learning_dir: str = None) -> EnhancedIterativeCoordinator:
     """Factory function to create EnhancedIterativeCoordinator."""
     return EnhancedIterativeCoordinator(
