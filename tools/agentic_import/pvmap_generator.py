@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import copy
-import json
 import os
 import platform
 import shutil
@@ -33,9 +32,16 @@ from jinja2 import Environment, FileSystemLoader
 FLAGS = flags.FLAGS
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-flags.DEFINE_string('data_config', None,
-                    'Path to import config JSON file (required)')
-flags.mark_flag_as_required('data_config')
+flags.DEFINE_list('input_data', None,
+                  'List of input data file paths (required)')
+flags.mark_flag_as_required('input_data')
+
+# TODO: Allow users to provide original source path and auto-generate sample data files internally
+flags.DEFINE_list('input_metadata', [],
+                  'List of input metadata file paths (optional)')
+
+flags.DEFINE_boolean('sdmx_dataset', False,
+                     'Whether the dataset is in SDMX format (default: False)')
 
 flags.DEFINE_boolean('dry_run', False,
                      'Generate prompt only without calling Gemini CLI')
@@ -57,10 +63,9 @@ flags.DEFINE_boolean(
     'Enable sandboxing for Gemini CLI (default: True on macOS, False elsewhere)'
 )
 
-flags.DEFINE_boolean(
-    'use_adk', False,
-    'Use ADK agent system instead of Gemini CLI (experimental)'
-)
+flags.DEFINE_string(
+    'output_path', 'output/output',
+    'Output path prefix for all generated files (default: output/output)')
 
 
 @dataclass
@@ -80,7 +85,7 @@ class Config:
     max_iterations: int = 10
     skip_confirmation: bool = False
     enable_sandboxing: bool = False
-    use_adk: bool = False
+    output_path: str = 'output/output'
 
 
 class PVMapGenerator:
@@ -88,40 +93,50 @@ class PVMapGenerator:
 
     def __init__(self, config: Config):
         # Define working directory once for consistent path resolution
-        self.working_dir = os.getcwd()
+        self._working_dir = os.getcwd()
 
         # Copy config to avoid modifying the original
-        self.config = copy.deepcopy(config)
+        self._config = copy.deepcopy(config)
 
         # Convert input_data paths to absolute
-        if self.config.data_config.input_data:
-            self.config.data_config.input_data = [
+        if self._config.data_config.input_data:
+            self._config.data_config.input_data = [
                 self._validate_and_convert_path(path)
-                for path in self.config.data_config.input_data
+                for path in self._config.data_config.input_data
             ]
 
         # Convert input_metadata paths to absolute
-        if self.config.data_config.input_metadata:
-            self.config.data_config.input_metadata = [
+        if self._config.data_config.input_metadata:
+            self._config.data_config.input_metadata = [
                 self._validate_and_convert_path(path)
-                for path in self.config.data_config.input_metadata
+                for path in self._config.data_config.input_metadata
             ]
 
-        self.datacommons_dir = self._initialize_datacommons_dir()
+        # Parse output_path into directory and basename components
+        # Relative directory
+        self._output_dir = os.path.dirname(self._config.output_path) or '.'
+        # Relative name
+        self._output_basename = os.path.basename(self._config.output_path)
+
+        # Create output directory if it doesn't exist
+        output_full_dir = os.path.join(self._working_dir, self._output_dir)
+        os.makedirs(output_full_dir, exist_ok=True)
+
+        self._datacommons_dir = self._initialize_datacommons_dir()
 
         # Generate gemini_run_id with timestamp for this run
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.gemini_run_id = f"gemini_{timestamp}"
+        self._gemini_run_id = f"gemini_{timestamp}"
 
         # Create run directory structure
-        self.run_dir = os.path.join(self.datacommons_dir, 'runs',
-                                    self.gemini_run_id)
-        os.makedirs(self.run_dir, exist_ok=True)
+        self._run_dir = os.path.join(self._datacommons_dir, 'runs',
+                                     self._gemini_run_id)
+        os.makedirs(self._run_dir, exist_ok=True)
 
     def _validate_and_convert_path(self, path: str) -> str:
         """Convert path to absolute and validate it's within working directory."""
         real_path = os.path.realpath(path)
-        real_working_dir = os.path.realpath(self.working_dir)
+        real_working_dir = os.path.realpath(self._working_dir)
         # Check if path is within working directory
         if not real_path.startswith(real_working_dir):
             raise ValueError(
@@ -131,7 +146,7 @@ class PVMapGenerator:
 
     def _initialize_datacommons_dir(self) -> str:
         """Initialize and return the .datacommons directory path."""
-        dc_dir = os.path.join(self.working_dir, '.datacommons')
+        dc_dir = os.path.join(self._working_dir, '.datacommons')
         os.makedirs(dc_dir, exist_ok=True)
         return dc_dir
 
@@ -147,18 +162,21 @@ class PVMapGenerator:
         print("\n" + "=" * 60)
         print("PV MAP GENERATION SUMMARY")
         print("=" * 60)
-        print(f"Input data file: {self.config.data_config.input_data[0]}")
+        print(f"Input data file: {self._config.data_config.input_data[0]}")
         print(
-            f"Dataset type: {'SDMX' if self.config.data_config.is_sdmx_dataset else 'CSV'}"
+            f"Dataset type: {'SDMX' if self._config.data_config.is_sdmx_dataset else 'CSV'}"
         )
         print(f"Generated prompt: {prompt_file}")
-        print(f"Working directory: {self.working_dir}")
+        print(f"Working directory: {self._working_dir}")
+        print(f"Output path: {self._config.output_path}")
+        print(f"Output directory: {self._output_dir}")
+        print(f"Output basename: {self._output_basename}")
         print(
-            f"Sandboxing: {'Enabled' if self.config.enable_sandboxing else 'Disabled'}"
+            f"Sandboxing: {'Enabled' if self._config.enable_sandboxing else 'Disabled'}"
         )
-        if not self.config.enable_sandboxing:
+        if not self._config.enable_sandboxing:
             print(
-                "⚠️  WARNING: Sandboxing is disabled. Gemini will run without safety restrictions."
+                "WARNING: Sandboxing is disabled. Gemini will run without safety restrictions."
             )
         print("=" * 60)
 
@@ -180,38 +198,34 @@ class PVMapGenerator:
     def generate(self):
         """Generate PV map from import configuration."""
         # Set environment variables if API keys are provided in config
-        if self.config.maps_api_key:
-            os.environ['MAPS_API_KEY'] = self.config.maps_api_key
-        if self.config.dc_api_key:
-            os.environ['DC_API_KEY'] = self.config.dc_api_key
+        if self._config.maps_api_key:
+            os.environ['MAPS_API_KEY'] = self._config.maps_api_key
+        if self._config.dc_api_key:
+            os.environ['DC_API_KEY'] = self._config.dc_api_key
 
-        if not self.config.data_config.input_data:
+        if not self._config.data_config.input_data:
             raise ValueError(
                 "Import configuration must have at least one input data entry")
 
         # Validate single CSV file input
-        if len(self.config.data_config.input_data) != 1:
+        if len(self._config.data_config.input_data) != 1:
             raise ValueError(
                 f"Currently only single CSV file is supported. "
-                f"Found {len(self.config.data_config.input_data)} files in input_data."
+                f"Found {len(self._config.data_config.input_data)} files in input_data."
             )
-
-        # Use ADK backend if requested
-        if self.config.use_adk:
-            return self._run_adk_backend()
 
         # Generate the prompt as the first step
         prompt_file = self._generate_prompt()
 
         # Check if we're in dry run mode
-        if self.config.dry_run:
+        if self._config.dry_run:
             logging.info(
                 "Dry run mode: Prompt file generated at %s. "
                 "Skipping generation execution.", prompt_file)
             return
 
         # Get user confirmation before proceeding (unless skipped)
-        if not self.config.skip_confirmation:
+        if not self._config.skip_confirmation:
             if not self._get_user_confirmation(prompt_file):
                 logging.info("PV map generation cancelled by user.")
                 return
@@ -224,12 +238,12 @@ class PVMapGenerator:
             raise RuntimeError("Gemini CLI not found in PATH")
 
         # Generate log file path using the run directory
-        log_file = os.path.join(self.run_dir, 'gemini_cli.log')
+        log_file = os.path.join(self._run_dir, 'gemini_cli.log')
 
         # Execute Gemini CLI with generated prompt
         gemini_command = self._build_gemini_command(prompt_file, log_file)
         logging.info(
-            f"Launching gemini (cwd: {self.working_dir}): {gemini_command} ")
+            f"Launching gemini (cwd: {self._working_dir}): {gemini_command} ")
         logging.info(f"Gemini output will be saved to: {log_file}")
 
         exit_code = self._run_subprocess(gemini_command)
@@ -260,7 +274,7 @@ class PVMapGenerator:
         Returns:
             Complete gemini command string
         """
-        sandbox_flag = "--sandbox " if self.config.enable_sandboxing else ""
+        sandbox_flag = "--sandbox " if self._config.enable_sandboxing else ""
         return f"cat '{prompt_file}' | gemini {sandbox_flag} -y 2>&1 | tee '{log_file}'"
 
     def _run_subprocess(self, command: str) -> int:
@@ -305,7 +319,7 @@ class PVMapGenerator:
         template = env.get_template('generate_pvmap_prompt.j2')
 
         # Calculate paths and prepare template variables
-        working_dir = self.working_dir  # Use defined working directory
+        working_dir = self._working_dir  # Use defined working directory
         # Point to tools/ directory (parent of agentic_import)
         tools_dir = os.path.abspath(os.path.join(_SCRIPT_DIR, '..'))
 
@@ -317,103 +331,44 @@ class PVMapGenerator:
             'script_dir':
                 tools_dir,
             'input_data':
-                self.config.data_config.input_data[0]
-                if self.config.data_config.input_data else "",
+                self._config.data_config.input_data[0]
+                if self._config.data_config.input_data else "",
             'input_metadata':
-                self.config.data_config.input_metadata or
+                self._config.data_config.input_metadata or
                 [],  # Handle None case, default to empty list for multiple files support
             'dataset_type':
-                'sdmx' if self.config.data_config.is_sdmx_dataset else 'csv',
+                'sdmx' if self._config.data_config.is_sdmx_dataset else 'csv',
             'max_iterations':
-                self.config.max_iterations,
+                self._config.max_iterations,
             'gemini_run_id':
-                self.gemini_run_id  # Pass the gemini run ID for backup tracking
+                self.
+                _gemini_run_id,  # Pass the gemini run ID for backup tracking
+            'output_path':
+                self._config.output_path,  # Full path for statvar processor
+            'output_dir':
+                self._output_dir,  # Directory for pvmap/metadata files
+            'output_basename':
+                self._output_basename  # Base name for pvmap/metadata files
         }
 
         # Render template with these variables
         rendered_prompt = template.render(**template_vars)
 
         # Write rendered prompt to run directory
-        output_file = os.path.join(self.run_dir, 'generate_pvmap_prompt.md')
+        output_file = os.path.join(self._run_dir, 'generate_pvmap_prompt.md')
         with open(output_file, 'w') as f:
             f.write(rendered_prompt)
 
         logging.info("Generated prompt written to: %s", output_file)
         return output_file
 
-    def _run_adk_backend(self) -> None:
-        """Run ADK agent system instead of Gemini CLI."""
-        logging.info("Using ADK agent system for PV map generation")
-        
-        # Create temporary data config file for ADK (flat format, not nested)
-        temp_config = {
-            "input_data": self.config.data_config.input_data,
-            "input_metadata": self.config.data_config.input_metadata,
-            "is_sdmx_dataset": self.config.data_config.is_sdmx_dataset
-        }
-        
-        temp_config_path = os.path.join(self.run_dir, 'adk_data_config.json')
-        with open(temp_config_path, 'w') as f:
-            json.dump(temp_config, f, indent=2)
-        
-        # Build ADK command with environment activation
-        python_env = os.path.join(os.path.dirname(_SCRIPT_DIR), '..', '.env', 'bin', 'python')
-        adk_command = [
-            python_env, '-m', 'agent.main',
-            '--data_config', temp_config_path,
-            '--max_iterations', str(self.config.max_iterations),
-            '--auto_fix',
-            '--skip_confirmation',  # Always skip confirmation for automated mode
-            '--use_enhanced_coordinator'
-        ]
-
-        # Add dry_run flag if pvmap_generator is in dry run mode
-        if self.config.dry_run:
-            adk_command.append('--dry_run')
-
-        # Set working directory to agentic_import directory (not agent subdirectory)
-        agentic_import_dir = _SCRIPT_DIR
-        
-        logging.info(f"Running ADK command: {' '.join(adk_command)}")
-        logging.info(f"Working directory: {agentic_import_dir}")
-
-        try:
-            # Run ADK agent system
-            result = subprocess.run(
-                adk_command,
-                cwd=agentic_import_dir,
-                capture_output=False,  # Let output stream to terminal
-                text=True
-            )
-            
-            if result.returncode == 0:
-                logging.info("ADK agent system completed successfully")
-            else:
-                logging.error(f"ADK agent system failed with exit code: {result.returncode}")
-                raise RuntimeError(f"ADK execution failed with exit code {result.returncode}")
-                
-        except Exception as e:
-            logging.error(f"Error running ADK backend: {str(e)}")
-            raise RuntimeError(f"ADK backend execution failed: {str(e)}")
-
-
-def load_data_config(config_path: str) -> DataConfig:
-    """Load import configuration from JSON file."""
-    with open(config_path, 'r') as f:
-        data = json.load(f)
-
-    # Handle nested data_config structure
-    if 'data_config' in data:
-        data_config_data = data['data_config']
-    else:
-        data_config_data = data
-
-    return DataConfig(**data_config_data)
-
 
 def prepare_config() -> Config:
-    """Prepare comprehensive configuration from flags and data config file."""
-    data_config = load_data_config(FLAGS.data_config)
+    """Prepare comprehensive configuration from individual flags."""
+    data_config = DataConfig(input_data=FLAGS.input_data or [],
+                             input_metadata=FLAGS.input_metadata or [],
+                             is_sdmx_dataset=FLAGS.sdmx_dataset)
+
     return Config(data_config=data_config,
                   dry_run=FLAGS.dry_run,
                   maps_api_key=FLAGS.maps_api_key,
@@ -421,10 +376,10 @@ def prepare_config() -> Config:
                   max_iterations=FLAGS.max_iterations,
                   skip_confirmation=FLAGS.skip_confirmation,
                   enable_sandboxing=FLAGS.enable_sandboxing,
-                  use_adk=FLAGS.use_adk)
+                  output_path=FLAGS.output_path)
 
 
-def main(argv):
+def main(_):
     """Main function for PV Map generator."""
     config = prepare_config()
     logging.info("Loaded config with %d data files and %d metadata files",
