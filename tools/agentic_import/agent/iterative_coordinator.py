@@ -33,6 +33,7 @@ Usage:
 """
 
 import os
+import sys
 import logging
 import json
 import copy
@@ -40,8 +41,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
+# Add current directory to path for imports
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(_SCRIPT_DIR)
+
 # Import existing workflow components
-from .coordinator import execute_workflow, get_workflow_summary
+from coordinator import execute_workflow, get_workflow_summary
 
 
 class IterationState:

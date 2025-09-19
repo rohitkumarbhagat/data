@@ -17,7 +17,8 @@ from pathlib import Path
 from typing import Dict, Any, List
 
 # Add current directory to path for imports
-sys.path.append(os.path.dirname(__file__))
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(_SCRIPT_DIR)
 
 from sdmx_reader import read_sdmx_file, read_sdmx_sample
 from sdmx_analyzer import analyze_sdmx_structure, analyze_sdmx_sample

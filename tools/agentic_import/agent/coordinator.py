@@ -17,10 +17,10 @@ except ImportError:
 
 # Import all the component agents and tools
 try:
-    from .analyzer import analyze_column_types, suggest_dc_mappings
-    from .pvmap_creator import create_pv_mappings, write_pvmap_csv, validate_pvmap_structure
-    from .metadata_generator import generate_metadata_config, write_metadata_csv, validate_metadata_config
-    from .processor_runner import run_statvar_processor, validate_processor_output, parse_processor_errors
+    from analyzer import analyze_column_types, suggest_dc_mappings
+    from pvmap_creator import create_pv_mappings, write_pvmap_csv, validate_pvmap_structure
+    from metadata_generator import generate_metadata_config, write_metadata_csv, validate_metadata_config
+    from processor_runner import run_statvar_processor, validate_processor_output, parse_processor_errors
 except ImportError:
     # Fallback for direct execution
     from analyzer import analyze_column_types, suggest_dc_mappings

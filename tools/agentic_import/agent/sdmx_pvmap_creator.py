@@ -7,6 +7,8 @@ Handles standard SDMX dimensions, measures, and attributes mapping to Data Commo
 
 from __future__ import annotations
 
+import os
+import sys
 import pandas as pd
 import csv
 import logging
@@ -14,8 +16,12 @@ import re
 from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
 
-from .sdmx_analyzer import SdmxAnalysisResult, SDMX_UNIT_CONVERSIONS, SDMX_MISSING_VALUES
-from .pvmap_creator import create_pv_mapping, write_pvmap_csv
+# Add current directory to path for imports
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(_SCRIPT_DIR)
+
+from sdmx_analyzer import SdmxAnalysisResult, SDMX_UNIT_CONVERSIONS, SDMX_MISSING_VALUES
+from pvmap_creator import create_pv_mappings, write_pvmap_csv
 
 # Country code mappings for REF_AREA
 ISO_COUNTRY_MAPPINGS = {
@@ -469,7 +475,7 @@ def create_sdmx_pvmap_from_file(file_path: str, metadata_path: str = None,
     """
     try:
         # Import here to avoid circular imports
-        from .sdmx_analyzer import analyze_sdmx_structure
+        from sdmx_analyzer import analyze_sdmx_structure
 
         # Analyze SDMX structure
         analysis_result = analyze_sdmx_structure(file_path, metadata_path)

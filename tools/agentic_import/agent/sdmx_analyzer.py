@@ -7,14 +7,20 @@ Handles dimensions, measures, attributes, and codelists.
 
 from __future__ import annotations
 
+import os
+import sys
 import pandas as pd
 import logging
 import re
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass
 
-from .sdmx_reader import read_sdmx_file, SdmxStructure
-from .analyzer import analyze_column_types, suggest_dc_mappings
+# Add current directory to path for imports
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(_SCRIPT_DIR)
+
+from sdmx_reader import read_sdmx_file, SdmxStructure
+from analyzer import analyze_column_types, suggest_dc_mappings
 
 # Standard SDMX dimensions and their DC mappings
 SDMX_DIMENSION_MAPPINGS = {

@@ -7,6 +7,8 @@ Handles frequency-based date formatting, multi-dimensional headers, and aggregat
 
 from __future__ import annotations
 
+import os
+import sys
 import pandas as pd
 import csv
 import logging
@@ -14,8 +16,12 @@ import json
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
-from .sdmx_analyzer import SdmxAnalysisResult
-from .metadata_generator import generate_metadata_config
+# Add current directory to path for imports
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(_SCRIPT_DIR)
+
+from sdmx_analyzer import SdmxAnalysisResult
+from metadata_generator import generate_metadata_config
 
 
 # Frequency-based date format mappings
@@ -427,7 +433,7 @@ def create_sdmx_metadata_from_file(file_path: str, metadata_path: str = None,
     """
     try:
         # Import here to avoid circular imports
-        from .sdmx_analyzer import analyze_sdmx_structure
+        from sdmx_analyzer import analyze_sdmx_structure
 
         # Analyze SDMX structure
         analysis_result = analyze_sdmx_structure(file_path, metadata_path)

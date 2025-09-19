@@ -34,6 +34,7 @@ Usage:
 """
 
 import os
+import sys
 import logging
 import json
 import copy
@@ -42,16 +43,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
+# Add current directory to path for imports
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(_SCRIPT_DIR)
+
 # Import existing workflow components
-from .coordinator import execute_workflow, get_workflow_summary
-from .iterative_coordinator import IterativeCoordinator, IterationState, ErrorAnalyzer, FixStrategies
-from .advanced_fixes import AdvancedFixStrategies, ErrorPrediction, ColumnMapping
+from coordinator import execute_workflow, get_workflow_summary
+from iterative_coordinator import IterativeCoordinator, IterationState, ErrorAnalyzer, FixStrategies
+from advanced_fixes import AdvancedFixStrategies, ErrorPrediction, ColumnMapping
 
 # Import SDMX components
-from .sdmx_reader import read_sdmx_file
-from .sdmx_analyzer import analyze_sdmx_structure
-from .sdmx_pvmap_creator import create_sdmx_pvmap_from_file
-from .sdmx_metadata_generator import create_sdmx_metadata_from_file
+from sdmx_reader import read_sdmx_file
+from sdmx_analyzer import analyze_sdmx_structure
+from sdmx_pvmap_creator import create_sdmx_pvmap_from_file
+from sdmx_metadata_generator import create_sdmx_metadata_from_file
 
 
 class EnhancedIterationState(IterationState):
@@ -381,7 +386,7 @@ class EnhancedIterativeCoordinator:
         # In a full implementation, this would include more sophisticated fixes
         
         try:
-            from .fix_strategies import ComprehensiveFixStrategies
+            from fix_strategies import ComprehensiveFixStrategies
             
             comprehensive_fixes = ComprehensiveFixStrategies()
             error_details = result.get("steps", {}).get(result.get("error_step"), {})
@@ -746,7 +751,7 @@ class EnhancedIterativeCoordinator:
 
         try:
             # Import processor runner
-            from .processor_runner import run_statvar_processor
+            from processor_runner import run_statvar_processor
 
             # Configure processor parameters for SDMX
             processor_config = {

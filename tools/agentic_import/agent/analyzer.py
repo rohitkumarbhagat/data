@@ -7,7 +7,7 @@ from typing import Dict, Any, List
 try:
     from google.adk.agents import LlmAgent
     from absl import logging
-    from .simple_agent import read_csv_sample
+    from simple_agent import read_csv_sample
     ADK_AVAILABLE = True
 except ImportError:
     import logging

@@ -54,16 +54,20 @@ from absl import app
 from absl import flags
 from absl import logging
 
+# Add current directory to path for imports
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(_SCRIPT_DIR)
+
 # Import workflow coordinators (Phase 4 & Phase 5)
-from .coordinator import execute_workflow, get_workflow_summary
-from .iterative_coordinator import IterativeCoordinator
-from .error_analyzer import ProcessorErrorAnalyzer
-from .fix_strategies import ComprehensiveFixStrategies
-from .workflow_state import WorkflowState
+from coordinator import execute_workflow, get_workflow_summary
+from iterative_coordinator import IterativeCoordinator
+from error_analyzer import ProcessorErrorAnalyzer
+from fix_strategies import ComprehensiveFixStrategies
+from workflow_state import WorkflowState
 # Import Phase 6 configuration adapter
-from .config_adapter import ConfigAdapter, ConfigAdapterError, load_config_from_file
+from config_adapter import ConfigAdapter, ConfigAdapterError, load_config_from_file
 # Import Phase 6 enhanced coordinator
-from .enhanced_coordinator import EnhancedIterativeCoordinator
+from enhanced_coordinator import EnhancedIterativeCoordinator
 
 FLAGS = flags.FLAGS
 

@@ -16,7 +16,8 @@ import logging
 from pathlib import Path
 
 # Add current directory to path for imports
-sys.path.append(os.path.dirname(__file__))
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(_SCRIPT_DIR)
 
 from sdmx_reader import read_sdmx_file
 from sdmx_analyzer import analyze_sdmx_structure
