@@ -75,15 +75,16 @@ SSSOM is a mature, community-driven standard specifically designed for mapping b
 - **No custom tooling needed** - SSSOM CLI (`sssom parse`, `sssom convert`, `sssom validate`), Python API, and built-in converters between TSV↔JSON-LD↔RDF/TTL↔OWL formats
 ****
 **Example Structure:**
+
+The `curie_map` defines namespace prefixes for Compact URIs (CURIEs). Each prefix maps to a full URI base, allowing short identifiers like `SDMX:840` instead of full URIs like `https://sdmx.org/wp-content/uploads/CL_REF_AREA_1_0.xlsx#840`.
+
 ```tsv
 # curie_map:
-#   UN: "https://unstats.un.org/unsd/methodology/m49/"
 #   SDMX: "https://sdmx.org/wp-content/uploads/CL_REF_AREA_1_0.xlsx"
-#   ISO3166-1: "https://www.iso.org/iso-3166-country-codes.html"
 #   dcid: "https://datacommons.org/browser/"
 #   github: "https://github.com/"
-# mapping_set_id: "UN_SDMX_to_DataCommons_v1"
-# mapping_set_description: "UN M49 and SDMX mappings to DataCommons DCIDs"
+# mapping_set_id: "SDMX_REF_AREA_to_DataCommons_v1"
+# mapping_set_description: "SDMX REF_AREA codes to DataCommons DCIDs"
 # mapping_set_version: "1.0.0"
 # mapping_date: "2024-03-15"
 # creator_id: "github:rohitkumarbhagat"
@@ -93,6 +94,7 @@ subject_id	object_id	predicate_id	confidence	comment
 SDMX:840	dcid:country/USA	skos:exactMatch	1.0	United States
 SDMX:124	dcid:country/CAN	skos:exactMatch	1.0	Canada
 SDMX:826	dcid:country/GBR	skos:exactMatch	1.0	United Kingdom
+SDMX:150	dcid:Europe	skos:broadMatch	0.8	Europe region (broader than country)
 ```
 
 **Alternative Options Considered:**
