@@ -123,6 +123,7 @@ SSSOM is actively used by major biomedical and semantic web organizations includ
 - SSSOM Python Library & CLI Tools: https://github.com/mapping-commons/sssom-py
 - SSSOM CLI Documentation: https://mapping-commons.github.io/sssom-py/cli.html
 - SSSOM Tutorial: https://mapping-commons.github.io/sssom/tutorial/
+- SSSOM Project Template Generator: https://github.com/mapping-commons/mapping-commons-cookiecutter
 - LinkML (Schema Language): https://linkml.io/
 
 ## Recommendation
