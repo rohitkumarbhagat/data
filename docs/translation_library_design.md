@@ -23,11 +23,11 @@ Recommend a machine-readable, version-controlled mapping format that:
 
 ### SSSOM (Simple Standard for Sharing Ontological Mappings)
 
-**Why SSSOM is the optimal choice:**
+### Why SSSOM is the optimal choice:
 
 SSSOM is a mature, community-driven standard specifically designed for mapping between different ontologies and coding systems. It directly addresses all our core objectives:
 
-**Technical Advantages:**
+### Technical Advantages:
 - **Primary TSV format with multi-format support** - TSV is the canonical format (human-readable, Git diff-friendly), but SSSOM also supports JSON-LD, RDF/TTL, and Web Ontology Language(OWL) through converters
 - **Rich and extensible metadata** - 40+ optional fields for tracking provenance, confidence scores (0.0-1.0), versioning, and contributor attribution. Additionally supports custom fields through LinkML schema extension mechanism for organization-specific needs
   ```yaml
@@ -63,7 +63,7 @@ SSSOM is a mature, community-driven standard specifically designed for mapping b
   │   └── economic_indicators.sssom.tsv (1.5K mappings)
   ```
 
-**Alignment with Requirements:**
+### Alignment with Requirements:
 - **Bidirectional mappings** - Native support via predicate types (skos:exactMatch, skos:broadMatch)
   ```tsv
   # Exact match (bidirectional by nature)
@@ -96,7 +96,7 @@ SSSOM is a mature, community-driven standard specifically designed for mapping b
   SDMX:810    dcid:country/RU  skos:exactMatch   1992           null
   ```
 
-**Example Structure:**
+### Example Structure:
 
 The `curie_map` defines namespace prefixes for Compact URIs (CURIEs). Each prefix maps to a full URI base, allowing short identifiers like `SDMX:840` instead of full URIs like `https://sdmx.org/wp-content/uploads/CL_REF_AREA_1_0.xlsx#840`.
 
@@ -126,12 +126,12 @@ SDMX:826	dcid:country/GBR	skos:exactMatch	1.0	United Kingdom
 SDMX:150	dcid:Europe	skos:broadMatch	0.8	Europe region (broader than country)
 ```
 
-**Real-world adoption:**
+### Real-world adoption:
 SSSOM is actively used by major biomedical and semantic web organizations including the **Open Biological and Biomedical Ontology (OBO) Foundry**, **Monarch Initiative** for disease-gene mappings, **EMBL-EBI** for ontology alignment, and various **NIH-funded projects** for clinical terminology mappings. The standard has proven scalability with deployments handling millions of mappings between medical coding systems like SNOMED CT, ICD, and MeSH.
 
 SSSOM provides the ideal balance of simplicity, functionality, and existing ecosystem support.
 
-**Alternative Options Considered:**
+### Alternative Options Considered:
 - **Custom JSON** - Would require building tooling from scratch
 - **Plain CSV** - Lacks metadata and validation capabilities
 - **Protocol Buffers** - Not human-readable, poor Git integration
@@ -141,7 +141,7 @@ SSSOM provides the ideal balance of simplicity, functionality, and existing ecos
   - Example: One SDMX concept like "TRANSACTION:B1GQ" (GDP) → multiple Data Commons properties (measuredProperty: grossDomesticProduct, populationType: EconomicActivity)
   - Powerful for advanced use cases but overkill for initial simple 1:1 mappings
 
-**References:**
+### References:
 - SSSOM Specification: https://mapping-commons.github.io/sssom/
 - SSSOM Python Library & CLI Tools: https://github.com/mapping-commons/sssom-py
 - SSSOM CLI Documentation: https://mapping-commons.github.io/sssom-py/cli.html
@@ -154,7 +154,7 @@ SSSOM provides the ideal balance of simplicity, functionality, and existing ecos
 
 **Adopt SSSOM as the primary mapping format** for the Data Commons translation library. Begin with straightforward SDMX-to-DCID mappings covering geographical codes and statistical variables where direct 1:1 relationships exist.
 
-**Implementation Roadmap:**
+### Implementation Roadmap:
 - **Phase 1**: Deploy SSSOM for simple mappings (geo codes, basic statistical variables) leveraging its TSV format, Python tooling, and community ecosystem
 - **Phase 2**: For complex transformations where single SDMX concepts must split into multiple Data Commons concepts, evaluate SDMX Structure Maps with Representation Maps
 
