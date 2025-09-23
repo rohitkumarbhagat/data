@@ -29,24 +29,27 @@ SSSOM is a mature, community-driven standard specifically designed for mapping b
 
 **Technical Advantages:**
 - **Primary TSV format with multi-format support** - TSV is the canonical format (human-readable, Git diff-friendly), but SSSOM also supports JSON-LD, RDF/TTL, and Web Ontology Language(OWL) through converters
-- **Rich metadata support** - 40+ optional fields for tracking provenance, confidence scores (0.0-1.0), versioning, and contributor attribution
+- **Rich and extensible metadata** - 40+ optional fields for tracking provenance, confidence scores (0.0-1.0), versioning, and contributor attribution. Additionally supports custom fields through LinkML schema extension mechanism for organization-specific needs
   ```yaml
   mapping_set_id: "SDMX_to_DataCommons_v2"
   mapping_set_description: "SDMX/CL_REF_AREA/1.0 to DataCommons DCIDs"
   mapping_set_version: "2.0.1"
   mapping_date: "2024-03-15"
-  creator_id: "rohitrkumar"
+  creator_id: "github:rohitkumarbhagat"
   subject_source: "SDMX:CL_REF_AREA:1.0"
   object_source: "DataCommons:2024.01"
   mapping_justification: "Map Standard SDMX places codes to Data Commons"
-  # Custom DataCommons-specific fields
-  dc_review_status: "approved"
-  dc_mapping_priority: "high"
-  dc_last_validated: "2024-03-10"
+  # Custom DataCommons-specific extensions via LinkML
+  extension_definitions:
+    - slot_name: "ext_dc_review_status"
+    - slot_name: "ext_dc_mapping_priority"
+    - slot_name: "ext_dc_last_validated"
+  ext_dc_review_status: "approved"
+  ext_dc_mapping_priority: "high"
+  ext_dc_last_validated: "2024-03-10"
   ```
 - **Mature Python tooling** - `sssom-py` library provides parsing, validation, conversion, and batch processing out-of-the-box
 - **Formal schema validation** - LinkML-based schema ensures data integrity, field constraints, and consistent structure across all mapping files (https://github.com/mapping-commons/sssom/blob/master/src/sssom_schema/schema/sssom_schema.yaml)
-- **Extensible metadata** - Supports custom fields for organization-specific needs while maintaining core standard compatibility
 - **Scalable architecture** - Handles millions of mappings, supports modular file organization and cross-references
   ```
   mappings/
@@ -73,7 +76,7 @@ SSSOM is a mature, community-driven standard specifically designed for mapping b
 - **Community contributions** - TSV format makes PR reviews straightforward; metadata tracks contributors
 - **Error handling** - Built-in confidence scoring and validation schemas
 - **No custom tooling needed** - SSSOM CLI (`sssom parse`, `sssom convert`, `sssom validate`), Python API, and built-in converters between TSV↔JSON-LD↔RDF/TTL↔OWL formats
-****
+
 **Example Structure:**
 
 The `curie_map` defines namespace prefixes for Compact URIs (CURIEs). Each prefix maps to a full URI base, allowing short identifiers like `SDMX:840` instead of full URIs like `https://sdmx.org/wp-content/uploads/CL_REF_AREA_1_0.xlsx#840`.
@@ -90,6 +93,13 @@ The `curie_map` defines namespace prefixes for Compact URIs (CURIEs). Each prefi
 # creator_id: "github:rohitkumarbhagat"
 # subject_source: "SDMX:CL_REF_AREA:1.0"
 # object_source: "DataCommons:2024.01"
+# extension_definitions:
+#   - slot_name: "ext_dc_review_status"
+#   - slot_name: "ext_dc_mapping_priority"
+#   - slot_name: "ext_dc_last_validated"
+# ext_dc_review_status: "approved"
+# ext_dc_mapping_priority: "high"
+# ext_dc_last_validated: "2024-03-10"
 subject_id	object_id	predicate_id	confidence	comment
 SDMX:840	dcid:country/USA	skos:exactMatch	1.0	United States
 SDMX:124	dcid:country/CAN	skos:exactMatch	1.0	Canada
