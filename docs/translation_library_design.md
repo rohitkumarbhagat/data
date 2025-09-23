@@ -136,6 +136,10 @@ SSSOM provides the ideal balance of simplicity, functionality, and existing ecos
 - **Plain CSV** - Lacks metadata and validation capabilities
 - **Protocol Buffers** - Not human-readable, poor Git integration
 - **RDF/OWL** - Too complex for contributors, steep learning curve
+- **SDMX Structure Maps** - XML-based transformation blueprints for complex statistical data mappings with the following characteristics:
+  - Designed for cases where single SDMX concepts split into multiple target concepts
+  - Example: One SDMX concept like "TRANSACTION:B1GQ" (GDP) → multiple Data Commons properties (measuredProperty: grossDomesticProduct, populationType: EconomicActivity)
+  - Powerful for advanced use cases but overkill for initial simple 1:1 mappings
 
 **References:**
 - SSSOM Specification: https://mapping-commons.github.io/sssom/
@@ -144,7 +148,14 @@ SSSOM provides the ideal balance of simplicity, functionality, and existing ecos
 - SSSOM Tutorial: https://mapping-commons.github.io/sssom/tutorial/
 - SSSOM Project Template Generator: https://github.com/mapping-commons/mapping-commons-cookiecutter
 - LinkML (Schema Language): https://linkml.io/
+- SDMX Structure Maps Documentation: https://fmrwiki.sdmxcloud.org/Structure_Map
 
 ## Recommendation
 
-[TO BE ADDED: Final recommendation based on the analysis above, with specific implementation details including file structure, naming conventions, validation schemas, and example mappings.]
+**Adopt SSSOM as the primary mapping format** for the Data Commons translation library. Begin with straightforward SDMX-to-DCID mappings covering geographical codes and statistical variables where direct 1:1 relationships exist.
+
+**Implementation Roadmap:**
+- **Phase 1**: Deploy SSSOM for simple mappings (geo codes, basic statistical variables) leveraging its TSV format, Python tooling, and community ecosystem
+- **Phase 2**: For complex transformations where single SDMX concepts must split into multiple Data Commons concepts, evaluate SDMX Structure Maps with Representation Maps
+
+This approach balances immediate implementation needs with future scalability, starting simple with proven tooling while preserving options for advanced use cases.
