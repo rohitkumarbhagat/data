@@ -76,6 +76,25 @@ SSSOM is a mature, community-driven standard specifically designed for mapping b
 - **Community contributions** - TSV format makes PR reviews straightforward; metadata tracks contributors
 - **Error handling** - Built-in confidence scoring and validation schemas
 - **No custom tooling needed** - SSSOM CLI (`sssom parse`, `sssom convert`, `sssom validate`), Python API, and built-in converters between TSV↔JSON-LD↔RDF/TTL↔OWL formats
+- **Many-to-many cardinality support** - Native n:n relationships through multiple rows with same subject or object
+  ```tsv
+  # One-to-many: Single SDMX Europe code maps to both geographic and political entities
+  SDMX:150  dcid:Europe         skos:broadMatch   0.8
+  SDMX:150  dcid:EuropeanUnion  skos:narrowMatch  0.7
+  ```
+- **Conditional mappings via extension slots** - Temporal validity using custom metadata fields
+  ```yaml
+  # Extension slots defined in header
+  extension_definitions:
+    - slot_name: "ext_valid_from"
+    - slot_name: "ext_valid_to"
+  ```
+  ```tsv
+  # Same SDMX code maps to different countries based on time period
+  subject_id  object_id        predicate_id      ext_valid_from  ext_valid_to
+  SDMX:810    dcid:country/SU  skos:exactMatch   1922           1991
+  SDMX:810    dcid:country/RU  skos:exactMatch   1992           null
+  ```
 
 **Example Structure:**
 
