@@ -28,13 +28,48 @@ Recommend a machine-readable, version-controlled mapping format that:
 SSSOM is a mature, community-driven standard specifically designed for mapping between different ontologies and coding systems. It directly addresses all our core objectives:
 
 **Technical Advantages:**
-- **Primary TSV format with multi-format support** - TSV is the canonical format (human-readable, Git diff-friendly), but SSSOM also supports JSON-LD, RDF/TTL, and OWL through converters
+- **Primary TSV format with multi-format support** - TSV is the canonical format (human-readable, Git diff-friendly), but SSSOM also supports JSON-LD, RDF/TTL, and Web Ontology Language(OWL) through converters
 - **Rich metadata support** - 40+ optional fields for tracking provenance, confidence scores (0.0-1.0), versioning, and contributor attribution
+  ```yaml
+  mapping_set_id: "SDMX_to_DataCommons_v2"
+  mapping_set_description: "SDMX/CL_REF_AREA/1.0 to DataCommons DCIDs"
+  mapping_set_version: "2.0.1"
+  mapping_date: "2024-03-15"
+  creator_id: "rohitrkumar"
+  subject_source: "SDMX:CL_REF_AREA:1.0"
+  object_source: "DataCommons:2024.01"
+  mapping_justification: "Map Standard SDMX places codes to Data Commons"
+  # Custom DataCommons-specific fields
+  dc_review_status: "approved"
+  dc_mapping_priority: "high"
+  dc_last_validated: "2024-03-10"
+  ```
 - **Mature Python tooling** - `sssom-py` library provides parsing, validation, conversion, and batch processing out-of-the-box
+- **Formal schema validation** - LinkML-based schema ensures data integrity, field constraints, and consistent structure across all mapping files (https://github.com/mapping-commons/sssom/blob/master/src/sssom_schema/schema/sssom_schema.yaml)
+- **Extensible metadata** - Supports custom fields for organization-specific needs while maintaining core standard compatibility
 - **Scalable architecture** - Handles millions of mappings, supports modular file organization and cross-references
+  ```
+  mappings/
+  ├── world_bank/
+  │   ├── indicators.sssom.tsv (3K mappings)
+  │   └── country_codes.sssom.tsv (217 mappings)
+  ├── un/
+  │   ├── sdg_indicators.sssom.tsv (232 mappings)
+  │   └── m49_geo_codes.sssom.tsv (249 mappings)
+  ├── oecd/
+  │   └── economic_indicators.sssom.tsv (1.5K mappings)
+  ```
 
 **Alignment with Requirements:**
 - **Bidirectional mappings** - Native support via predicate types (skos:exactMatch, skos:broadMatch)
+  ```tsv
+  # Exact match (bidirectional by nature)
+  UN:840  dcid:country/USA  skos:exactMatch  1.0
+  # Hierarchical with confidence
+  UN:019  dcid:northamerica  skos:broadMatch  0.85
+  # Close but not exact match
+  WHO:TB  dcid:Tuberculosis  skos:closeMatch  0.9
+  ```
 - **Community contributions** - TSV format makes PR reviews straightforward; metadata tracks contributors
 - **Error handling** - Built-in confidence scoring and validation schemas
 - **No custom tooling needed** - SSSOM CLI (`sssom parse`, `sssom convert`, `sssom validate`), Python API, and built-in converters between TSV↔JSON-LD↔RDF/TTL↔OWL formats
@@ -54,6 +89,9 @@ ISO3166-1:US	dcid:country/USA	skos:exactMatch	1.0	ISO country code
 - **RDF/OWL** - Too complex for contributors, steep learning curve
 
 SSSOM provides the ideal balance of simplicity, functionality, and existing ecosystem support.
+
+**Real-world adoption:**
+SSSOM is actively used by major biomedical and semantic web organizations including the **Open Biological and Biomedical Ontology (OBO) Foundry**, **Monarch Initiative** for disease-gene mappings, **EMBL-EBI** for ontology alignment, and various **NIH-funded projects** for clinical terminology mappings. The standard has proven scalability with deployments handling millions of mappings between medical coding systems like SNOMED CT, ICD, and MeSH.
 
 **References:**
 - SSSOM Specification: https://mapping-commons.github.io/sssom/
