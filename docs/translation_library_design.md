@@ -126,16 +126,16 @@ SDMX:826	dcid:country/GBR	skos:exactMatch	1.0	United Kingdom
 SDMX:150	dcid:Europe	skos:broadMatch	0.8	Europe region (broader than country)
 ```
 
+**Real-world adoption:**
+SSSOM is actively used by major biomedical and semantic web organizations including the **Open Biological and Biomedical Ontology (OBO) Foundry**, **Monarch Initiative** for disease-gene mappings, **EMBL-EBI** for ontology alignment, and various **NIH-funded projects** for clinical terminology mappings. The standard has proven scalability with deployments handling millions of mappings between medical coding systems like SNOMED CT, ICD, and MeSH.
+
+SSSOM provides the ideal balance of simplicity, functionality, and existing ecosystem support.
+
 **Alternative Options Considered:**
 - **Custom JSON** - Would require building tooling from scratch
 - **Plain CSV** - Lacks metadata and validation capabilities
 - **Protocol Buffers** - Not human-readable, poor Git integration
 - **RDF/OWL** - Too complex for contributors, steep learning curve
-
-SSSOM provides the ideal balance of simplicity, functionality, and existing ecosystem support.
-
-**Real-world adoption:**
-SSSOM is actively used by major biomedical and semantic web organizations including the **Open Biological and Biomedical Ontology (OBO) Foundry**, **Monarch Initiative** for disease-gene mappings, **EMBL-EBI** for ontology alignment, and various **NIH-funded projects** for clinical terminology mappings. The standard has proven scalability with deployments handling millions of mappings between medical coding systems like SNOMED CT, ICD, and MeSH.
 
 **References:**
 - SSSOM Specification: https://mapping-commons.github.io/sssom/
