@@ -342,13 +342,13 @@ class DataAnalyzer:
         return output_file
 
     def _read_dataset_content(self) -> str:
-        """Read the first few lines of the dataset for analysis."""
+        """Read the first 100 lines of the dataset for comprehensive analysis."""
         dataset_file = self._config.data_config.input_data[0]
         try:
             with open(dataset_file, 'r', encoding='utf-8') as f:
                 lines = []
                 for i, line in enumerate(f):
-                    if i >= 20:  # Limit to first 20 lines
+                    if i >= 100:  # Limit to first 100 lines
                         break
                     lines.append(line.rstrip())
                 return '\n'.join(lines)
