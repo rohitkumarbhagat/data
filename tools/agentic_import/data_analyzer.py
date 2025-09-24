@@ -308,26 +308,13 @@ class DataAnalyzer:
         env = Environment(loader=FileSystemLoader(template_dir))
         template = env.get_template('analyzer_prompt.j2')
 
-        # Read dataset content (limited to first few lines)
-        dataset_content = self._read_dataset_content()
-
-        # Read metadata contents if provided
-        metadata_contents = {}
-        for metadata_file in self._config.data_config.input_metadata:
-            with open(metadata_file, 'r', encoding='utf-8') as f:
-                metadata_contents[metadata_file] = f.read()
-
         template_vars = {
             'input_data':
                 self._config.data_config.input_data[0],
             'input_metadata':
                 self._config.data_config.input_metadata,
-            'metadata_contents':
-                metadata_contents,
             'dataset_type':
-                'sdmx' if self._config.data_config.is_sdmx_dataset else 'csv',
-            'dataset_content':
-                dataset_content
+                'sdmx' if self._config.data_config.is_sdmx_dataset else 'csv'
         }
 
         # Render template with these variables
@@ -341,20 +328,6 @@ class DataAnalyzer:
         logging.info("Generated prompt written to: %s", output_file)
         return output_file
 
-    def _read_dataset_content(self) -> str:
-        """Read the first 100 lines of the dataset for comprehensive analysis."""
-        dataset_file = self._config.data_config.input_data[0]
-        try:
-            with open(dataset_file, 'r', encoding='utf-8') as f:
-                lines = []
-                for i, line in enumerate(f):
-                    if i >= 100:  # Limit to first 100 lines
-                        break
-                    lines.append(line.rstrip())
-                return '\n'.join(lines)
-        except Exception as e:
-            logging.error("Error reading dataset file: %s", str(e))
-            return f"[Error reading file: {str(e)}]"
 
     def _post_process_output(self, log_file: str) -> str:
         """Extract JSON from gemini output and save to file."""

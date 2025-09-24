@@ -157,30 +157,156 @@ Use these categories to classify your dataset's domain and help Data Commons org
 9. **Crime** - Crime incidents, law enforcement, incarceration
 10. **Transportation** - Commute, vehicles, transport modes
 
+{% if dataset_type == 'sdmx' -%}
+## SDMX to Data Commons Conceptual Mapping
+
+Understanding how SDMX (Statistical Data and Metadata eXchange) structures map to Data Commons concepts for semantic analysis:
+
+### SDMX Structure Overview
+
+**SDMX Components**:
+- **Dimensions**: Categorize observations (TIME_PERIOD, REF_AREA, INDICATOR, SECTOR, etc.)
+- **Attributes**: Provide observation metadata (UNIT_MEASURE, OBS_STATUS, UNIT_MULT, etc.)
+- **Measures**: The statistical values being observed (OBS_VALUE)
+- **Codelists**: Define allowed values and their semantic meanings for dimensions/attributes
+
+### Mapping SDMX to Data Commons Concepts
+
+#### Dimensions → StatVar Constraints
+SDMX dimensions typically become StatVar constraint properties:
+- **REF_AREA**: Geographic constraint (maps to observationAbout for place)
+- **INDICATOR/SERIES**: Determines measuredProperty and populationType
+- **SECTOR**: Economic sector constraint
+- **AGE_GROUP**: Age constraint for demographic data
+- **SEX**: Gender constraint
+- **TIME_PERIOD**: Temporal reference (maps to observationDate)
+
+#### Attributes → Observation Properties
+SDMX attributes become observation-level properties:
+- **UNIT_MEASURE**: Maps to unit property (USDollar, Percent, Euro, Index)
+- **TIME_FORMAT/FREQ**: Maps to observationPeriod (P1Y=yearly, P3M=quarterly, P1M=monthly)
+- **OBS_STATUS**: Data quality indicators (M=missing, E=estimated, etc.)
+- **UNIT_MULT**: Maps to scalingFactor (3=thousands, 6=millions, 9=billions)
+
+#### Standard SDMX Patterns
+- **Geographic Codes**: ISO country codes (USA→country/USA), regional identifiers
+- **Time Periods**:
+  - Annual: YYYY format (2023)
+  - Quarterly: YYYY-Q# format (2023-Q1) → maps to end of quarter
+  - Monthly: YYYY-MM format (2023-01)
+- **Missing Values**: M, NA, ":", "-" indicate missing or unavailable data
+- **Currency Units**: USD→USDollar, EUR→Euro, etc.
+
+### Extracting Semantic Context from SDMX Metadata
+
+**Key Metadata Elements**: Look for `<common:name>` and `<common:description>` elements:
+- **Dataflow names**: Indicate dataset purpose and scope
+- **Codelist descriptions**: Explain what dimension values represent
+- **Concept descriptions**: Clarify measurement types and constraints
+- **Code descriptions**: Define specific values within codelists
+
+**Usage for Categorization**: Use this semantic information to:
+- Understand what each dimension constrains
+- Determine appropriate Data Commons property mappings
+- Assess confidence levels for column categorizations
+- Generate meaningful descriptions for each column's role
+
+### SDMX Missing Value Handling
+Standard SDMX missing value codes and their meanings:
+- **M**: Missing value - data not available
+- **NA**: Not applicable - concept doesn't apply
+- **":" or "-"**: No data reported
+- **E**: Estimated value
+- **P**: Provisional data
+
+**Analysis Approach**: These should be noted as observation attributes affecting data quality, not as constraints on the StatVar definition.
+
+{%- endif %}
+
 # YOUR TASK
 
 Analyze the provided dataset and generate a comprehensive understanding document in JSON format. This is Phase 1 of a two-phase import process - focus ONLY on understanding the data semantically, NOT on implementation details.
 
-# INPUT DATA AND CONTEXT
+# WORKFLOW & INSTRUCTIONS
 
-## Dataset File
-**Path:** {{ input_data }}
-**Type:** {{ dataset_type|upper }}
+## Step 1: Read and Analyze Input Files
 
-## Dataset Content
-```csv
-{{ dataset_content }}
+- **Primary Data File**: Read the input data file at the path specified in INPUT DATA section
+- **File Analysis Approach**:
+  - For CSV: Analyze first 100-200 rows to understand structure, headers, data types, and value patterns
+  - For SDMX: Read the entire file to understand data patterns and structure
+  - Identify column headers, data types, value ranges, and semantic patterns
+  - Note any missing values, special codes, or formatting patterns
+
+## Step 2: Read and Analyze Metadata Files (if provided)
+
+{% if dataset_type == 'sdmx' -%}
+- **SDMX Metadata Analysis**: Read SDMX metadata files to extract:
+  - Data structure definitions (DSD) and their semantic meaning
+  - Codelists and their descriptions for dimension values
+  - Dimension, attribute, and measure definitions
+  - Semantic context from `<common:name>` and `<common:description>` elements
+  - Constraint definitions if present (focus only on codes specified in constraints)
+{%- endif %}
+- **General Metadata**: Extract semantic meaning from any metadata files
+- **Context Building**: Use metadata to enrich understanding of data columns and their meanings
+- **Documentation**: Note any ambiguous terms that need clarification
+
+## Step 3: Perform Web Searches for Enrichment
+
+- **When to Search**: Encounter unfamiliar acronyms, technical terms, or domain-specific concepts
+- **Search Targets**:
+  - Industry classification systems (NACE, ISIC, CPC, etc.)
+  - Geographic coding systems beyond standard country codes
+  - Statistical methodologies and measurement concepts
+  - Technical acronyms or domain-specific jargon
+- **Documentation**: Record search terms and findings in enrichments section
+
+## Step 4: Generate Comprehensive JSON Analysis
+
+- Follow the exact **OUTPUT FORMAT** specification below
+- Ensure **every column** is analyzed with all 5 categorizations
+- Provide **confidence scores and reasoning** for each categorization
+- Document **all web searches** performed and their findings
+- Include **next steps** for any confidence scores below 0.7
+
+# INPUT DATA FOR THIS RUN
+
+{% if dataset_type == 'sdmx' -%}
+**🚨 SDMX DATASET DETECTED 🚨**
+
+This is an SDMX (Statistical Data and Metadata eXchange) dataset with rich metadata.
+**CRITICAL**: Follow all SDMX-specific guidelines and use metadata for semantic mapping.
+
+{%- endif %}
+
+## Files to Analyze
+
+```json
+{
+  "input_data": "{{ input_data }}",
+  "input_metadata": {{ input_metadata | tojson }},
+  "dataset_type": "{{ dataset_type }}"
+}
 ```
 
-{% if input_metadata %}
-## Metadata Files
-{% for metadata_file in input_metadata %}
-### {{ metadata_file }}
-```
-{{ metadata_contents[metadata_file] }}
-```
-{% endfor %}
-{% endif %}
+## Instructions for File Analysis
+
+1. **Read the data file** at the path specified in `input_data`
+2. **Read any metadata files** listed in `input_metadata` (if provided)
+3. **Analyze the complete file contents** to understand structure, patterns, and semantic meaning
+4. **Use file contents** to perform comprehensive dataset understanding analysis
+
+{% if dataset_type == 'sdmx' -%}
+
+### SDMX-Specific Analysis Instructions
+
+- **Extract Data Structure**: Read SDMX metadata to understand dimensions, attributes, and measures
+- **Parse Codelists**: Extract semantic meaning from code definitions and descriptions
+- **Identify Constraints**: Check for structure constraints that limit which codes are used
+- **Build Context**: Use `<common:name>` and `<common:description>` elements for semantic understanding
+
+{%- endif %}
 
 # ANALYSIS REQUIREMENTS
 
@@ -243,11 +369,34 @@ Suggest how column values map to Data Commons properties:
 - Unit mappings (e.g., "unit" -> "USDollar")
 
 ## 3. Enrichments and Web Searches
-Document any terms that would benefit from web searches:
-- Technical jargon or acronyms
-- Domain-specific concepts
-- Ambiguous identifiers
-- Industry-specific classifications
+
+Perform targeted web searches to clarify ambiguous terms and enrich dataset understanding:
+
+### When to Perform Web Searches
+- **Technical Acronyms**: Unknown abbreviations (e.g., NACE, ISIC, CPC, COICOP)
+- **Domain Jargon**: Industry-specific terminology or measurement concepts
+- **Geographic Codes**: Non-standard place identifiers or regional coding systems
+- **Classification Systems**: Industry, product, or demographic classification schemes
+- **Statistical Concepts**: Unfamiliar measurement methodologies or data collection methods
+- **Metadata Terms**: Unclear concepts in dataset documentation or metadata files
+
+### Search Strategy and Documentation
+- **Search Terms**: Use precise, focused queries (e.g., "NACE classification system", "ISIC industry codes")
+- **Authoritative Sources**: Prioritize official statistical organizations, government agencies, international standards bodies
+- **Context Building**: Look for definitions, code lists, hierarchical structures, and usage examples
+- **Documentation**: Record both the search term used and key findings discovered
+
+### Enrichment Applications
+- **Categorization Confidence**: Use search results to increase confidence in column role assignments
+- **Property Mappings**: Identify appropriate Data Commons properties based on discovered definitions
+- **Semantic Context**: Build richer descriptions using authoritative explanations
+- **Validation**: Verify assumptions about data meaning through official documentation
+
+### Example Search Scenarios
+- "NACE Rev.2 codes" → European industry classification system
+- "ISO 3166 country codes" → Standard country identifier format
+- "COICOP classification" → Classification of Individual Consumption by Purpose
+- "CPI methodology" → Consumer Price Index measurement approach
 
 # OUTPUT FORMAT
 
