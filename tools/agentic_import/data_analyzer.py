@@ -21,7 +21,6 @@ import platform
 import re
 import shutil
 import subprocess
-import sys
 from datetime import datetime
 from dataclasses import dataclass
 from typing import List
@@ -270,27 +269,27 @@ class DataAnalyzer:
     def _run_subprocess(self, command: str) -> int:
         """Run a subprocess command with real-time output streaming."""
         try:
-            process = subprocess.Popen(
-                command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,  # Combine stderr with stdout
-                shell=True,  # Using shell to support pipe operations
-                encoding='utf-8',
-                errors='replace',
-                bufsize=1,  # Line buffered
-                universal_newlines=True)
+            with subprocess.Popen(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,  # Combine stderr with stdout
+                    shell=True,  # Using shell to support pipe operations
+                    encoding='utf-8',
+                    errors='replace',
+                    bufsize=1,  # Line buffered
+                    universal_newlines=True) as process:
 
-            # Stream output in real-time
-            while True:
-                output = process.stdout.readline()
-                if output == '' and process.poll() is not None:
-                    break
-                if output:
-                    print(output.rstrip())  # Print without extra newline
+                # Stream output in real-time
+                while True:
+                    output = process.stdout.readline()
+                    if output == '' and process.poll() is not None:
+                        break
+                    if output:
+                        print(output.rstrip())  # Print without extra newline
 
-            # Wait for process to complete and get return code
-            return_code = process.wait()
-            return return_code
+                # Wait for process to complete and get return code
+                return_code = process.wait()
+                return return_code
 
         except Exception as e:
             logging.error("Error running subprocess: %s", str(e))
@@ -322,17 +321,16 @@ class DataAnalyzer:
 
         # Write rendered prompt to run directory
         output_file = os.path.join(self._run_dir, 'analyzer_prompt.md')
-        with open(output_file, 'w') as f:
+        with open(output_file, 'w', encoding='utf-8') as f:
             f.write(rendered_prompt)
 
         logging.info("Generated prompt written to: %s", output_file)
         return output_file
 
-
     def _post_process_output(self, log_file: str) -> str:
         """Extract JSON from gemini output and save to file."""
         # Read the log file
-        with open(log_file, 'r') as f:
+        with open(log_file, 'r', encoding='utf-8') as f:
             content = f.read()
 
         # Extract JSON between ```json and ``` markers
@@ -346,12 +344,12 @@ class DataAnalyzer:
         try:
             analysis_data = json.loads(matches[-1])  # Use last match
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in gemini output: {e}")
+            raise ValueError(f"Invalid JSON in gemini output: {e}") from e
 
         # Save to output directory
         output_file = os.path.join(self._working_dir, self._output_dir,
                                    'phase1_analysis.json')
-        with open(output_file, 'w') as f:
+        with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(analysis_data, f, indent=2)
 
         logging.info(f"Analysis saved to: {output_file}")
