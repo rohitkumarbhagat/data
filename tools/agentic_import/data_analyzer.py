@@ -236,8 +236,9 @@ class DataAnalyzer:
         exit_code = self._run_subprocess(gemini_command)
         if exit_code == 0:
             logging.info("Gemini CLI completed successfully")
-            # Post-process the output to extract JSON
-            self._post_process_output(log_file)
+            expected_output = os.path.join(self._working_dir, self._output_dir,
+                                         f"{self._output_basename}_analysis.json")
+            logging.info(f"Analysis should be saved at: {expected_output}")
         else:
             logging.error("Gemini CLI failed with exit code: %d", exit_code)
             raise RuntimeError(
@@ -313,7 +314,11 @@ class DataAnalyzer:
             'input_metadata':
                 self._config.data_config.input_metadata,
             'dataset_type':
-                'sdmx' if self._config.data_config.is_sdmx_dataset else 'csv'
+                'sdmx' if self._config.data_config.is_sdmx_dataset else 'csv',
+            'output_dir':
+                self._output_dir,
+            'output_basename':
+                self._output_basename
         }
 
         # Render template with these variables
@@ -327,33 +332,6 @@ class DataAnalyzer:
         logging.info("Generated prompt written to: %s", output_file)
         return output_file
 
-    def _post_process_output(self, log_file: str) -> str:
-        """Extract JSON from gemini output and save to file."""
-        # Read the log file
-        with open(log_file, 'r', encoding='utf-8') as f:
-            content = f.read()
-
-        # Extract JSON between ```json and ``` markers
-        json_pattern = r'```json\s*(.*?)\s*```'
-        matches = re.findall(json_pattern, content, re.DOTALL)
-
-        if not matches:
-            raise ValueError("No JSON output found in gemini response")
-
-        # Parse and validate JSON
-        try:
-            analysis_data = json.loads(matches[-1])  # Use last match
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in gemini output: {e}") from e
-
-        # Save to output directory
-        output_file = os.path.join(self._working_dir, self._output_dir,
-                                   'phase1_analysis.json')
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(analysis_data, f, indent=2)
-
-        logging.info(f"Analysis saved to: {output_file}")
-        return output_file
 
 
 def prepare_config() -> DataAnalyzerConfig:
