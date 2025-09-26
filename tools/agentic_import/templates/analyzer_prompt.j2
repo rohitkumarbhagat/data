@@ -251,6 +251,13 @@ Suggest how column values map to Data Commons properties:
 - Constraint mappings (e.g., "gender" -> "Male")
 - Unit mappings (e.g., "unit" -> "USDollar")
 
+**IMPORTANT**: A single input column can map to multiple Data Commons properties when it represents a compound constraint.
+
+Examples:
+- Column "ADULT_MALE" should generate TWO mappings: {"property": "gender", "value": "Male"} AND {"property": "age", "value": "[18+ Years]"}
+- Column "FEMALE_25_34" should generate TWO mappings: {"property": "gender", "value": "Female"} AND {"property": "age", "value": "[25 34 Years]"}
+- Column "HighSchool_White" should generate TWO mappings: {"property": "educationalAttainment", "value": "HighSchoolGraduate"} AND {"property": "race", "value": "WhiteAlone"}
+
 ## 3. Enrichments and Web Searches
 
 Perform targeted web searches to clarify ambiguous terms and enrich dataset understanding:
@@ -351,7 +358,8 @@ You MUST generate your output as a valid JSON object following this exact schema
           "property": "property_name",
           "value": "property_value or {column_value}"
         }
-      ]
+      ],
+      "notes": "A single column can have multiple mappings when it represents compound constraints. Example: ADULT_MALE maps to both gender:Male and age:[18+ Years]"
     }
   ]
 }
