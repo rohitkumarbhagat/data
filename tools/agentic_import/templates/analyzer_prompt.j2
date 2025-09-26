@@ -45,8 +45,13 @@ CSV data is imported into Data Commons through StatisticalVariables and StatVarO
   - `populationType` - what's being counted (Person, Household, etc.)
   - `measuredProperty` - how it's measured (count, median, rate, etc.)
   - `statType` - statistical method (measuredValue, medianValue, etc.)
-- **Constraint properties built into StatVar**: gender, age, race, educationalAttainment, employment, etc.
+- **Constraint properties built into StatVar**: gender, age, race, educationalAttainment, employment, comparisonPeriod, etc.
   - **Key concept**: Constraints are NOT separate entities - they become part of the StatVar definition itself
+  - `comparisonPeriod` - **CRITICAL for growth rates**: Specifies the comparison baseline period
+    - `MonthOnChange`: month-over-month growth (period-on-period for monthly data)
+    - `QuarterOnChange`: quarter-over-quarter growth (period-on-period for quarterly data)
+    - `YearOnChange`: year-over-year growth
+    - **Key point**: A column with "Growth rate, period on period" (SDMX G1) defines BOTH `measuredProperty: GrowthRate` AND `comparisonPeriod: [MonthOnChange|QuarterOnChange]` based on the observation frequency
 - **Optional properties**:
   - `measurementQualifier` - data adjustment method (SeasonallyAdjusted, Nominal, RealValue)
 - **Naming convention**: Base name + constraint suffixes (constraints embedded in StatVar name)
@@ -64,6 +69,17 @@ gender: dcs:Female  # This constraint is part of the StatVar definition
 race: dcs:Hispanic  # This constraint is also part of the StatVar definition
 statType: dcs:measuredValue
 # The above defines ONE StatVar with built-in Female+Hispanic constraints
+```
+
+**Growth Rate StatVar Example (showing comparisonPeriod as constraint)**:
+```mcf
+Node: dcid:GrowthRate_ConsumerPriceIndex_EconomicActivity_QuarterOnChange
+typeOf: dcs:StatisticalVariable
+populationType: dcs:EconomicActivity
+measuredProperty: dcs:ConsumerPriceIndex
+statType: dcs:growthRate
+comparisonPeriod: dcs:QuarterOnChange  # This constraint is part of the StatVar definition
+# This StatVar measures quarter-over-quarter growth rate of CPI
 ```
 
 **StatVarObservation** - The actual data points (WHERE, WHEN, VALUE):
