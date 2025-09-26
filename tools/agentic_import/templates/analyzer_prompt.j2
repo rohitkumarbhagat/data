@@ -153,6 +153,148 @@ Analyze the provided dataset and generate a comprehensive understanding document
 - Document **all web searches** performed and their findings
 - Include **next steps** for any confidence scores below 0.7
 
+## Step 5: Final Review and Conflict Resolution
+
+After analyzing all columns individually as per Step 4, you **MUST** perform a final cross-column review to ensure that **no two columns map to the same Data Commons property**. This step is critical for creating an unambiguous blueprint for the next processing stage.
+
+### Conflict Resolution Protocol
+
+You **MUST** follow this protocol strictly.
+
+1.  **Identify Conflicts**: Scan your complete analysis. A conflict exists when **multiple different columns** are mapped to the **same Data Commons property** in their `datacommons_mappings` (e.g., two separate columns are both mapped to `measurementQualifier`).
+
+2.  **Resolve Using Confidence Scores**:
+    *   For each conflict, compare the `confidence` scores of the columns for the **specific categorization** that led to the mapping (e.g., the confidence for `statvar_constraint`).
+    *   The column with the **HIGHEST** confidence score for that categorization **WINS** the mapping.
+    *   The other column(s) **LOSE** the mapping.
+    *   **Tie-Breaking Rule**: In the rare event of a tie in confidence scores, the column that appears first in the dataset (i.e., has the lower `column_index`) wins.
+
+3.  **Update the Winning Column**:
+    *   The winning column's `datacommons_mappings` entry remains **unchanged**.
+    *   **REQUIRED**: Add a note to its `inference` field stating: "Won conflict for '[property_name]' property (confidence [X.X] vs [Y.Y]) against column '[other_column_name]'."
+    *   This note is **mandatory** for debugging and transparency.
+
+4.  **Re-evaluate the Losing Column**:
+    *   First, you **MUST REMOVE** the original, conflicting `datacommons_mappings` entry from the losing column.
+    *   Next, you **MUST** re-evaluate the losing column to determine if an alternative, non-conflicting Data Commons property is suitable. Follow this hierarchy of preference:
+        *   **Is there another core StatVar property?** (e.g., if it lost `measuredProperty`, could it be `populationType`?). This is rare.
+        *   **Can it be a different `statvar_constraint` property?** If the conflict was about one constraint property (e.g., `measurementQualifier`), can the column be modeled with a different constraint property (e.g., `economicSector`, `age`, `gender`)?
+        *   **Can it be an `observation_attribute`?** This is a common and effective fallback. If a column's meaning is important but its primary mapping is taken, consider if it describes the observation itself (e.g., `unit`, `measurementMethod`, `scalingFactor`, `observationPeriod`).
+    *   If a suitable alternative mapping is found, **ADD** the new mapping to the `datacommons_mappings` array.
+    *   If **NO** suitable alternative can be found, the `datacommons_mappings` array for the losing column **MUST remain empty**.
+
+5.  **Document the Decision**:
+    *   In the `inference` section of the losing column, you **MUST ADD** a clear explanation of the resolution:
+        *   State which column won and why (include specific confidence scores)
+        *   Explain what alternative was chosen (if any) with justification
+        *   If no alternative found, explain why no suitable alternative exists
+    *   **Format**: "Lost conflict for '[property_name]' property to column '[winner_column_name]' (confidence [X.X] vs [Y.Y]). [Re-evaluation outcome and reasoning]."
+
+### Conflict Resolution Examples
+
+#### Example 1: Conflict with Alternative Found
+
+**SCENARIO**: `ADJUSTMENT` (confidence 0.9) and `PRICE_BASE` (confidence 0.85) both map to `measurementQualifier`.
+
+**BEFORE RESOLUTION (Incorrect State):**
+
+```json
+{
+  "column_name": "ADJUSTMENT",
+  "categorization": {
+    "statvar_constraint": { "confidence": 0.9, "reason": "Seasonal adjustment is a key qualifier" }
+  },
+  "datacommons_mappings": [
+    { "property": "measurementQualifier", "value": "SeasonallyAdjusted" }
+  ]
+}
+
+{
+  "column_name": "PRICE_BASE",
+  "categorization": {
+    "statvar_constraint": { "confidence": 0.85, "reason": "Price base is a fundamental qualifier" }
+  },
+  "datacommons_mappings": [
+    { "property": "measurementQualifier", "value": "RealValue" }
+  ]
+}
+```
+
+**AFTER RESOLUTION (Correct State):**
+
+```json
+{
+  "column_name": "ADJUSTMENT",
+  "inference": "This column confirms seasonal adjustment. Won conflict for 'measurementQualifier' property (confidence 0.9 vs 0.85) against column 'PRICE_BASE'.",
+  "categorization": {
+    "statvar_constraint": { "confidence": 0.9, "reason": "Seasonal adjustment is a key qualifier" }
+  },
+  "datacommons_mappings": [
+    { "property": "measurementQualifier", "value": "SeasonallyAdjusted" }
+  ]
+}
+
+{
+  "column_name": "PRICE_BASE",
+  "inference": "This indicates values are inflation-adjusted (chain linked volume). Lost conflict for 'measurementQualifier' property to column 'ADJUSTMENT' (confidence 0.85 vs 0.9). After re-evaluation, mapped to observation attribute 'measurementDenominator' as it describes the price basis methodology used for this specific observation.",
+  "categorization": {
+    "statvar_constraint": { "confidence": 0.85, "reason": "Price base is a fundamental qualifier" },
+    "observation_attribute": { "confidence": 0.7, "reason": "Can be modeled as measurement methodology attribute" }
+  },
+  "datacommons_mappings": [
+    { "property": "measurementDenominator", "value": "ChainLinkedVolume" }
+  ]
+}
+```
+
+#### Example 2: Conflict with No Alternative
+
+**SCENARIO**: Two columns both want `observationDate`, but one is clearly superior.
+
+**AFTER RESOLUTION:**
+
+```json
+{
+  "column_name": "TIME_PERIOD",
+  "inference": "Provides exact temporal reference. Won conflict for 'observationDate' property (confidence 1.0 vs 0.3) against column 'REPORTING_YEAR'.",
+  "categorization": {
+    "observationDate": { "confidence": 1.0, "reason": "Column explicitly named TIME_PERIOD with date values" }
+  },
+  "datacommons_mappings": [
+    { "property": "observationDate", "value": "{column_value}" }
+  ]
+}
+
+{
+  "column_name": "REPORTING_YEAR",
+  "inference": "Metadata field indicating when data was reported. Lost conflict for 'observationDate' property to column 'TIME_PERIOD' (confidence 0.3 vs 1.0). After re-evaluation, no suitable alternative property found - this appears to be purely internal metadata not relevant to Data Commons observation model.",
+  "categorization": {
+    "observationDate": { "confidence": 0.3, "reason": "Contains year but is reporting date not observation date" }
+  },
+  "datacommons_mappings": []
+}
+```
+
+### Validation Checklist
+
+Before finalizing your analysis, verify:
+
+- [ ] **No duplicate property mappings**: Each property appears in at most ONE column's `datacommons_mappings`
+- [ ] **All conflicts resolved**: Any property that appeared multiple times has been resolved
+- [ ] **Winners documented**: Winning columns have conflict note in `inference`
+- [ ] **Losers re-evaluated**: Losing columns have detailed explanation in `inference` with confidence scores
+- [ ] **Alternative mappings justified**: Any fallback mapping includes clear reasoning
+- [ ] **Empty mappings explained**: Columns with empty `datacommons_mappings` have documented reason
+
+### Why This Matters
+
+This conflict resolution ensures that the downstream PVMap generation phase receives unambiguous guidance. Without this step, automated processes may:
+- Randomly pick one mapping and silently drop others
+- Create invalid StatVars with duplicate properties
+- Lose valuable semantic information from the dataset
+
+By forcing explicit decisions with documented reasoning, you create a transparent, debuggable, and deterministic blueprint for data import.
+
 # INPUT DATA FOR THIS RUN
 
 {% if dataset_type == 'sdmx' -%}
