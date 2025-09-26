@@ -521,6 +521,8 @@ Evaluate each column for ALL 5 categories and assign confidence scores (0.0-1.0)
 1. **observationAbout** - Does this column identify the entity being observed?
    - Geographic identifiers (FIPS codes, country codes, place names)
    - Entity identifiers (company IDs, school codes, facility IDs)
+   - **Valid place prefixes when certain of code type**: `country/` (ISO country codes), `geoId/` (US FIPS codes), `wikidataId/` (Wikidata IDs), `nuts/` (European NUTS codes)
+   - **For place names without standard codes**: Provide name and metadata for later resolution
    - Confidence: How clearly does this identify the observed entity?
 
 2. **observationDate** - Does this column provide temporal information?
