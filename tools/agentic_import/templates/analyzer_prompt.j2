@@ -434,7 +434,8 @@ Perform targeted web searches to clarify ambiguous terms and enrich dataset unde
 
 You MUST save the JSON analysis output to the following file:
 
-**File Path**: `{{output_dir}}/{{output_basename}}_analysis.json`
+{# Note: Gemini requires absolute paths for file write operations. #}
+**File Path**: `{{working_dir}}/{{output_dir}}/{{output_basename}}_analysis.json`
 
 Create the directory if it doesn't exist, then write the complete JSON analysis to this file.
 

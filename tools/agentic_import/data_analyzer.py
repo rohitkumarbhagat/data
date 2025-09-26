@@ -315,6 +315,8 @@ class DataAnalyzer:
                 self._config.data_config.input_metadata,
             'dataset_type':
                 'sdmx' if self._config.data_config.is_sdmx_dataset else 'csv',
+            'working_dir':
+                self._working_dir,
             'output_dir':
                 self._output_dir,
             'output_basename':
