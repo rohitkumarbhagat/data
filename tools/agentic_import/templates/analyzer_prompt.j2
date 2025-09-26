@@ -41,19 +41,9 @@ You **MUST** adhere to these rules at all times.
 {% include 'dc_concepts_core.j2' %}
 
 {% if dataset_type == 'sdmx' -%}
-## SDMX to Data Commons Conceptual Mapping
+{% include 'sdmx_knowledge.j2' %}
 
-Understanding how SDMX (Statistical Data and Metadata eXchange) structures map to Data Commons concepts for semantic analysis:
-
-### SDMX Structure Overview
-
-**SDMX Components**:
-- **Dimensions**: Categorize observations (TIME_PERIOD, REF_AREA, INDICATOR, SECTOR, etc.)
-- **Attributes**: Provide observation metadata (UNIT_MEASURE, OBS_STATUS, UNIT_MULT, etc.)
-- **Measures**: The statistical values being observed (OBS_VALUE)
-- **Codelists**: Define allowed values and their semantic meanings for dimensions/attributes
-
-### Mapping SDMX to Data Commons Concepts
+### Mapping SDMX to Data Commons Concepts for Analysis
 
 #### Dimensions → StatVar Constraints
 SDMX dimensions typically become StatVar constraint properties:
@@ -71,38 +61,11 @@ SDMX attributes become observation-level properties:
 - **OBS_STATUS**: Data quality indicators (M=missing, E=estimated, etc.)
 - **UNIT_MULT**: Maps to scalingFactor (3=thousands, 6=millions, 9=billions)
 
-#### Standard SDMX Patterns
-- **Geographic Codes**: ISO country codes (USA→country/USA), regional identifiers
-- **Time Periods**:
-  - Annual: YYYY format (2023)
-  - Quarterly: YYYY-Q# format (2023-Q1) → maps to end of quarter
-  - Monthly: YYYY-MM format (2023-01)
-- **Missing Values**: M, NA, ":", "-" indicate missing or unavailable data
-- **Currency Units**: USD→USDollar, EUR→Euro, etc.
-
-### Extracting Semantic Context from SDMX Metadata
-
-**Key Metadata Elements**: Look for `<common:name>` and `<common:description>` elements:
-- **Dataflow names**: Indicate dataset purpose and scope
-- **Codelist descriptions**: Explain what dimension values represent
-- **Concept descriptions**: Clarify measurement types and constraints
-- **Code descriptions**: Define specific values within codelists
-
-**Usage for Categorization**: Use this semantic information to:
+**Usage for Categorization**: Use SDMX metadata semantic information to:
 - Understand what each dimension constrains
 - Determine appropriate Data Commons property mappings
 - Assess confidence levels for column categorizations
 - Generate meaningful descriptions for each column's role
-
-### SDMX Missing Value Handling
-Standard SDMX missing value codes and their meanings:
-- **M**: Missing value - data not available
-- **NA**: Not applicable - concept doesn't apply
-- **":" or "-"**: No data reported
-- **E**: Estimated value
-- **P**: Provisional data
-
-**Analysis Approach**: These should be noted as observation attributes affecting data quality, not as constraints on the StatVar definition.
 
 {%- endif %}
 
@@ -295,6 +258,206 @@ This conflict resolution ensures that the downstream PVMap generation phase rece
 
 By forcing explicit decisions with documented reasoning, you create a transparent, debuggable, and deterministic blueprint for data import.
 
+## Step 6: Determine Value-Level vs Column-Level Mappings
+
+After resolving all conflicts, you **MUST** determine the appropriate mapping granularity for each column based on the dataset type and cardinality.
+
+### For SDMX Datasets
+
+For each dimension or attribute column:
+
+1. **Extract Full Codelist from Metadata**:
+   * Read the complete codelist associated with this dimension/attribute
+   * Count the total number of codes in the full codelist
+   * **IMPORTANT**: Do NOT use constraint definitions for counting - use the full codelist for future-proofing
+
+2. **Apply Threshold Logic**:
+   * **IF codelist has ≤14 unique codes**:
+     * Generate `value_level_datacommons_mapping`
+     * Enumerate ALL codelist values with explicit mappings
+     * For compound constraints (e.g., "M_0_17"), create multiple property mappings per value
+     * If properties are derived from column name (e.g., "MALE_POPULATION"), duplicate them in EVERY value's mappings
+   * **IF codelist has ≥15 codes**:
+     * Generate `column_level_datacommons_mapping`
+     * Provide template mapping with `{column_value}` placeholder
+     * Include `sample_values` (3-5 representative examples from codelist)
+     * Add `value_pattern` field describing the format, range, or structure of values
+
+3. **Handle Ignored Values**:
+   * Identify invalid codes, aggregate groups, or non-entity values
+   * Examples: "G7", "OECD", "EU" (for country dimensions), "USMC" (invalid codes)
+   * Add to separate `ignored_values` array with clear `ignore_reason`
+   * Note: Mappings (either value-level or column-level) apply to all values EXCEPT those in ignored_values
+
+### For Non-SDMX Datasets (CSV)
+
+* **ALWAYS** use `column_level_datacommons_mapping` only
+* **NEVER** generate value_level mappings for non-SDMX data
+* **ALWAYS** include `sample_values` (3-5 diverse examples from data)
+* **ALWAYS** add `value_pattern` describing format/range
+
+### Output Constraints
+
+**CRITICAL RULES**:
+* Each column MUST have EXACTLY ONE of:
+  * `value_level_datacommons_mapping` (array of objects with value + datacommons_mappings)
+  * `column_level_datacommons_mapping` (array of property + value template objects)
+* **NEVER** include both in the same column
+* `ignored_values` is optional and works with BOTH mapping types
+* `value_pattern` is REQUIRED for column_level mappings, OPTIONAL for value_level
+
+### Examples
+
+#### Example 1: SDMX Value-Level (≤14 codes)
+
+Column "FREQ" with codelist containing 4 codes:
+
+```json
+{
+  "column_name": "FREQ",
+  "value_level_datacommons_mapping": [
+    {"value": "A", "datacommons_mappings": [{"property": "observationPeriod", "value": "P1Y"}]},
+    {"value": "Q", "datacommons_mappings": [{"property": "observationPeriod", "value": "P3M"}]},
+    {"value": "M", "datacommons_mappings": [{"property": "observationPeriod", "value": "P1M"}]},
+    {"value": "D", "datacommons_mappings": [{"property": "observationPeriod", "value": "P1D"}]}
+  ]
+}
+```
+
+#### Example 2: SDMX Compound Constraints (≤14 codes)
+
+Column "SEX_AGE" with 4 compound codes:
+
+```json
+{
+  "column_name": "SEX_AGE",
+  "value_level_datacommons_mapping": [
+    {
+      "value": "M_0_17",
+      "datacommons_mappings": [
+        {"property": "gender", "value": "Male"},
+        {"property": "age", "value": "[0 17 Years]"}
+      ]
+    },
+    {
+      "value": "M_18_64",
+      "datacommons_mappings": [
+        {"property": "gender", "value": "Male"},
+        {"property": "age", "value": "[18 64 Years]"}
+      ]
+    },
+    {
+      "value": "F_0_17",
+      "datacommons_mappings": [
+        {"property": "gender", "value": "Female"},
+        {"property": "age", "value": "[0 17 Years]"}
+      ]
+    },
+    {
+      "value": "F_18_64",
+      "datacommons_mappings": [
+        {"property": "gender", "value": "Female"},
+        {"property": "age", "value": "[18 64 Years]"}
+      ]
+    }
+  ]
+}
+```
+
+#### Example 3: SDMX with Ignored Values (≤14 valid codes)
+
+Column "REF_AREA" with 8 countries + 2 aggregates:
+
+```json
+{
+  "column_name": "REF_AREA",
+  "value_level_datacommons_mapping": [
+    {"value": "USA", "datacommons_mappings": [{"property": "observationAbout", "value": "country/USA"}]},
+    {"value": "CAN", "datacommons_mappings": [{"property": "observationAbout", "value": "country/CAN"}]},
+    {"value": "MEX", "datacommons_mappings": [{"property": "observationAbout", "value": "country/MEX"}]},
+    {"value": "GBR", "datacommons_mappings": [{"property": "observationAbout", "value": "country/GBR"}]},
+    {"value": "FRA", "datacommons_mappings": [{"property": "observationAbout", "value": "country/FRA"}]},
+    {"value": "DEU", "datacommons_mappings": [{"property": "observationAbout", "value": "country/DEU"}]},
+    {"value": "ITA", "datacommons_mappings": [{"property": "observationAbout", "value": "country/ITA"}]},
+    {"value": "JPN", "datacommons_mappings": [{"property": "observationAbout", "value": "country/JPN"}]}
+  ],
+  "ignored_values": [
+    {"value": "G7", "ignore_reason": "Aggregate group of countries, not a single geographic entity"},
+    {"value": "OECD", "ignore_reason": "Organization aggregate, not a country"}
+  ]
+}
+```
+
+#### Example 4: SDMX Column-Level (≥15 codes)
+
+Column "REF_AREA" with 150 country codes:
+
+```json
+{
+  "column_name": "REF_AREA",
+  "sample_values": ["USA", "CAN", "GBR", "FRA", "JPN"],
+  "value_pattern": "ISO 3166-1 alpha-3 country codes, 150+ countries worldwide",
+  "column_level_datacommons_mapping": [
+    {"property": "observationAbout", "value": "country/{column_value}"}
+  ],
+  "ignored_values": [
+    {"value": "G7", "ignore_reason": "Aggregate group"},
+    {"value": "G20", "ignore_reason": "Aggregate group"},
+    {"value": "EU", "ignore_reason": "Regional aggregate"}
+  ]
+}
+```
+
+#### Example 5: Property Inheritance from Column Name
+
+Column "MALE_POPULATION" with age codelist (3 codes):
+
+```json
+{
+  "column_name": "MALE_POPULATION",
+  "value_level_datacommons_mapping": [
+    {
+      "value": "0_17",
+      "datacommons_mappings": [
+        {"property": "gender", "value": "Male"},
+        {"property": "age", "value": "[0 17 Years]"}
+      ]
+    },
+    {
+      "value": "18_64",
+      "datacommons_mappings": [
+        {"property": "gender", "value": "Male"},
+        {"property": "age", "value": "[18 64 Years]"}
+      ]
+    },
+    {
+      "value": "65_PLUS",
+      "datacommons_mappings": [
+        {"property": "gender", "value": "Male"},
+        {"property": "age", "value": "[65 - Years]"}
+      ]
+    }
+  ]
+}
+```
+
+Note: "Male" gender property is duplicated in each value because it comes from column name.
+
+#### Example 6: Non-SDMX Column-Level Only
+
+CSV column "Country":
+
+```json
+{
+  "column_name": "Country",
+  "sample_values": ["United States", "Canada", "Mexico", "United Kingdom"],
+  "value_pattern": "Full country names in English, approximately 50 countries in dataset",
+  "column_level_datacommons_mapping": [
+    {"property": "observationAbout", "value": "country/{column_value}"}
+  ]
+}
+```
+
 # INPUT DATA FOR THIS RUN
 
 {% if dataset_type == 'sdmx' -%}
@@ -445,6 +608,16 @@ You MUST generate your output as a valid JSON object following this exact schema
 
 ```json
 {
+  "_metadata": {
+    "schema_version": "2.0",
+    "usage_instructions": "This JSON provides semantic analysis of the dataset for Data Commons PVMap generation. It contains column-by-column analysis with either value-level mappings (for low-cardinality SDMX dimensions with ≤14 codelist values) or column-level mapping templates (for high-cardinality columns with ≥15 values or non-SDMX data). Each column has exactly one mapping type, never both.",
+    "interpretation_guide": {
+      "value_level_datacommons_mapping": "Used when dataset_type is SDMX AND codelist has ≤14 unique codes. Each codelist value has explicit property mappings. Mutually exclusive with column_level_datacommons_mapping.",
+      "column_level_datacommons_mapping": "Used for high-cardinality columns (≥15 codelist values) or non-SDMX datasets. Provides mapping template to apply to all values except those in ignored_values. Mutually exclusive with value_level_datacommons_mapping.",
+      "ignored_values": "Values to skip during processing (e.g., aggregate groups like G7, OECD, or invalid codes). Column mappings apply to all remaining values. Works with both value_level and column_level mappings.",
+      "conflict_resolution": "Each Data Commons property maps to exactly one column. See 'inference' field for conflict resolution details with confidence scores."
+    }
+  },
   "dataset_metadata": {
     "name": "Human-readable dataset name",
     "format": "CSV or SDMX",
@@ -463,6 +636,7 @@ You MUST generate your output as a valid JSON object following this exact schema
       "column_name": "exact_column_name",
       "column_index": 0,
       "sample_values": [val1, val2, val3],
+      "value_pattern": "Description of value format/range (REQUIRED for column_level_datacommons_mapping, OPTIONAL for value_level)",
       "description": "What this column contains",
       "inference": "Patterns and insights about this column",
       "enrichments": {
@@ -496,13 +670,30 @@ You MUST generate your output as a valid JSON object following this exact schema
           "next_steps": "What to verify if confidence < 0.7 or null"
         }
       },
-      "datacommons_mappings": [
+      "value_level_datacommons_mapping": [
         {
-          "property": "property_name",
-          "value": "property_value or {column_value}"
+          "value": "actual_codelist_value",
+          "datacommons_mappings": [
+            {
+              "property": "property_name",
+              "value": "data_commons_value"
+            }
+          ]
         }
       ],
-      "notes": "A single column can have multiple mappings when it represents compound constraints. Example: ADULT_MALE maps to both gender:Male and age:[18+ Years]"
+      "column_level_datacommons_mapping": [
+        {
+          "property": "property_name",
+          "value": "{column_value} or template_value"
+        }
+      ],
+      "ignored_values": [
+        {
+          "value": "invalid_or_aggregate_value",
+          "ignore_reason": "Clear explanation why this value should be skipped"
+        }
+      ],
+      "notes": "CRITICAL: Only ONE of value_level_datacommons_mapping or column_level_datacommons_mapping should be present per column, never both. Use value_level for SDMX with ≤14 codelist codes, column_level for ≥15 codes or non-SDMX. Compound constraints should have multiple properties per value. Properties from column names should be duplicated in each value's mappings."
     }
   ]
 }
@@ -517,6 +708,11 @@ You MUST generate your output as a valid JSON object following this exact schema
 5. **A column can have high confidence in multiple categories** if applicable
 6. **Include next_steps only when confidence < 0.7**
 7. **Sample values must preserve original data types** (strings vs numbers)
+8. **Exactly one mapping type per column** - either value_level_datacommons_mapping OR column_level_datacommons_mapping, never both
+9. **Value-level only for SDMX with ≤14 codelist values** - use column-level for ≥15 codes or non-SDMX datasets
+10. **Always include value_pattern for column-level mappings** - describe format and range
+11. **Document ignored values separately** - with clear ignore_reason for each
+12. **Include _metadata section** - at the top of JSON output for downstream processing guidance
 
 # BEGIN ANALYSIS
 
