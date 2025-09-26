@@ -316,10 +316,10 @@ Column "FREQ" with codelist containing 4 codes:
 {
   "column_name": "FREQ",
   "value_level_datacommons_mapping": [
-    {"value": "A", "datacommons_mappings": [{"property": "observationPeriod", "value": "P1Y"}]},
-    {"value": "Q", "datacommons_mappings": [{"property": "observationPeriod", "value": "P3M"}]},
-    {"value": "M", "datacommons_mappings": [{"property": "observationPeriod", "value": "P1M"}]},
-    {"value": "D", "datacommons_mappings": [{"property": "observationPeriod", "value": "P1D"}]}
+    {"value": "A", "datacommons_mappings": [{"property": "observationPeriod", "value": "P1Y", "reason": "SDMX codelist CL_FREQ defines 'A' as Annual frequency, mapped to ISO 8601 duration P1Y"}]},
+    {"value": "Q", "datacommons_mappings": [{"property": "observationPeriod", "value": "P3M", "reason": "SDMX codelist CL_FREQ defines 'Q' as Quarterly frequency, mapped to ISO 8601 duration P3M"}]},
+    {"value": "M", "datacommons_mappings": [{"property": "observationPeriod", "value": "P1M", "reason": "SDMX codelist CL_FREQ defines 'M' as Monthly frequency, mapped to ISO 8601 duration P1M"}]},
+    {"value": "D", "datacommons_mappings": [{"property": "observationPeriod", "value": "P1D", "reason": "SDMX codelist CL_FREQ defines 'D' as Daily frequency, mapped to ISO 8601 duration P1D"}]}
   ]
 }
 ```
@@ -335,29 +335,29 @@ Column "SEX_AGE" with 4 compound codes:
     {
       "value": "M_0_17",
       "datacommons_mappings": [
-        {"property": "gender", "value": "Male"},
-        {"property": "age", "value": "[0 17 Years]"}
+        {"property": "gender", "value": "Male", "reason": "Parsed 'M' prefix from compound code per SDMX codelist pattern for male gender"},
+        {"property": "age", "value": "[0 17 Years]", "reason": "Extracted numeric range 0-17 from compound code and formatted as Data Commons age range"}
       ]
     },
     {
       "value": "M_18_64",
       "datacommons_mappings": [
-        {"property": "gender", "value": "Male"},
-        {"property": "age", "value": "[18 64 Years]"}
+        {"property": "gender", "value": "Male", "reason": "Parsed 'M' prefix from compound code per SDMX codelist pattern for male gender"},
+        {"property": "age", "value": "[18 64 Years]", "reason": "Extracted numeric range 18-64 from compound code and formatted as Data Commons age range"}
       ]
     },
     {
       "value": "F_0_17",
       "datacommons_mappings": [
-        {"property": "gender", "value": "Female"},
-        {"property": "age", "value": "[0 17 Years]"}
+        {"property": "gender", "value": "Female", "reason": "Parsed 'F' prefix from compound code per SDMX codelist pattern for female gender"},
+        {"property": "age", "value": "[0 17 Years]", "reason": "Extracted numeric range 0-17 from compound code and formatted as Data Commons age range"}
       ]
     },
     {
       "value": "F_18_64",
       "datacommons_mappings": [
-        {"property": "gender", "value": "Female"},
-        {"property": "age", "value": "[18 64 Years]"}
+        {"property": "gender", "value": "Female", "reason": "Parsed 'F' prefix from compound code per SDMX codelist pattern for female gender"},
+        {"property": "age", "value": "[18 64 Years]", "reason": "Extracted numeric range 18-64 from compound code and formatted as Data Commons age range"}
       ]
     }
   ]
@@ -372,14 +372,14 @@ Column "REF_AREA" with 8 countries + 2 aggregates:
 {
   "column_name": "REF_AREA",
   "value_level_datacommons_mapping": [
-    {"value": "USA", "datacommons_mappings": [{"property": "observationAbout", "value": "country/USA"}]},
-    {"value": "CAN", "datacommons_mappings": [{"property": "observationAbout", "value": "country/CAN"}]},
-    {"value": "MEX", "datacommons_mappings": [{"property": "observationAbout", "value": "country/MEX"}]},
-    {"value": "GBR", "datacommons_mappings": [{"property": "observationAbout", "value": "country/GBR"}]},
-    {"value": "FRA", "datacommons_mappings": [{"property": "observationAbout", "value": "country/FRA"}]},
-    {"value": "DEU", "datacommons_mappings": [{"property": "observationAbout", "value": "country/DEU"}]},
-    {"value": "ITA", "datacommons_mappings": [{"property": "observationAbout", "value": "country/ITA"}]},
-    {"value": "JPN", "datacommons_mappings": [{"property": "observationAbout", "value": "country/JPN"}]}
+    {"value": "USA", "datacommons_mappings": [{"property": "observationAbout", "value": "country/USA", "reason": "ISO 3166-1 alpha-3 code from SDMX CL_AREA codelist maps directly to Data Commons country DCID"}]},
+    {"value": "CAN", "datacommons_mappings": [{"property": "observationAbout", "value": "country/CAN", "reason": "ISO 3166-1 alpha-3 code from SDMX CL_AREA codelist maps directly to Data Commons country DCID"}]},
+    {"value": "MEX", "datacommons_mappings": [{"property": "observationAbout", "value": "country/MEX", "reason": "ISO 3166-1 alpha-3 code from SDMX CL_AREA codelist maps directly to Data Commons country DCID"}]},
+    {"value": "GBR", "datacommons_mappings": [{"property": "observationAbout", "value": "country/GBR", "reason": "ISO 3166-1 alpha-3 code from SDMX CL_AREA codelist maps directly to Data Commons country DCID"}]},
+    {"value": "FRA", "datacommons_mappings": [{"property": "observationAbout", "value": "country/FRA", "reason": "ISO 3166-1 alpha-3 code from SDMX CL_AREA codelist maps directly to Data Commons country DCID"}]},
+    {"value": "DEU", "datacommons_mappings": [{"property": "observationAbout", "value": "country/DEU", "reason": "ISO 3166-1 alpha-3 code from SDMX CL_AREA codelist maps directly to Data Commons country DCID"}]},
+    {"value": "ITA", "datacommons_mappings": [{"property": "observationAbout", "value": "country/ITA", "reason": "ISO 3166-1 alpha-3 code from SDMX CL_AREA codelist maps directly to Data Commons country DCID"}]},
+    {"value": "JPN", "datacommons_mappings": [{"property": "observationAbout", "value": "country/JPN", "reason": "ISO 3166-1 alpha-3 code from SDMX CL_AREA codelist maps directly to Data Commons country DCID"}]}
   ],
   "ignored_values": [
     {"value": "G7", "ignore_reason": "Aggregate group of countries, not a single geographic entity"},
@@ -398,7 +398,7 @@ Column "REF_AREA" with 150 country codes:
   "sample_values": ["USA", "CAN", "GBR", "FRA", "JPN"],
   "value_pattern": "ISO 3166-1 alpha-3 country codes, 150+ countries worldwide",
   "column_level_datacommons_mapping": [
-    {"property": "observationAbout", "value": "country/{column_value}"}
+    {"property": "observationAbout", "value": "country/{column_value}", "reason": "ISO 3166-1 alpha-3 country codes from SDMX CL_AREA codelist (150+ countries) map directly to Data Commons country DCIDs"}
   ],
   "ignored_values": [
     {"value": "G7", "ignore_reason": "Aggregate group"},
@@ -419,22 +419,22 @@ Column "MALE_POPULATION" with age codelist (3 codes):
     {
       "value": "0_17",
       "datacommons_mappings": [
-        {"property": "gender", "value": "Male"},
-        {"property": "age", "value": "[0 17 Years]"}
+        {"property": "gender", "value": "Male", "reason": "Inherited from column name 'MALE_POPULATION' which explicitly indicates male gender"},
+        {"property": "age", "value": "[0 17 Years]", "reason": "Parsed numeric age range from codelist value and formatted as Data Commons age range"}
       ]
     },
     {
       "value": "18_64",
       "datacommons_mappings": [
-        {"property": "gender", "value": "Male"},
-        {"property": "age", "value": "[18 64 Years]"}
+        {"property": "gender", "value": "Male", "reason": "Inherited from column name 'MALE_POPULATION' which explicitly indicates male gender"},
+        {"property": "age", "value": "[18 64 Years]", "reason": "Parsed numeric age range from codelist value and formatted as Data Commons age range"}
       ]
     },
     {
       "value": "65_PLUS",
       "datacommons_mappings": [
-        {"property": "gender", "value": "Male"},
-        {"property": "age", "value": "[65 - Years]"}
+        {"property": "gender", "value": "Male", "reason": "Inherited from column name 'MALE_POPULATION' which explicitly indicates male gender"},
+        {"property": "age", "value": "[65 - Years]", "reason": "Parsed open-ended age range from PLUS indicator and formatted as Data Commons age range"}
       ]
     }
   ]
@@ -453,7 +453,7 @@ CSV column "Country":
   "sample_values": ["United States", "Canada", "Mexico", "United Kingdom"],
   "value_pattern": "Full country names in English, approximately 50 countries in dataset",
   "column_level_datacommons_mapping": [
-    {"property": "observationAbout", "value": "country/{column_value}"}
+    {"property": "observationAbout", "value": "country/{column_value}", "reason": "Full English country names (50 countries) can be resolved to Data Commons country DCIDs via name lookup"}
   ]
 }
 ```
@@ -676,7 +676,8 @@ You MUST generate your output as a valid JSON object following this exact schema
           "datacommons_mappings": [
             {
               "property": "property_name",
-              "value": "data_commons_value"
+              "value": "data_commons_value",
+              "reason": "Explanation of why this mapping was chosen (e.g., SDMX codelist definition, inferred from pattern, verified via search)"
             }
           ]
         }
@@ -684,7 +685,8 @@ You MUST generate your output as a valid JSON object following this exact schema
       "column_level_datacommons_mapping": [
         {
           "property": "property_name",
-          "value": "{column_value} or template_value"
+          "value": "{column_value} or template_value",
+          "reason": "Explanation of why this mapping pattern applies (e.g., standard code format, naming convention, domain knowledge)"
         }
       ],
       "ignored_values": [
@@ -693,7 +695,7 @@ You MUST generate your output as a valid JSON object following this exact schema
           "ignore_reason": "Clear explanation why this value should be skipped"
         }
       ],
-      "notes": "CRITICAL: Only ONE of value_level_datacommons_mapping or column_level_datacommons_mapping should be present per column, never both. Use value_level for SDMX with ≤14 codelist codes, column_level for ≥15 codes or non-SDMX. Compound constraints should have multiple properties per value. Properties from column names should be duplicated in each value's mappings."
+      "notes": "CRITICAL: Only ONE of value_level_datacommons_mapping or column_level_datacommons_mapping should be present per column, never both. Use value_level for SDMX with ≤14 codelist codes, column_level for ≥15 codes or non-SDMX. Compound constraints should have multiple properties per value. Properties from column names should be duplicated in each value's mappings. Every mapping must include a mandatory 'reason' field explaining the mapping rationale."
     }
   ]
 }
@@ -713,6 +715,7 @@ You MUST generate your output as a valid JSON object following this exact schema
 10. **Always include value_pattern for column-level mappings** - describe format and range
 11. **Document ignored values separately** - with clear ignore_reason for each
 12. **Include _metadata section** - at the top of JSON output for downstream processing guidance
+13. **Every mapping MUST include a mandatory 'reason' field** - explain why the mapping was chosen, including sources (SDMX codelist definitions, external searches, inferred patterns, domain knowledge)
 
 # BEGIN ANALYSIS
 
