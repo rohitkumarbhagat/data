@@ -166,7 +166,7 @@ class DataflowStructure:
     id: str
     name: str = ""
     description: str = ""
-    some_attributes: Optional[DataflowArtefactAttributes] = None
+    artefact_attributes: Optional[DataflowArtefactAttributes] = None
     data_structure_definition: Optional[DataStructureDefinitionDetails] = None
     referenced_concept_schemes: List[ReferencedConceptSchemeDetails] = field(
         default_factory=list)
@@ -318,7 +318,7 @@ def process_all_dataflows_in_structure_message(sm: Any) -> MultiDataflowOutput:
             dsd_obj = dataflow_obj.structure
 
             # Populate DataflowArtefactAttributes
-            some_attrs = DataflowArtefactAttributes(
+            artefact_attrs = DataflowArtefactAttributes(
                 version=str(dataflow_obj.version)
                 if dataflow_obj.version else None,
                 valid_from=str(dataflow_obj.valid_from)
@@ -387,7 +387,7 @@ def process_all_dataflows_in_structure_message(sm: Any) -> MultiDataflowOutput:
                 id=dataflow_obj.id,
                 name=_get_localized_string(dataflow_obj.name),
                 description=_get_localized_string(dataflow_obj.description),
-                some_attributes=some_attrs,
+                artefact_attributes=artefact_attrs,
                 data_structure_definition=dsd_details,
                 referenced_concept_schemes=referenced_concept_schemes,
             )
@@ -419,8 +419,9 @@ def extract_dataflow_metadata(input_metadata: str, output_path: str) -> None:
     try:
         logging.info(f"Loading SDMX metadata from file: {input_metadata}")
 
-        # Read the SDMX file using the sdmx library
-        sm = sdmx.read_sdmx(input_metadata)
+        # Read the SDMX file using the sdmx library with proper file handling
+        with open(input_metadata, 'rb') as f:
+            sm = sdmx.read_sdmx(f)
 
         result = process_all_dataflows_in_structure_message(sm)
         write_dataclass_to_json(result, output_path)

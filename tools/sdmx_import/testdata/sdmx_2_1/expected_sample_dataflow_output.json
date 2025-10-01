@@ -4,7 +4,7 @@
       "id": "SAMPLE_DATA",
       "name": "Sample Statistical Data",
       "description": "Sample dataset for testing purposes",
-      "some_attributes": {
+      "artefact_attributes": {
         "version": "1.0",
         "is_final": true,
         "is_external_reference": false
