@@ -145,6 +145,6 @@ class DataflowStructure:
 
 
 @dataclass
-class MultiDataflowOutput:
-    """The root object for multiple dataflows, containing the 'dataflows' key."""
+class SdmxStructures:
+    """Container for SDMX structural metadata (dataflows, DSDs, codelists, concept schemes)."""
     dataflows: List[DataflowStructure] = field(default_factory=list)

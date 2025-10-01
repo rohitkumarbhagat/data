@@ -43,7 +43,7 @@ from message import (
     ReferencedConceptSchemeDetails,
     DataflowArtefactAttributes,
     DataflowStructure,
-    MultiDataflowOutput,
+    SdmxStructures,
 )
 
 
@@ -185,7 +185,7 @@ def _extract_component_details(
     return components
 
 
-def process_all_dataflows_in_structure_message(sm: Any) -> MultiDataflowOutput:
+def process_all_dataflows_in_structure_message(sm: Any) -> SdmxStructures:
     """
     Process an SDMX StructureMessage and extract metadata for all dataflows.
 
@@ -193,7 +193,7 @@ def process_all_dataflows_in_structure_message(sm: Any) -> MultiDataflowOutput:
         sm: The SDMX StructureMessage object containing dataflows and related structures
 
     Returns:
-        MultiDataflowOutput dataclass containing all dataflows structure
+        SdmxStructures dataclass containing all dataflows structure
 
     Raises:
         Exception: For errors during extraction
@@ -281,7 +281,7 @@ def process_all_dataflows_in_structure_message(sm: Any) -> MultiDataflowOutput:
 
             dataflows.append(dataflow_structure)
 
-        return MultiDataflowOutput(dataflows=dataflows)
+        return SdmxStructures(dataflows=dataflows)
 
     except Exception as e:
         e.add_note("Error processing structure message for all dataflows")
