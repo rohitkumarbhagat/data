@@ -21,12 +21,12 @@ from SDMX objects.
 """
 
 import json
-import logging
 from dataclasses import asdict
 from typing import Any, Optional, List
 
 from absl import app
 from absl import flags
+from absl import logging
 
 import sdmx
 from sdmx.model.internationalstring import InternationalString, DEFAULT_LOCALE

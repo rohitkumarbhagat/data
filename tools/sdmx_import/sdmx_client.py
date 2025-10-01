@@ -17,7 +17,7 @@ dataflow.py
 This module provides a client class for interacting with SDMX APIs.
 """
 
-import logging
+from absl import logging
 import sdmx
 import pandas as pd
 from requests.exceptions import HTTPError
