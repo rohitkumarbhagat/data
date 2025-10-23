@@ -6,11 +6,55 @@ Actual subprocess execution is added in later phases.
 
 from __future__ import annotations
 
-import argparse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List
 
+from absl import app
+from absl import flags
+from absl import logging
+
+FLAGS = flags.FLAGS
+
+flags.DEFINE_string(
+    "dataset_prefix",
+    None,
+    "Prefix used to name all generated files.",
+)
+flags.mark_flag_as_required("dataset_prefix")
+flags.DEFINE_string("endpoint", None, "SDMX REST API endpoint URL.")
+flags.DEFINE_string("agency", None, "SDMX agency identifier.")
+flags.DEFINE_string("dataflow", None, "SDMX dataflow identifier.")
+flags.DEFINE_multi_string(
+    "key",
+    [],
+    "SDMX key filter (repeatable).",
+)
+flags.DEFINE_multi_string(
+    "param",
+    [],
+    "Additional SDMX query parameter (repeatable).",
+)
+flags.DEFINE_integer(
+    "sample_rows",
+    30,
+    "Rows to include when sampling SDMX data.",
+)
+flags.DEFINE_string(
+    "step",
+    None,
+    "Run only the specified step (overwrites its outputs).",
+)
+flags.DEFINE_string(
+    "from_step",
+    None,
+    "Run steps starting from the given step through 'run'.",
+)
+flags.DEFINE_bool(
+    "verbose",
+    False,
+    "Print additional execution details.",
+)
 
 SAMPLE_OUTPUT_DIR = Path("sample_output")
 FINAL_OUTPUT_DIR = Path("output")
@@ -103,89 +147,56 @@ STEP_IO: Dict[str, Dict[str, callable]] = {
     "run": {"inputs": _run_inputs, "outputs": _run_outputs},
 }
 
-
-def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Coordinate SDMX agentic import workflow (skeleton)."
-    )
-    parser.add_argument(
-        "--dataset-prefix",
-        required=True,
-        help="Prefix used to name all generated files.",
-    )
-    parser.add_argument("--endpoint", help="SDMX REST API endpoint URL.")
-    parser.add_argument("--agency", help="SDMX agency identifier.")
-    parser.add_argument("--dataflow", help="SDMX dataflow identifier.")
-    parser.add_argument(
-        "--key",
-        action="append",
-        default=[],
-        help="SDMX key filter (repeatable).",
-    )
-    parser.add_argument(
-        "--param",
-        action="append",
-        default=[],
-        help="Additional SDMX query parameter (repeatable).",
-    )
-    parser.add_argument(
-        "--sample-rows",
-        type=int,
-        default=30,
-        help="Rows to include when sampling SDMX data.",
-    )
-    parser.add_argument(
-        "--step",
-        choices=[step.name for step in STEP_SEQUENCE],
-        help="Run only the specified step (overwrites its outputs).",
-    )
-    parser.add_argument(
-        "--from-step",
-        choices=[step.name for step in STEP_SEQUENCE],
-        help="Run steps starting from the given step through 'run'.",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Print additional execution details.",
-    )
-    args = parser.parse_args(argv)
-    if args.step and args.from_step:
-        parser.error("--step and --from-step cannot be used together.")
-    return args
+def _validate_step_flags(step: str | None, from_step: str | None) -> None:
+    """Ensure step selection flags are valid."""
+    if step and from_step:
+        raise app.UsageError("--step and --from-step cannot be used together.")
+    valid_names = [s.name for s in STEP_SEQUENCE]
+    if step and step not in valid_names:
+        raise app.UsageError(f"--step must be one of {valid_names}")
+    if from_step and from_step not in valid_names:
+        raise app.UsageError(f"--from-step must be one of {valid_names}")
 
 
-def determine_steps(args: argparse.Namespace) -> List[Step]:
-    if args.step:
-        return [step for step in STEP_SEQUENCE if step.name == args.step]
-    if args.from_step:
+def determine_steps(step_name: str | None, from_step_name: str | None) -> List[Step]:
+    if step_name:
+        return [step for step in STEP_SEQUENCE if step.name == step_name]
+    if from_step_name:
         names = [step.name for step in STEP_SEQUENCE]
-        start_index = names.index(args.from_step)
+        start_index = names.index(from_step_name)
         return STEP_SEQUENCE[start_index:]
     return STEP_SEQUENCE
 
 
 def summarize_plan(prefix: str, steps: List[Step]) -> None:
-    print(f"Dataset prefix: {prefix}")
-    print("Planned steps:")
+    logging.info("Dataset prefix: %s", prefix)
+    logging.info("Planned steps:")
     for step in steps:
-        print(f"  - {step.name}: {step.description}")
-        print("    Inputs:")
+        logging.info("  - %s: %s", step.name, step.description)
+        logging.info("    Inputs:")
         for path in step.inputs(prefix):
-            print(f"      * {path}")
-        print("    Outputs:")
+            logging.info("      * %s", path)
+        logging.info("    Outputs:")
         for path in step.outputs(prefix):
-            print(f"      * {path}")
+            logging.info("      * %s", path)
 
 
-def main(argv: Iterable[str] | None = None) -> int:
-    args = parse_args(argv)
-    steps_to_run = determine_steps(args)
-    summarize_plan(args.dataset_prefix, steps_to_run)
-    print("\nPhase 1 skeleton complete. Execution wiring will follow in later phases.")
-    return 0
+def main(argv: Iterable[str]) -> None:
+    del argv  # Unused.
+    verbose = FLAGS.verbose
+    step = FLAGS.step
+    from_step = FLAGS.from_step
+    dataset_prefix = FLAGS.dataset_prefix
+
+    logging.set_verbosity(logging.DEBUG if verbose else logging.INFO)
+
+    _validate_step_flags(step, from_step)
+    steps_to_run = determine_steps(step, from_step)
+    summarize_plan(dataset_prefix, steps_to_run)
+    logging.info(
+        "Phase 1 skeleton complete. Execution wiring will follow in later phases."
+    )
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
-
+    app.run(main)
