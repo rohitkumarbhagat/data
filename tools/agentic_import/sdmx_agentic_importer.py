@@ -462,18 +462,23 @@ def _step_state_matches(
     record: Dict[str, Any],
     prefix: str,
     context: WorkflowContext,
-) -> bool:
+) -> Tuple[bool, str | None]:
     if record.get("status") != "success":
-        return False
+        return False, "status not success"
     if record.get("step_version") != step.version:
-        return False
+        return False, "step version changed"
     expected_outputs = [str(path) for path in step.outputs(prefix)]
     if sorted(record.get("outputs", [])) != sorted(expected_outputs):
-        return False
+        return (
+            False,
+            "recorded outputs differ from expected list",
+        )
     if not _outputs_exist(step.outputs(prefix)):
-        return False
+        return False, "expected output file missing"
     fingerprint = step.fingerprint(prefix, context)
-    return record.get("inputs_fingerprint") == fingerprint
+    if record.get("inputs_fingerprint") != fingerprint:
+        return False, "inputs fingerprint changed"
+    return True, None
 
 
 def _validate_step_flags(step: str | None, from_step: str | None) -> None:
@@ -494,25 +499,29 @@ def determine_steps(
     step_name: str | None,
     from_step_name: str | None,
     force: bool,
-) -> Tuple[List[Step], List[str]]:
+) -> Tuple[List[Step], List[str], List[str]]:
     if step_name:
-        return ([step for step in STEP_SEQUENCE if step.name == step_name], [])
+        return ([step for step in STEP_SEQUENCE if step.name == step_name], [], [])
     if from_step_name:
         names = [step.name for step in STEP_SEQUENCE]
         start_index = names.index(from_step_name)
-        return (STEP_SEQUENCE[start_index:], [])
+        return (STEP_SEQUENCE[start_index:], [], [])
     if force:
-        return (STEP_SEQUENCE, [])
+        return (STEP_SEQUENCE, [], [])
 
     skipped: List[str] = []
+    rerun_reasons: List[str] = []
     steps_state = state.get("steps", {})
     for index, step in enumerate(STEP_SEQUENCE):
         record = steps_state.get(step.name, {})
-        if _step_state_matches(step, record, prefix, context):
+        matches, reason = _step_state_matches(step, record, prefix, context)
+        if matches:
             skipped.append(step.name)
             continue
-        return (STEP_SEQUENCE[index:], skipped)
-    return ([], skipped)
+        if reason:
+            rerun_reasons.append(f"{step.name}: {reason}")
+        return (STEP_SEQUENCE[index:], skipped, rerun_reasons)
+    return ([], skipped, rerun_reasons)
 
 
 def execute_steps(
@@ -560,10 +569,19 @@ def execute_steps(
             _write_state(prefix, state)
 
 
-def summarize_plan(prefix: str, steps: List[Step], skipped: List[str]) -> None:
+def summarize_plan(
+    prefix: str,
+    steps: List[Step],
+    skipped: List[str],
+    rerun_reasons: List[str],
+) -> None:
     logging.info("Dataset prefix: %s", prefix)
     if skipped:
         logging.info("Skipping (already complete): %s", ", ".join(skipped))
+    if rerun_reasons:
+        logging.info("Re-running reasons:")
+        for reason in rerun_reasons:
+            logging.info("  * %s", reason)
     logging.info("Planned steps:")
     for step in steps:
         logging.info("  - %s: %s", step.name, step.description)
@@ -597,7 +615,7 @@ def main(argv: Iterable[str]) -> None:
 
     _validate_step_flags(step, from_step)
     state = _load_state(dataset_prefix)
-    steps_to_run, skipped = determine_steps(
+    steps_to_run, skipped, rerun_reasons = determine_steps(
         dataset_prefix,
         context,
         state,
@@ -606,7 +624,7 @@ def main(argv: Iterable[str]) -> None:
         force,
     )
 
-    summarize_plan(dataset_prefix, steps_to_run, skipped)
+    summarize_plan(dataset_prefix, steps_to_run, skipped, rerun_reasons)
     if not steps_to_run:
         logging.info("Nothing to do; all steps already satisfied.")
         return
