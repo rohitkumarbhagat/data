@@ -463,12 +463,17 @@ def _step_state_matches(
     prefix: str,
     context: WorkflowContext,
 ) -> Tuple[bool, str | None]:
+    if not record:
+        return False, "no prior state"
     if record.get("status") != "success":
         return False, "status not success"
     if record.get("step_version") != step.version:
         return False, "step version changed"
     expected_outputs = [str(path) for path in step.outputs(prefix)]
-    if sorted(record.get("outputs", [])) != sorted(expected_outputs):
+    recorded_outputs = record.get("outputs")
+    if not isinstance(recorded_outputs, list):
+        return False, "missing outputs list"
+    if sorted(recorded_outputs) != sorted(expected_outputs):
         return (
             False,
             "recorded outputs differ from expected list",
