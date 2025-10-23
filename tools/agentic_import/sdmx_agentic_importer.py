@@ -21,6 +21,12 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from tools.sdmx_import.sdmx_client import SdmxClient
+from tools.statvar_importer import data_sampler
+from tools.agentic_import.pvmap_generator import (
+    Config as PvmapConfig,
+    DataConfig as PvmapDataConfig,
+    PVMapGenerator,
+)
 
 FLAGS = flags.FLAGS
 
@@ -231,9 +237,65 @@ def _execute_sdmx_data(prefix: str, context: WorkflowContext) -> None:
     )
 
 
+def _execute_sample(prefix: str, context: WorkflowContext) -> None:
+    input_path = Path(f"{prefix}_data.csv")
+    if not input_path.is_file():
+        raise app.UsageError(f"sample requires existing input: {input_path}")
+    SAMPLE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = SAMPLE_OUTPUT_DIR / f"{prefix}_sample.csv"
+    logging.info(
+        "Sampling SDMX data from %s into %s (max rows=%d)",
+        input_path,
+        output_path,
+        context.sample_rows,
+    )
+    data_sampler.sample_csv_file(
+        str(input_path),
+        str(output_path),
+        {
+            "sampler_input": str(input_path),
+            "sampler_output": str(output_path),
+            "sampler_output_rows": context.sample_rows,
+        },
+    )
+
+
+def _execute_pvmap(prefix: str, context: WorkflowContext) -> None:
+    sample_path = SAMPLE_OUTPUT_DIR / f"{prefix}_sample.csv"
+    metadata_path = Path(f"{prefix}_metadata.xml")
+    if not sample_path.is_file():
+        raise app.UsageError(f"pvmap requires sample output: {sample_path}")
+    if not metadata_path.is_file():
+        raise app.UsageError(f"pvmap requires metadata file: {metadata_path}")
+
+    SAMPLE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output_prefix = SAMPLE_OUTPUT_DIR / prefix
+    data_config = PvmapDataConfig(
+        input_data=[str(sample_path)],
+        input_metadata=[str(metadata_path)],
+        is_sdmx_dataset=True,
+    )
+    pvmap_config = PvmapConfig(
+        data_config=data_config,
+        dry_run=False,
+        maps_api_key=None,
+        dc_api_key=None,
+        max_iterations=10,
+        skip_confirmation=True,
+        enable_sandboxing=False,
+        output_path=str(output_prefix),
+        gemini_cli=None,
+    )
+    logging.info("Generating PV map artifacts under %s", output_prefix)
+    generator = PVMapGenerator(pvmap_config)
+    generator.generate()
+
+
 STEP_RUNNERS: Dict[str, Callable[[str, WorkflowContext], None]] = {
     "sdmx-metadata": _execute_sdmx_metadata,
     "sdmx-data": _execute_sdmx_data,
+    "sample": _execute_sample,
+    "pvmap": _execute_pvmap,
 }
 
 
