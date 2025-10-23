@@ -119,6 +119,7 @@ class SdmxSourceConfig:
 class WorkflowContext:
     sdmx: SdmxSourceConfig
     sample_rows: int
+    verbose: bool
 
 
 def _metadata_inputs(_: str) -> List[Path]:
@@ -402,7 +403,6 @@ def _execute_pvmap(prefix: str, context: WorkflowContext) -> None:
 
 
 def _execute_run(prefix: str, context: WorkflowContext) -> None:
-    del context  # Unused for now.
     data_path = Path(f"{prefix}_data.csv")
     pvmap_path = SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv"
     metadata_path = SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv"
@@ -423,7 +423,11 @@ def _execute_run(prefix: str, context: WorkflowContext) -> None:
         f"--output_columns={_RUN_OUTPUT_COLUMNS}",
         f"--output_path={output_prefix}",
     ]
-    logging.info("Running stat_var_processor: %s", " ".join(command))
+    if context.verbose:
+        logging.info("Running stat_var_processor: %s", " ".join(command))
+    else:
+        logging.info("Running stat_var_processor for %s", prefix)
+        logging.debug("Command: %s", " ".join(command))
     subprocess.run(command, check=True)
 
 
@@ -553,10 +557,22 @@ def execute_steps(
 ) -> None:
     steps_state = state.setdefault("steps", {})
     for step in steps:
-        logging.info("=== %s ===", step.name)
+        if context.verbose:
+            logging.info("=== %s: %s ===", step.name, step.description)
+        else:
+            logging.info("Running step: %s", step.name)
         runner = STEP_RUNNERS.get(step.name)
         if not runner:
             raise NotImplementedError(f"Step '{step.name}' is not implemented.")
+
+        missing_inputs = [
+            str(path) for path in step.inputs(prefix) if not path.exists()
+        ]
+        if missing_inputs:
+            raise app.UsageError(
+                f"{step.name} requires existing inputs: {', '.join(missing_inputs)}; "
+                "run prerequisite steps or provide the files."
+            )
 
         fingerprint = step.fingerprint(prefix, context)
         outputs = [str(path) for path in step.outputs(prefix)]
@@ -627,7 +643,11 @@ def main(argv: Iterable[str]) -> None:
         key=tuple(FLAGS.key),
         param=tuple(FLAGS.param),
     )
-    context = WorkflowContext(sdmx=sdmx_config, sample_rows=FLAGS.sample_rows)
+    context = WorkflowContext(
+        sdmx=sdmx_config,
+        sample_rows=FLAGS.sample_rows,
+        verbose=verbose,
+    )
 
     logging.set_verbosity(logging.DEBUG if verbose else logging.INFO)
 
