@@ -77,6 +77,11 @@ flags.DEFINE_bool(
     False,
     "In default mode, ignore resume state and run all steps from start.",
 )
+flags.DEFINE_bool(
+    "skip_confirmation",
+    False,
+    "Skip interactive confirmation prompts before executing steps.",
+)
 
 SAMPLE_OUTPUT_DIR = Path("sample_output")
 FINAL_OUTPUT_DIR = Path("output")
@@ -120,6 +125,7 @@ class WorkflowContext:
     sdmx: SdmxSourceConfig
     sample_rows: int
     verbose: bool
+    skip_confirmation: bool
 
 
 def _metadata_inputs(_: str) -> List[Path]:
@@ -411,7 +417,7 @@ def _execute_pvmap(prefix: str, context: WorkflowContext) -> None:
         maps_api_key=None,
         dc_api_key=None,
         max_iterations=10,
-        skip_confirmation=True,
+        skip_confirmation=context.skip_confirmation,
         enable_sandboxing=False,
         output_path=str(output_prefix),
         gemini_cli=None,
@@ -476,6 +482,22 @@ STEP_RUNNERS: Dict[str, Callable[[str, WorkflowContext], None]] = {
 
 def _state_path(prefix: str) -> Path:
     return STATE_DIR / f"{prefix}.state.json"
+
+
+def _confirm_step_execution(step: Step, context: WorkflowContext) -> bool:
+    if context.skip_confirmation:
+        return True
+    prompt = (
+        f"Proceed with step '{step.name}' ({step.description})? [y/N]: "
+    )
+    try:
+        response = input(prompt)
+    except EOFError as exc:  # pragma: no cover
+        raise app.UsageError(
+            "Interactive confirmation is required; use --skip_confirmation to bypass."
+        ) from exc
+    decision = response.strip().lower()
+    return decision in ("y", "yes")
 
 
 def _load_state(prefix: str) -> Dict[str, Any]:
@@ -607,6 +629,9 @@ def execute_steps(
                 f"{step.name} requires existing inputs: {', '.join(missing_inputs)}; "
                 "run prerequisite steps or provide the files."
             )
+        if not _confirm_step_execution(step, context):
+            logging.info("User declined to run step '%s'; stopping execution.", step.name)
+            return
 
         fingerprint = step.fingerprint(prefix, context)
         outputs = [str(path) for path in step.outputs(prefix)]
@@ -641,6 +666,7 @@ def summarize_plan(
     steps: List[Step],
     skipped: List[str],
     rerun_reasons: List[str],
+    context: WorkflowContext,
 ) -> None:
     logging.info("Dataset prefix: %s", prefix)
     if skipped:
@@ -649,6 +675,10 @@ def summarize_plan(
         logging.info("Re-running reasons:")
         for reason in rerun_reasons:
             logging.info("  * %s", reason)
+    if context.skip_confirmation:
+        logging.info("Confirmation prompts are disabled (--skip_confirmation).")
+    else:
+        logging.info("Confirmation required before each step.")
     logging.info("Planned steps:")
     for step in steps:
         logging.info("  - %s: %s", step.name, step.description)
@@ -681,6 +711,7 @@ def main(argv: Iterable[str]) -> None:
         sdmx=sdmx_config,
         sample_rows=FLAGS.sample_rows,
         verbose=verbose,
+        skip_confirmation=FLAGS.skip_confirmation,
     )
 
     logging.set_verbosity(logging.DEBUG if verbose else logging.INFO)
@@ -696,7 +727,7 @@ def main(argv: Iterable[str]) -> None:
         force,
     )
 
-    summarize_plan(dataset_prefix, steps_to_run, skipped, rerun_reasons)
+    summarize_plan(dataset_prefix, steps_to_run, skipped, rerun_reasons, context)
     if not steps_to_run:
         logging.info("Nothing to do; all steps already satisfied.")
         return
