@@ -580,6 +580,8 @@ def main(argv: Iterable[str]) -> None:
     verbose = FLAGS.verbose
     step = FLAGS.step
     from_step = FLAGS.from_step
+    if FLAGS.force and (step or from_step):
+        logging.warning("--force is ignored when used with --step or --from_step.")
     force = FLAGS.force if not (step or from_step) else False
     dataset_prefix = FLAGS.dataset_prefix
     sdmx_config = SdmxSourceConfig(
