@@ -612,8 +612,10 @@ def determine_steps(
         if matches:
             skipped.append(step.name)
             continue
+        message = f"Starting step: {step.name}"
         if reason:
-            rerun_reasons.append(f"{step.name}: {reason}")
+            message += f". Reason for start -> {reason}"
+        rerun_reasons.append(message)
         return (STEP_SEQUENCE[index:], skipped, rerun_reasons)
     return ([], skipped, rerun_reasons)
 
@@ -626,10 +628,13 @@ def execute_steps(
 ) -> None:
     steps_state = state.setdefault("steps", {})
     for step in steps:
+        logging.info("========================================")
         if context.verbose:
-            logging.info("=== %s: %s ===", step.name, step.description)
+            logging.info(
+                ">>> Starting step: %s — %s", step.name, step.description
+            )
         else:
-            logging.info("Running step: %s", step.name)
+            logging.info(">>> Running step: %s", step.name)
         runner = STEP_RUNNERS.get(step.name)
         if not runner:
             raise NotImplementedError(f"Step '{step.name}' is not implemented.")
@@ -664,6 +669,7 @@ def execute_steps(
             })
             steps_state[step.name] = record
             _write_state(prefix, state)
+            logging.info("<<< Completed step: %s (failure)", step.name)
             raise
         else:
             record.update({
@@ -672,6 +678,7 @@ def execute_steps(
             })
             steps_state[step.name] = record
             _write_state(prefix, state)
+            logging.info("<<< Completed step: %s (success)", step.name)
 
 
 def summarize_plan(
@@ -685,7 +692,7 @@ def summarize_plan(
     if skipped:
         logging.info("Skipping (already complete): %s", ", ".join(skipped))
     if rerun_reasons:
-        logging.info("Re-running reasons:")
+        logging.info("Step start summary:")
         for reason in rerun_reasons:
             logging.info("  * %s", reason)
     if context.skip_confirmation:
