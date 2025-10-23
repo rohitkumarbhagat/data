@@ -323,7 +323,16 @@ def _execute_sdmx_metadata(prefix: str, context: WorkflowContext) -> None:
     _require_sdmx_source(config, "sdmx-metadata")
     output_path = Path(f"{prefix}_metadata.xml")
     client = _make_sdmx_client(config)
-    logging.info("Downloading SDMX metadata to %s", output_path)
+    if context.verbose:
+        logging.info(
+            "Starting SDMX metadata download: endpoint=%s agency=%s dataflow=%s -> %s",
+            config.endpoint,
+            config.agency,
+            config.dataflow,
+            output_path,
+        )
+    else:
+        logging.info("Downloading SDMX metadata to %s", output_path)
     client.download_metadata(cast(str, config.dataflow), str(output_path))
 
 
@@ -334,12 +343,19 @@ def _execute_sdmx_data(prefix: str, context: WorkflowContext) -> None:
     client = _make_sdmx_client(config)
     key_filters = _parse_key_value_pairs(config.key)
     extra_params = _parse_key_value_pairs(config.param)
-    logging.info(
-        "Downloading SDMX data to %s with key=%s params=%s",
-        output_path,
-        key_filters,
-        extra_params,
-    )
+    if context.verbose:
+        logging.info(
+            "Starting SDMX data download: endpoint=%s agency=%s "
+            "dataflow=%s key=%s params=%s -> %s",
+            config.endpoint,
+            config.agency,
+            config.dataflow,
+            key_filters,
+            extra_params,
+            output_path,
+        )
+    else:
+        logging.info("Downloading SDMX data to %s", output_path)
     client.download_data_as_csv(
         cast(str, config.dataflow),
         key_filters,
@@ -354,12 +370,15 @@ def _execute_sample(prefix: str, context: WorkflowContext) -> None:
         raise app.UsageError(f"sample requires existing input: {input_path}")
     SAMPLE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_path = SAMPLE_OUTPUT_DIR / f"{prefix}_sample.csv"
-    logging.info(
-        "Sampling SDMX data from %s into %s (max rows=%d)",
-        input_path,
-        output_path,
-        context.sample_rows,
-    )
+    if context.verbose:
+        logging.info(
+            "Starting sample: input=%s output=%s rows=%d",
+            input_path,
+            output_path,
+            context.sample_rows,
+        )
+    else:
+        logging.info("Sampling SDMX data into %s", output_path)
     data_sampler.sample_csv_file(
         str(input_path),
         str(output_path),
@@ -397,7 +416,15 @@ def _execute_pvmap(prefix: str, context: WorkflowContext) -> None:
         output_path=str(output_prefix),
         gemini_cli=None,
     )
-    logging.info("Generating PV map artifacts under %s", output_prefix)
+    if context.verbose:
+        logging.info(
+            "Starting PV map generation: sample=%s metadata=%s output=%s",
+            sample_path,
+            metadata_path,
+            output_prefix,
+        )
+    else:
+        logging.info("Generating PV map artifacts under %s", output_prefix)
     generator = PVMapGenerator(pvmap_config)
     generator.generate()
 
@@ -424,7 +451,14 @@ def _execute_run(prefix: str, context: WorkflowContext) -> None:
         f"--output_path={output_prefix}",
     ]
     if context.verbose:
-        logging.info("Running stat_var_processor: %s", " ".join(command))
+        logging.info(
+            "Starting stat_var_processor: input=%s pvmap=%s metadata=%s -> %s",
+            data_path,
+            pvmap_path,
+            metadata_path,
+            output_prefix,
+        )
+        logging.debug("Command: %s", " ".join(command))
     else:
         logging.info("Running stat_var_processor for %s", prefix)
         logging.debug("Command: %s", " ".join(command))
