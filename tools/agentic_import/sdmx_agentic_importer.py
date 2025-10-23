@@ -102,6 +102,8 @@ FINAL_OUTPUT_DIR = Path("output")
 STATE_DIR = Path(".datacommons")
 STATVAR_PROCESSOR = (REPO_ROOT / "tools" / "statvar_importer" /
                      "stat_var_processor.py")
+CUSTOM_DC_CONFIG_GENERATOR = (REPO_ROOT / "tools" / "agentic_import" /
+                              "generate_custom_dc_config.py")
 _RUN_OUTPUT_COLUMNS = (
     "observationDate,observationAbout,variableMeasured,value,"
     "observationPeriod,measurementMethod,unit,scalingFactor")
@@ -202,6 +204,15 @@ def _run_outputs(prefix: str) -> List[Path]:
     ]
 
 
+def _custom_dc_config_inputs(prefix: str) -> List[Path]:
+    return [FINAL_OUTPUT_DIR / f"{prefix}.csv"]
+
+
+def _custom_config_outputs(_: str) -> List[Path]:
+    # Single config name as per README and custom DC expectations.
+    return [FINAL_OUTPUT_DIR / "config.json"]
+
+
 def _fingerprint_sdmx_metadata(_: str,
                                context: WorkflowContext) -> Dict[str, Any]:
     return {
@@ -255,6 +266,14 @@ def _fingerprint_run(prefix: str, _: WorkflowContext) -> Dict[str, Any]:
     }
 
 
+def _fingerprint_custom_config(prefix: str,
+                               _: WorkflowContext) -> Dict[str, Any]:
+    return {
+        "input_csv": str(FINAL_OUTPUT_DIR / f"{prefix}.csv"),
+        "output_config": str(FINAL_OUTPUT_DIR / "config.json"),
+    }
+
+
 STEP_SEQUENCE: List[Step] = [
     Step(
         "sdmx-metadata",
@@ -286,6 +305,12 @@ STEP_SEQUENCE: List[Step] = [
         version=1,
         fingerprint_fn=_fingerprint_run,
     ),
+    Step(
+        "custom-dc-config",
+        "Generate Custom DC configuration",
+        version=1,
+        fingerprint_fn=_fingerprint_custom_config,
+    ),
 ]
 
 STEP_IO: Dict[str, Dict[str, callable]] = {
@@ -308,6 +333,10 @@ STEP_IO: Dict[str, Dict[str, callable]] = {
     "run": {
         "inputs": _run_inputs,
         "outputs": _run_outputs
+    },
+    "custom-dc-config": {
+        "inputs": _custom_dc_config_inputs,
+        "outputs": _custom_config_outputs,
     },
 }
 
@@ -491,12 +520,44 @@ def _execute_run(prefix: str, context: WorkflowContext) -> None:
 
 
 STEP_RUNNERS: Dict[str, Callable[[str, WorkflowContext], None]] = {
-    "sdmx-metadata": _execute_sdmx_metadata,
-    "sdmx-data": _execute_sdmx_data,
-    "sample": _execute_sample,
-    "pvmap": _execute_pvmap,
-    "run": _execute_run,
+    "sdmx-metadata":
+        _execute_sdmx_metadata,
+    "sdmx-data":
+        _execute_sdmx_data,
+    "sample":
+        _execute_sample,
+    "pvmap":
+        _execute_pvmap,
+    "run":
+        _execute_run,
+    "custom-dc-config":
+        lambda prefix, context: _execute_custom_dc_config(prefix, context),
 }
+
+
+def _execute_custom_dc_config(prefix: str, context: WorkflowContext) -> None:
+    input_csv = FINAL_OUTPUT_DIR / f"{prefix}.csv"
+    output_config = FINAL_OUTPUT_DIR / "config.json"
+    if not input_csv.is_file():
+        raise app.UsageError(
+            f"custom-dc-config requires existing input: {input_csv}")
+
+    command = [
+        sys.executable,
+        str(CUSTOM_DC_CONFIG_GENERATOR),
+        f"--input_csv={input_csv}",
+        f"--output_config={output_config}",
+    ]
+    if context.verbose:
+        logging.info(
+            "Starting custom DC config generation: input=%s -> %s",
+            input_csv,
+            output_config,
+        )
+        logging.debug("Command: %s", " ".join(command))
+    else:
+        logging.info("Generating custom DC config at %s", output_config)
+    subprocess.run(command, check=True)
 
 
 def _state_path(prefix: str) -> Path:
