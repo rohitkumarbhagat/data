@@ -6,11 +6,13 @@ Actual subprocess execution is added in later phases.
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Tuple, cast
+from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
 
 from absl import app
 from absl import flags
@@ -70,6 +72,11 @@ flags.DEFINE_bool(
     False,
     "Print additional execution details.",
 )
+flags.DEFINE_bool(
+    "force",
+    False,
+    "In default mode, ignore resume state and run all steps from start.",
+)
 
 SAMPLE_OUTPUT_DIR = Path("sample_output")
 FINAL_OUTPUT_DIR = Path("output")
@@ -77,18 +84,27 @@ STATE_DIR = Path(".datacommons")
 STATVAR_PROCESSOR = (
     REPO_ROOT / "tools" / "statvar_importer" / "stat_var_processor.py"
 )
+_RUN_OUTPUT_COLUMNS = (
+    "observationDate,observationAbout,variableMeasured,value,"
+    "observationPeriod,measurementMethod,unit,scalingFactor"
+)
 
 
 @dataclass(frozen=True)
 class Step:
     name: str
     description: str
+    version: int
+    fingerprint_fn: Callable[[str, WorkflowContext], Dict[str, Any]]
 
     def inputs(self, prefix: str) -> List[Path]:
         return STEP_IO[self.name]["inputs"](prefix)
 
     def outputs(self, prefix: str) -> List[Path]:
         return STEP_IO[self.name]["outputs"](prefix)
+
+    def fingerprint(self, prefix: str, context: WorkflowContext) -> Dict[str, Any]:
+        return self.fingerprint_fn(prefix, context)
 
 
 @dataclass(frozen=True)
@@ -163,12 +179,88 @@ def _run_outputs(prefix: str) -> List[Path]:
     ]
 
 
+def _fingerprint_sdmx_metadata(_: str, context: WorkflowContext) -> Dict[str, Any]:
+    return {
+        "endpoint": context.sdmx.endpoint,
+        "agency": context.sdmx.agency,
+        "dataflow": context.sdmx.dataflow,
+    }
+
+
+def _normalize_multi_args(values: Tuple[str, ...]) -> List[str]:
+    normalized = []
+    for entry in values:
+        parts = entry.split(":", 1)
+        if len(parts) == 2:
+            key, value = parts
+            normalized.append(f"{key.strip()}:{value.strip()}")
+        else:
+            normalized.append(entry.strip())
+    return sorted(normalized)
+
+
+def _fingerprint_sdmx_data(_: str, context: WorkflowContext) -> Dict[str, Any]:
+    return {
+        "endpoint": context.sdmx.endpoint,
+        "agency": context.sdmx.agency,
+        "dataflow": context.sdmx.dataflow,
+        "key": _normalize_multi_args(context.sdmx.key),
+        "param": _normalize_multi_args(context.sdmx.param),
+    }
+
+
+def _fingerprint_sample(_: str, context: WorkflowContext) -> Dict[str, Any]:
+    return {"sample_rows": context.sample_rows}
+
+
+def _fingerprint_pvmap(prefix: str, _: WorkflowContext) -> Dict[str, Any]:
+    return {
+        "sample": f"{prefix}_sample.csv",
+        "metadata": f"{prefix}_metadata.xml",
+        "sdmx_dataset": True,
+    }
+
+
+def _fingerprint_run(prefix: str, _: WorkflowContext) -> Dict[str, Any]:
+    return {
+        "data": f"{prefix}_data.csv",
+        "pvmap": f"{prefix}_pvmap.csv",
+        "metadata": f"{prefix}_metadata.csv",
+        "output_columns": _RUN_OUTPUT_COLUMNS,
+    }
+
+
 STEP_SEQUENCE: List[Step] = [
-    Step("sdmx-metadata", "Download SDMX metadata"),
-    Step("sdmx-data", "Download SDMX data"),
-    Step("sample", "Sample SDMX data"),
-    Step("pvmap", "Generate PV map from sample"),
-    Step("run", "Process full SDMX data"),
+    Step(
+        "sdmx-metadata",
+        "Download SDMX metadata",
+        version=1,
+        fingerprint_fn=_fingerprint_sdmx_metadata,
+    ),
+    Step(
+        "sdmx-data",
+        "Download SDMX data",
+        version=1,
+        fingerprint_fn=_fingerprint_sdmx_data,
+    ),
+    Step(
+        "sample",
+        "Sample SDMX data",
+        version=1,
+        fingerprint_fn=_fingerprint_sample,
+    ),
+    Step(
+        "pvmap",
+        "Generate PV map from sample",
+        version=1,
+        fingerprint_fn=_fingerprint_pvmap,
+    ),
+    Step(
+        "run",
+        "Process full SDMX data",
+        version=1,
+        fingerprint_fn=_fingerprint_run,
+    ),
 ]
 
 
@@ -306,10 +398,6 @@ def _execute_run(prefix: str, context: WorkflowContext) -> None:
 
     FINAL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_prefix = FINAL_OUTPUT_DIR / prefix
-    output_columns = (
-        "observationDate,observationAbout,variableMeasured,value,"
-        "observationPeriod,measurementMethod,unit,scalingFactor"
-    )
     command = [
         sys.executable,
         str(STATVAR_PROCESSOR),
@@ -318,7 +406,7 @@ def _execute_run(prefix: str, context: WorkflowContext) -> None:
         f"--config_file={metadata_path}",
         "--generate_statvar_name=True",
         "--skip_constant_csv_columns=False",
-        f"--output_columns={output_columns}",
+        f"--output_columns={_RUN_OUTPUT_COLUMNS}",
         f"--output_path={output_prefix}",
     ]
     logging.info("Running stat_var_processor: %s", " ".join(command))
@@ -334,6 +422,60 @@ STEP_RUNNERS: Dict[str, Callable[[str, WorkflowContext], None]] = {
 }
 
 
+def _state_path(prefix: str) -> Path:
+    return STATE_DIR / f"{prefix}.state.json"
+
+
+def _load_state(prefix: str) -> Dict[str, Any]:
+    path = _state_path(prefix)
+    if not path.is_file():
+        return {"steps": {}}
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError as exc:
+        raise app.UsageError(f"Failed to parse state file {path}: {exc}") from exc
+    steps = data.get("steps", {})
+    if not isinstance(steps, dict):
+        steps = {}
+    return {"steps": steps}
+
+
+def _write_state(prefix: str, state: Dict[str, Any]) -> None:
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "dataset_prefix": prefix,
+        "updated": datetime.now(timezone.utc).isoformat(),
+        "steps": state.get("steps", {}),
+    }
+    path = _state_path(prefix)
+    tmp_path = path.with_suffix(".tmp")
+    tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+    tmp_path.replace(path)
+
+
+def _outputs_exist(paths: List[Path]) -> bool:
+    return all(path.is_file() for path in paths)
+
+
+def _step_state_matches(
+    step: Step,
+    record: Dict[str, Any],
+    prefix: str,
+    context: WorkflowContext,
+) -> bool:
+    if record.get("status") != "success":
+        return False
+    if record.get("step_version") != step.version:
+        return False
+    expected_outputs = [str(path) for path in step.outputs(prefix)]
+    if sorted(record.get("outputs", [])) != sorted(expected_outputs):
+        return False
+    if not _outputs_exist(step.outputs(prefix)):
+        return False
+    fingerprint = step.fingerprint(prefix, context)
+    return record.get("inputs_fingerprint") == fingerprint
+
+
 def _validate_step_flags(step: str | None, from_step: str | None) -> None:
     """Ensure step selection flags are valid."""
     if step and from_step:
@@ -345,28 +487,83 @@ def _validate_step_flags(step: str | None, from_step: str | None) -> None:
         raise app.UsageError(f"--from-step must be one of {valid_names}")
 
 
-def determine_steps(step_name: str | None, from_step_name: str | None) -> List[Step]:
+def determine_steps(
+    prefix: str,
+    context: WorkflowContext,
+    state: Dict[str, Any],
+    step_name: str | None,
+    from_step_name: str | None,
+    force: bool,
+) -> Tuple[List[Step], List[str]]:
     if step_name:
-        return [step for step in STEP_SEQUENCE if step.name == step_name]
+        return ([step for step in STEP_SEQUENCE if step.name == step_name], [])
     if from_step_name:
         names = [step.name for step in STEP_SEQUENCE]
         start_index = names.index(from_step_name)
-        return STEP_SEQUENCE[start_index:]
-    return STEP_SEQUENCE
+        return (STEP_SEQUENCE[start_index:], [])
+    if force:
+        return (STEP_SEQUENCE, [])
+
+    skipped: List[str] = []
+    steps_state = state.get("steps", {})
+    for index, step in enumerate(STEP_SEQUENCE):
+        record = steps_state.get(step.name, {})
+        if _step_state_matches(step, record, prefix, context):
+            skipped.append(step.name)
+            continue
+        return (STEP_SEQUENCE[index:], skipped)
+    return ([], skipped)
 
 
-def execute_steps(prefix: str, steps: List[Step], context: WorkflowContext) -> None:
+def execute_steps(
+    prefix: str,
+    steps: List[Step],
+    context: WorkflowContext,
+    state: Dict[str, Any],
+) -> None:
+    steps_state = state.setdefault("steps", {})
     for step in steps:
         logging.info("=== %s ===", step.name)
         runner = STEP_RUNNERS.get(step.name)
-        if runner:
+        if not runner:
+            raise NotImplementedError(f"Step '{step.name}' is not implemented.")
+
+        fingerprint = step.fingerprint(prefix, context)
+        outputs = [str(path) for path in step.outputs(prefix)]
+        record = {
+            "step": step.name,
+            "step_version": step.version,
+            "inputs_fingerprint": fingerprint,
+            "outputs": outputs,
+        }
+        try:
             runner(prefix, context)
+        except Exception as exc:  # noqa: BLE001
+            record.update(
+                {
+                    "status": "failed",
+                    "updated": datetime.now(timezone.utc).isoformat(),
+                    "error": repr(exc),
+                }
+            )
+            steps_state[step.name] = record
+            _write_state(prefix, state)
+            raise
         else:
-            logging.info("Step '%s' is not implemented yet; skipping.", step.name)
+            record.update(
+                {
+                    "status": "success",
+                    "updated": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            steps_state[step.name] = record
+            _write_state(prefix, state)
 
 
-def summarize_plan(prefix: str, steps: List[Step]) -> None:
+def summarize_plan(prefix: str, steps: List[Step], skipped: List[str]) -> None:
     logging.info("Dataset prefix: %s", prefix)
+    if skipped:
+        logging.info("Skipping (already complete): %s", ", ".join(skipped))
     logging.info("Planned steps:")
     for step in steps:
         logging.info("  - %s: %s", step.name, step.description)
@@ -383,6 +580,7 @@ def main(argv: Iterable[str]) -> None:
     verbose = FLAGS.verbose
     step = FLAGS.step
     from_step = FLAGS.from_step
+    force = FLAGS.force if not (step or from_step) else False
     dataset_prefix = FLAGS.dataset_prefix
     sdmx_config = SdmxSourceConfig(
         endpoint=FLAGS.endpoint,
@@ -396,9 +594,22 @@ def main(argv: Iterable[str]) -> None:
     logging.set_verbosity(logging.DEBUG if verbose else logging.INFO)
 
     _validate_step_flags(step, from_step)
-    steps_to_run = determine_steps(step, from_step)
-    summarize_plan(dataset_prefix, steps_to_run)
-    execute_steps(dataset_prefix, steps_to_run, context)
+    state = _load_state(dataset_prefix)
+    steps_to_run, skipped = determine_steps(
+        dataset_prefix,
+        context,
+        state,
+        step,
+        from_step,
+        force,
+    )
+
+    summarize_plan(dataset_prefix, steps_to_run, skipped)
+    if not steps_to_run:
+        logging.info("Nothing to do; all steps already satisfied.")
+        return
+
+    execute_steps(dataset_prefix, steps_to_run, context, state)
     logging.info("Execution complete.")
 
 
