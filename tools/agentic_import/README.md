@@ -266,3 +266,31 @@ When encountering errors with Gemini CLI:
 ```
 
 These logs contain detailed information for troubleshooting any issues during the PV map generation and data processing steps.
+
+## Basic Run Instructions
+
+```bash
+python tools/agentic_import/sdmx_agentic_importer.py \
+  --dataset_prefix=<prefix> \
+  --endpoint=<sdmx_endpoint> \
+  --agency=<sdmx_agency> \
+  --dataflow=<dataflow_id> \
+  --key=dimension:value \
+  --param=parameter:value \
+  --sample_rows=30 \
+  --verbose \
+  --skip_confirmation
+```
+
+- `--dataset_prefix` (required) names every output file; choose a short, unique token per dataset.
+- `--endpoint`, `--agency`, `--dataflow` define the SDMX source to download from; add multiple `--key` or `--param` flags as needed to filter queries.
+- `--sample_rows` sets how many rows are copied into the sample used for PV map generation.
+- `--verbose` is optional; include it to log detailed inputs and commands.
+- `--skip_confirmation` bypasses the per-step confirmation prompts; omit it to review each step interactively.
+
+Workflow overview:
+- **sdmx-metadata** downloads SDMX structural metadata for the dataset.
+- **sdmx-data** downloads the full SDMX CSV data.
+- **sample** extracts a small CSV sample into `sample_output/<prefix>_sample.csv`.
+- **pvmap** generates PV map artifacts in `sample_output/` for the sample dataset.
+- **run** processes the full data with the generated PV map into `output/`.
