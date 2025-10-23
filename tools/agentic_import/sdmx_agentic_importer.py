@@ -1,8 +1,17 @@
-"""Command-line coordinator for SDMX agentic import steps (skeleton).
-
-Phase 1: argument parsing, step registry, and path resolution only.
-Actual subprocess execution is added in later phases.
-"""
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Command-line coordinator for SDMX agentic import steps."""
 
 from __future__ import annotations
 
@@ -419,17 +428,14 @@ def _execute_pvmap(prefix: str, context: WorkflowContext) -> None:
         input_metadata=[str(metadata_path)],
         is_sdmx_dataset=True,
     )
-    pvmap_config = PvmapConfig(
-        data_config=data_config,
-        dry_run=False,
-        maps_api_key=None,
-        dc_api_key=None,
-        max_iterations=10,
-        skip_confirmation=context.skip_confirmation,
-        enable_sandboxing=False,
-        output_path=str(output_prefix),
-        gemini_cli=context.gemini_cli,
-    )
+    config_kwargs = {
+        "data_config": data_config,
+        "skip_confirmation": context.skip_confirmation,
+        "output_path": str(output_prefix),
+    }
+    if context.gemini_cli:
+        config_kwargs["gemini_cli"] = context.gemini_cli
+    pvmap_config = PvmapConfig(**config_kwargs)
     if context.verbose:
         logging.info(
             "Starting PV map generation: sample=%s metadata=%s output=%s gemini_cli=%s",
@@ -500,9 +506,7 @@ def _state_path(prefix: str) -> Path:
 def _confirm_step_execution(step: Step, context: WorkflowContext) -> bool:
     if context.skip_confirmation:
         return True
-    prompt = (
-        f"Proceed with step '{step.name}' ({step.description})? [y/N]: "
-    )
+    prompt = (f"Proceed with step '{step.name}' ({step.description})? [y/N]: ")
     try:
         response = input(prompt)
     except EOFError as exc:  # pragma: no cover
@@ -630,9 +634,8 @@ def execute_steps(
     for step in steps:
         logging.info("========================================")
         if context.verbose:
-            logging.info(
-                ">>> Starting step: %s — %s", step.name, step.description
-            )
+            logging.info(">>> Starting step: %s — %s", step.name,
+                         step.description)
         else:
             logging.info(">>> Running step: %s", step.name)
         runner = STEP_RUNNERS.get(step.name)
@@ -645,10 +648,10 @@ def execute_steps(
         if missing_inputs:
             raise app.UsageError(
                 f"{step.name} requires existing inputs: {', '.join(missing_inputs)}; "
-                "run prerequisite steps or provide the files."
-            )
+                "run prerequisite steps or provide the files.")
         if not _confirm_step_execution(step, context):
-            logging.info("User declined to run step '%s'; stopping execution.", step.name)
+            logging.info("User declined to run step '%s'; stopping execution.",
+                         step.name)
             return
 
         fingerprint = step.fingerprint(prefix, context)
@@ -752,7 +755,8 @@ def main(argv: Iterable[str]) -> None:
         force,
     )
 
-    summarize_plan(dataset_prefix, steps_to_run, skipped, rerun_reasons, context)
+    summarize_plan(dataset_prefix, steps_to_run, skipped, rerun_reasons,
+                   context)
     if not steps_to_run:
         logging.info("Nothing to do; all steps already satisfied.")
         return
