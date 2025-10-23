@@ -32,45 +32,52 @@ from jinja2 import Environment, FileSystemLoader
 _FLAGS = flags.FLAGS
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-flags.DEFINE_list('input_data', None,
-                  'List of input data file paths (required)')
-flags.mark_flag_as_required('input_data')
+def define_cli_flags() -> None:
+    """Define absl flags used only when run as a script.
 
-# TODO: Allow users to provide original source path and auto-generate sample data files internally
-flags.DEFINE_list('input_metadata', [],
-                  'List of input metadata file paths (optional)')
+    Keeping flag definitions out of module import prevents collisions when
+    other programs import this module and also define their own flags.
+    """
+    flags.DEFINE_list('input_data', None,
+                      'List of input data file paths (required)')
+    flags.mark_flag_as_required('input_data')
 
-flags.DEFINE_boolean('sdmx_dataset', False,
-                     'Whether the dataset is in SDMX format (default: False)')
+    # TODO: Allow users to provide original source path and auto-generate sample
+    # data files internally
+    flags.DEFINE_list('input_metadata', [],
+                      'List of input metadata file paths (optional)')
 
-flags.DEFINE_boolean('dry_run', False,
-                     'Generate prompt only without calling Gemini CLI')
+    flags.DEFINE_boolean('sdmx_dataset', False,
+                         'Whether the dataset is in SDMX format (default: False)')
 
-flags.DEFINE_string('maps_api_key', None, 'Google Maps API key (optional)')
+    flags.DEFINE_boolean('dry_run', False,
+                         'Generate prompt only without calling Gemini CLI')
 
-flags.DEFINE_string('dc_api_key', None, 'Data Commons API key (optional)')
+    flags.DEFINE_string('maps_api_key', None, 'Google Maps API key (optional)')
 
-flags.DEFINE_integer('max_iterations', 10,
-                     'Maximum number of attempts for statvar processor.')
+    flags.DEFINE_string('dc_api_key', None, 'Data Commons API key (optional)')
 
-flags.DEFINE_boolean(
-    'skip_confirmation', False,
-    'Skip user confirmation before starting PV map generation')
+    flags.DEFINE_integer('max_iterations', 10,
+                         'Maximum number of attempts for statvar processor.')
 
-flags.DEFINE_boolean(
-    'enable_sandboxing',
-    platform.system() == 'Darwin',
-    'Enable sandboxing for Gemini CLI (default: True on macOS, False elsewhere)'
-)
+    flags.DEFINE_boolean(
+        'skip_confirmation', False,
+        'Skip user confirmation before starting PV map generation')
 
-flags.DEFINE_string(
-    'output_path', 'output/output',
-    'Output path prefix for all generated files (default: output/output)')
+    flags.DEFINE_boolean(
+        'enable_sandboxing',
+        platform.system() == 'Darwin',
+        'Enable sandboxing for Gemini CLI (default: True on macOS, False elsewhere)'
+    )
 
-flags.DEFINE_string(
-    'gemini_cli', 'gemini', 'Custom path or command to invoke Gemini CLI. '
-    'Example: "/usr/local/bin/gemini". '
-    'WARNING: This value is executed in a shell - use only with trusted input.')
+    flags.DEFINE_string(
+        'output_path', 'output/output',
+        'Output path prefix for all generated files (default: output/output)')
+
+    flags.DEFINE_string(
+        'gemini_cli', 'gemini', 'Custom path or command to invoke Gemini CLI. '
+        'Example: "/usr/local/bin/gemini". '
+        'WARNING: This value is executed in a shell - use only with trusted input.')
 
 
 @dataclass
@@ -404,4 +411,5 @@ def main(_):
 
 
 if __name__ == '__main__':
+    define_cli_flags()
     app.run(main)
