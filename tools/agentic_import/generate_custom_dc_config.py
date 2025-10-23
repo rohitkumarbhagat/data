@@ -16,7 +16,7 @@
 
 import csv
 import os
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import jinja2
 from absl import app
@@ -31,6 +31,15 @@ flags.mark_flag_as_required('input_csv')
 flags.DEFINE_string('output_config', None,
                     'Path to output config.json file (required)')
 flags.mark_flag_as_required('output_config')
+
+flags.DEFINE_string('provenance_name', None,
+                    'Optional provenance name for the config template.')
+flags.DEFINE_string('source_name', None,
+                    'Optional source name for the config template.')
+flags.DEFINE_string('data_source_url', None,
+                    'Optional data source URL for the config template.')
+flags.DEFINE_string('dataset_url', None,
+                    'Optional dataset URL for the config template.')
 
 
 class ConfigGenerator:
@@ -68,9 +77,21 @@ class ConfigGenerator:
         'observationPeriod': 'observationPeriod'
     }
 
-    def __init__(self, input_csv_path: str, output_config_path: str):
+    def __init__(
+        self,
+        input_csv_path: str,
+        output_config_path: str,
+        provenance_name: Optional[str] = None,
+        source_name: Optional[str] = None,
+        data_source_url: Optional[str] = None,
+        dataset_url: Optional[str] = None,
+    ):
         self._input_csv_path = os.path.abspath(input_csv_path)
         self._output_config_path = os.path.abspath(output_config_path)
+        self._provenance_name = provenance_name
+        self._source_name = source_name
+        self._data_source_url = data_source_url
+        self._dataset_url = dataset_url
 
     def validate_input_file(self) -> None:
         """Validates that input CSV file exists and is readable."""
@@ -177,9 +198,20 @@ class ConfigGenerator:
         # Extract filename from input CSV path (without directory)
         output_filename = os.path.basename(self._input_csv_path)
 
+        provenance_name = self._provenance_name or "YOUR_PROVENANCE_NAME"
+        source_name = self._source_name or "YOUR_SOURCE_NAME"
+        data_source_url = (self._data_source_url or "URL_OF_YOUR_DATA_SOURCE")
+        dataset_url = self._dataset_url or "URL_OF_THE_SPECIFIC_DATASET"
+
         # Render template with context
-        config_content = template.render(output_filename=output_filename,
-                                         column_mappings=column_mappings)
+        config_content = template.render(
+            output_filename=output_filename,
+            column_mappings=column_mappings,
+            provenance_name=provenance_name,
+            source_name=source_name,
+            data_source_url=data_source_url,
+            dataset_url=dataset_url,
+        )
 
         return config_content
 
@@ -228,7 +260,14 @@ def main(argv):
     if len(argv) > 1:
         raise app.UsageError('Too many command-line arguments.')
 
-    generator = ConfigGenerator(FLAGS.input_csv, FLAGS.output_config)
+    generator = ConfigGenerator(
+        FLAGS.input_csv,
+        FLAGS.output_config,
+        provenance_name=FLAGS.provenance_name,
+        source_name=FLAGS.source_name,
+        data_source_url=FLAGS.data_source_url,
+        dataset_url=FLAGS.dataset_url,
+    )
     generator.run()
 
 

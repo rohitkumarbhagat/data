@@ -542,12 +542,28 @@ def _execute_custom_dc_config(prefix: str, context: WorkflowContext) -> None:
         raise app.UsageError(
             f"custom-dc-config requires existing input: {input_csv}")
 
+    provenance_name = context.sdmx.dataflow
+    source_name = context.sdmx.agency
+    data_source_url = context.sdmx.endpoint
+    dataset_url = None
+    if context.sdmx.endpoint and context.sdmx.agency and context.sdmx.dataflow:
+        dataset_url = (f"{context.sdmx.endpoint.rstrip('/')}/data/"
+                       f"{context.sdmx.agency},{context.sdmx.dataflow},")
+
     command = [
         sys.executable,
         str(CUSTOM_DC_CONFIG_GENERATOR),
         f"--input_csv={input_csv}",
         f"--output_config={output_config}",
     ]
+    if provenance_name:
+        command.append(f"--provenance_name={provenance_name}")
+    if source_name:
+        command.append(f"--source_name={source_name}")
+    if data_source_url:
+        command.append(f"--data_source_url={data_source_url}")
+    if dataset_url:
+        command.append(f"--dataset_url={dataset_url}")
     if context.verbose:
         logging.info(
             "Starting custom DC config generation: input=%s -> %s",
