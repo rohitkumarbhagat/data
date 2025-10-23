@@ -278,12 +278,14 @@ python tools/agentic_import/sdmx_agentic_importer.py \
   --key=dimension:value \
   --param=parameter:value \
   --sample_rows=30 \
+  --gemini_cli=/path/to/gemini_cli \
   --verbose \
   --skip_confirmation
 ```
 
 - `--dataset_prefix` (required) names every output file; choose a short, unique token per dataset.
 - `--endpoint`, `--agency`, `--dataflow` define the SDMX source to download from; add multiple `--key` or `--param` flags as needed to filter queries.
+- `--gemini_cli` optionally points to a local Gemini CLI binary; provide it when Gemini is not on PATH or a specific version is required.
 - `--sample_rows` sets how many rows are copied into the sample used for PV map generation.
 - `--verbose` is optional; include it to log detailed inputs and commands.
 - `--skip_confirmation` bypasses the per-step confirmation prompts; omit it to review each step interactively.

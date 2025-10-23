@@ -82,6 +82,11 @@ flags.DEFINE_bool(
     False,
     "Skip interactive confirmation prompts before executing steps.",
 )
+flags.DEFINE_string(
+    "gemini_cli",
+    None,
+    "Optional path to Gemini CLI executable used during PV map generation.",
+)
 
 SAMPLE_OUTPUT_DIR = Path("sample_output")
 FINAL_OUTPUT_DIR = Path("output")
@@ -126,6 +131,7 @@ class WorkflowContext:
     sample_rows: int
     verbose: bool
     skip_confirmation: bool
+    gemini_cli: str | None
 
 
 def _metadata_inputs(_: str) -> List[Path]:
@@ -220,11 +226,12 @@ def _fingerprint_sample(_: str, context: WorkflowContext) -> Dict[str, Any]:
     return {"sample_rows": context.sample_rows}
 
 
-def _fingerprint_pvmap(prefix: str, _: WorkflowContext) -> Dict[str, Any]:
+def _fingerprint_pvmap(prefix: str, context: WorkflowContext) -> Dict[str, Any]:
     return {
         "sample": f"{prefix}_sample.csv",
         "metadata": f"{prefix}_metadata.xml",
         "sdmx_dataset": True,
+        "gemini_cli": context.gemini_cli,
     }
 
 
@@ -420,14 +427,19 @@ def _execute_pvmap(prefix: str, context: WorkflowContext) -> None:
         skip_confirmation=context.skip_confirmation,
         enable_sandboxing=False,
         output_path=str(output_prefix),
-        gemini_cli=None,
+        gemini_cli=context.gemini_cli,
     )
     if context.verbose:
         logging.info(
-            "Starting PV map generation: sample=%s metadata=%s output=%s",
+            "Starting PV map generation: sample=%s metadata=%s output=%s gemini_cli=%s",
             sample_path,
             metadata_path,
             output_prefix,
+            context.gemini_cli,
+        )
+        logging.debug(
+            "PV map parameters: skip_confirmation=%s",
+            context.skip_confirmation,
         )
     else:
         logging.info("Generating PV map artifacts under %s", output_prefix)
@@ -679,6 +691,10 @@ def summarize_plan(
         logging.info("Confirmation prompts are disabled (--skip_confirmation).")
     else:
         logging.info("Confirmation required before each step.")
+    if context.gemini_cli:
+        logging.info("Gemini CLI: %s", context.gemini_cli)
+    else:
+        logging.info("Gemini CLI: default (PV map generator decides)")
     logging.info("Planned steps:")
     for step in steps:
         logging.info("  - %s: %s", step.name, step.description)
@@ -712,6 +728,7 @@ def main(argv: Iterable[str]) -> None:
         sample_rows=FLAGS.sample_rows,
         verbose=verbose,
         skip_confirmation=FLAGS.skip_confirmation,
+        gemini_cli=FLAGS.gemini_cli,
     )
 
     logging.set_verbosity(logging.DEBUG if verbose else logging.INFO)
