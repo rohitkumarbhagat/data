@@ -81,13 +81,11 @@ flags.DEFINE_bool(
 SAMPLE_OUTPUT_DIR = Path("sample_output")
 FINAL_OUTPUT_DIR = Path("output")
 STATE_DIR = Path(".datacommons")
-STATVAR_PROCESSOR = (
-    REPO_ROOT / "tools" / "statvar_importer" / "stat_var_processor.py"
-)
+STATVAR_PROCESSOR = (REPO_ROOT / "tools" / "statvar_importer" /
+                     "stat_var_processor.py")
 _RUN_OUTPUT_COLUMNS = (
     "observationDate,observationAbout,variableMeasured,value,"
-    "observationPeriod,measurementMethod,unit,scalingFactor"
-)
+    "observationPeriod,measurementMethod,unit,scalingFactor")
 
 
 @dataclass(frozen=True)
@@ -103,7 +101,8 @@ class Step:
     def outputs(self, prefix: str) -> List[Path]:
         return STEP_IO[self.name]["outputs"](prefix)
 
-    def fingerprint(self, prefix: str, context: WorkflowContext) -> Dict[str, Any]:
+    def fingerprint(self, prefix: str,
+                    context: WorkflowContext) -> Dict[str, Any]:
         return self.fingerprint_fn(prefix, context)
 
 
@@ -179,7 +178,8 @@ def _run_outputs(prefix: str) -> List[Path]:
     ]
 
 
-def _fingerprint_sdmx_metadata(_: str, context: WorkflowContext) -> Dict[str, Any]:
+def _fingerprint_sdmx_metadata(_: str,
+                               context: WorkflowContext) -> Dict[str, Any]:
     return {
         "endpoint": context.sdmx.endpoint,
         "agency": context.sdmx.agency,
@@ -263,13 +263,27 @@ STEP_SEQUENCE: List[Step] = [
     ),
 ]
 
-
 STEP_IO: Dict[str, Dict[str, callable]] = {
-    "sdmx-metadata": {"inputs": _metadata_inputs, "outputs": _metadata_outputs},
-    "sdmx-data": {"inputs": _data_inputs, "outputs": _data_outputs},
-    "sample": {"inputs": _sample_inputs, "outputs": _sample_outputs},
-    "pvmap": {"inputs": _pvmap_inputs, "outputs": _pvmap_outputs},
-    "run": {"inputs": _run_inputs, "outputs": _run_outputs},
+    "sdmx-metadata": {
+        "inputs": _metadata_inputs,
+        "outputs": _metadata_outputs
+    },
+    "sdmx-data": {
+        "inputs": _data_inputs,
+        "outputs": _data_outputs
+    },
+    "sample": {
+        "inputs": _sample_inputs,
+        "outputs": _sample_outputs
+    },
+    "pvmap": {
+        "inputs": _pvmap_inputs,
+        "outputs": _pvmap_outputs
+    },
+    "run": {
+        "inputs": _run_inputs,
+        "outputs": _run_outputs
+    },
 }
 
 
@@ -433,7 +447,8 @@ def _load_state(prefix: str) -> Dict[str, Any]:
     try:
         data = json.loads(path.read_text())
     except json.JSONDecodeError as exc:
-        raise app.UsageError(f"Failed to parse state file {path}: {exc}") from exc
+        raise app.UsageError(
+            f"Failed to parse state file {path}: {exc}") from exc
     steps = data.get("steps", {})
     if not isinstance(steps, dict):
         steps = {}
@@ -506,7 +521,8 @@ def determine_steps(
     force: bool,
 ) -> Tuple[List[Step], List[str], List[str]]:
     if step_name:
-        return ([step for step in STEP_SEQUENCE if step.name == step_name], [], [])
+        return ([step for step in STEP_SEQUENCE if step.name == step_name], [],
+                [])
     if from_step_name:
         names = [step.name for step in STEP_SEQUENCE]
         start_index = names.index(from_step_name)
@@ -553,23 +569,19 @@ def execute_steps(
         try:
             runner(prefix, context)
         except Exception as exc:  # noqa: BLE001
-            record.update(
-                {
-                    "status": "failed",
-                    "updated": datetime.now(timezone.utc).isoformat(),
-                    "error": repr(exc),
-                }
-            )
+            record.update({
+                "status": "failed",
+                "updated": datetime.now(timezone.utc).isoformat(),
+                "error": repr(exc),
+            })
             steps_state[step.name] = record
             _write_state(prefix, state)
             raise
         else:
-            record.update(
-                {
-                    "status": "success",
-                    "updated": datetime.now(timezone.utc).isoformat(),
-                }
-            )
+            record.update({
+                "status": "success",
+                "updated": datetime.now(timezone.utc).isoformat(),
+            })
             steps_state[step.name] = record
             _write_state(prefix, state)
 
@@ -604,7 +616,8 @@ def main(argv: Iterable[str]) -> None:
     step = FLAGS.step
     from_step = FLAGS.from_step
     if FLAGS.force and (step or from_step):
-        logging.warning("--force is ignored when used with --step or --from_step.")
+        logging.warning(
+            "--force is ignored when used with --step or --from_step.")
     force = FLAGS.force if not (step or from_step) else False
     dataset_prefix = FLAGS.dataset_prefix
     sdmx_config = SdmxSourceConfig(
