@@ -143,7 +143,8 @@ def _metadata_outputs(prefix: str) -> List[Path]:
 
 
 def _data_inputs(prefix: str) -> List[Path]:
-    return _metadata_outputs(prefix)
+    # No file dependency: data download uses flags, not metadata.xml
+    return []
 
 
 def _data_outputs(prefix: str) -> List[Path]:
@@ -155,12 +156,13 @@ def _sample_inputs(prefix: str) -> List[Path]:
 
 
 def _sample_outputs(prefix: str) -> List[Path]:
-    return [SAMPLE_OUTPUT_DIR / f"{prefix}_sample.csv"]
+    # Sample CSV is written at repo root, parallel to original files
+    return [Path(f"{prefix}_sample.csv")]
 
 
 def _pvmap_inputs(prefix: str) -> List[Path]:
     return [
-        SAMPLE_OUTPUT_DIR / f"{prefix}_sample.csv",
+        Path(f"{prefix}_sample.csv"),
         Path(f"{prefix}_metadata.xml"),
     ]
 
@@ -381,8 +383,7 @@ def _execute_sample(prefix: str, context: WorkflowContext) -> None:
     input_path = Path(f"{prefix}_data.csv")
     if not input_path.is_file():
         raise app.UsageError(f"sample requires existing input: {input_path}")
-    SAMPLE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    output_path = SAMPLE_OUTPUT_DIR / f"{prefix}_sample.csv"
+    output_path = Path(f"{prefix}_sample.csv")
     if context.verbose:
         logging.info(
             "Starting sample: input=%s output=%s rows=%d",
@@ -404,7 +405,7 @@ def _execute_sample(prefix: str, context: WorkflowContext) -> None:
 
 
 def _execute_pvmap(prefix: str, context: WorkflowContext) -> None:
-    sample_path = SAMPLE_OUTPUT_DIR / f"{prefix}_sample.csv"
+    sample_path = Path(f"{prefix}_sample.csv")
     metadata_path = Path(f"{prefix}_metadata.xml")
     if not sample_path.is_file():
         raise app.UsageError(f"pvmap requires sample output: {sample_path}")
