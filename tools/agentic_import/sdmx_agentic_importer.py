@@ -6,6 +6,7 @@ Actual subprocess execution is added in later phases.
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -73,6 +74,9 @@ flags.DEFINE_bool(
 SAMPLE_OUTPUT_DIR = Path("sample_output")
 FINAL_OUTPUT_DIR = Path("output")
 STATE_DIR = Path(".datacommons")
+STATVAR_PROCESSOR = (
+    REPO_ROOT / "tools" / "statvar_importer" / "stat_var_processor.py"
+)
 
 
 @dataclass(frozen=True)
@@ -291,11 +295,42 @@ def _execute_pvmap(prefix: str, context: WorkflowContext) -> None:
     generator.generate()
 
 
+def _execute_run(prefix: str, context: WorkflowContext) -> None:
+    del context  # Unused for now.
+    data_path = Path(f"{prefix}_data.csv")
+    pvmap_path = SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv"
+    metadata_path = SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv"
+    for required in (data_path, pvmap_path, metadata_path):
+        if not required.is_file():
+            raise app.UsageError(f"run requires existing input: {required}")
+
+    FINAL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output_prefix = FINAL_OUTPUT_DIR / prefix
+    output_columns = (
+        "observationDate,observationAbout,variableMeasured,value,"
+        "observationPeriod,measurementMethod,unit,scalingFactor"
+    )
+    command = [
+        sys.executable,
+        str(STATVAR_PROCESSOR),
+        f"--input_data={data_path}",
+        f"--pv_map={pvmap_path}",
+        f"--config_file={metadata_path}",
+        "--generate_statvar_name=True",
+        "--skip_constant_csv_columns=False",
+        f"--output_columns={output_columns}",
+        f"--output_path={output_prefix}",
+    ]
+    logging.info("Running stat_var_processor: %s", " ".join(command))
+    subprocess.run(command, check=True)
+
+
 STEP_RUNNERS: Dict[str, Callable[[str, WorkflowContext], None]] = {
     "sdmx-metadata": _execute_sdmx_metadata,
     "sdmx-data": _execute_sdmx_data,
     "sample": _execute_sample,
     "pvmap": _execute_pvmap,
+    "run": _execute_run,
 }
 
 
@@ -364,7 +399,7 @@ def main(argv: Iterable[str]) -> None:
     steps_to_run = determine_steps(step, from_step)
     summarize_plan(dataset_prefix, steps_to_run)
     execute_steps(dataset_prefix, steps_to_run, context)
-    logging.info("Phase 2 execution complete. Remaining steps are placeholders.")
+    logging.info("Execution complete.")
 
 
 if __name__ == "__main__":
