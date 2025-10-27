@@ -82,8 +82,24 @@ python "${SCRIPT_DIR}/sdmx_agentic_importer.py" "${REST_ARGS[@]}"
 
 # Start Custom DC after importer completes if enabled
 if [[ "$START_CDC" == "true" ]]; then
+  ENV_SAMPLE="${WEBSITE_REPO}/custom_dc/env.list.sample"
+  OUTPUT_DIR_PATH="${ORIG_DIR}/output"
+  ENV_DEST="${OUTPUT_DIR_PATH}/env.list"
+
+  echo "Preparing Custom DC environment file..."
+  if [[ ! -f "$ENV_SAMPLE" ]]; then
+    echo "Error: Expected env sample at $ENV_SAMPLE" >&2
+    exit 2
+  fi
+
+  mkdir -p "$OUTPUT_DIR_PATH"
+  cp "$ENV_SAMPLE" "$ENV_DEST"
+  sed -i "s|^INPUT_DIR=.*|INPUT_DIR=${OUTPUT_DIR_PATH}|" "$ENV_DEST"
+  sed -i "s|^OUTPUT_DIR=.*|OUTPUT_DIR=${OUTPUT_DIR_PATH}|" "$ENV_DEST"
+  echo "Custom DC env configured with INPUT_DIR and OUTPUT_DIR at ${OUTPUT_DIR_PATH}"
+
   echo "Starting Custom DC..."
   cd "$WEBSITE_REPO"
-  ./run_cdc_dev_docker.sh
+  ./run_cdc_dev_docker.sh -e "$ENV_DEST"
 fi
 
