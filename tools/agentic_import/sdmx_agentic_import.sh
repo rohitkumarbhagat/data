@@ -14,6 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Runs the SDMX agentic importer and optionally launches Custom DC in dev mode.
+# Usage:
+#   ./tools/agentic_import/sdmx_agentic_import.sh [importer flags]
+# Flags:
+#   --start-custom-dc[=true|false]
+#   --website-repo PATH
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
