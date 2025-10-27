@@ -11,7 +11,59 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Command-line coordinator for SDMX agentic import steps."""
+"""SDMX agentic import workflow runner.
+
+Orchestrates a multi-step workflow for importing SDMX data: download metadata and
+data, sample the data, generate property-value mappings, process the full dataset,
+and generate a Custom DC configuration.
+
+Supports resumable execution: if a step completes successfully, it is skipped on
+subsequent runs. Use --force to ignore resume state and rerun all steps from start,
+or --step/--from_step to run specific steps.
+
+Workflow steps (in order):
+  1. sdmx-metadata: Download SDMX metadata
+  2. sdmx-data: Download SDMX data
+  3. sample: Sample SDMX data
+  4. pvmap: Generate property-value mappings from sample
+  5. run: Process full SDMX data
+  6. custom-dc-config: Generate Custom DC configuration
+
+Run with:
+  python3 -m tools.agentic_import.sdmx_agentic_importer \
+      --dataset_prefix=<prefix> \
+      --endpoint=<sdmx-rest-api-url> \
+      --agency=<agency-id> \
+      --dataflow=<dataflow-id>
+
+Example:
+  python3 -m tools.agentic_import.sdmx_agentic_importer \
+      --dataset_prefix=gdp \
+      --endpoint=https://sdmx.example.org/api \
+      --agency=OECD \
+      --dataflow=ECONOMIC_INDICATORS
+
+Required flags:
+  --dataset_prefix: Prefix for naming generated files and directories. Use a unique
+    identifier (e.g., dataset name, source acronym) to disambiguate multiple
+    datasets processed in the same directory.
+
+SDMX source flags (required for metadata/data download steps):
+  --endpoint: SDMX REST API endpoint URL.
+  --agency: SDMX agency identifier.
+  --dataflow: SDMX dataflow identifier.
+
+Optional flags:
+  --key: SDMX key filter (repeatable, format: key:value).
+  --param: Additional SDMX query parameter (repeatable, format: key:value).
+  --sample_rows: Number of rows to sample (default: 30).
+  --step: Run only the specified step (e.g., pvmap, run).
+  --from_step: Run steps starting from the given step through 'run'.
+  --skip_confirmation: Skip interactive confirmation prompts.
+  --force: Ignore resume state and run all steps from start.
+  --gemini_cli: Optional path to Gemini CLI executable for PV map generation.
+  --verbose: Print additional execution details.
+"""
 
 from __future__ import annotations
 
