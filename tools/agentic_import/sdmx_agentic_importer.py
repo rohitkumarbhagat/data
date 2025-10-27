@@ -57,8 +57,8 @@ Optional flags:
   --key: SDMX key filter (repeatable, format: key:value).
   --param: Additional SDMX query parameter (repeatable, format: key:value).
   --sample_rows: Number of rows to sample (default: 30).
-  --step: Run only the specified step (e.g., pvmap, run).
-  --from_step: Run steps starting from the given step through 'run'.
+  --step: Run only the specified step (e.g., create-schema-mapping, process-full-data).
+  --from_step: Run steps starting from the given step through the final step.
   --skip_confirmation: Skip interactive confirmation prompts.
   --force: Ignore resume state and run all steps from start.
   --gemini_cli: Optional path to Gemini CLI executable for PV map generation.
@@ -126,7 +126,7 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     "from_step",
     None,
-    "Run steps starting from the given step through 'process-full-data'.",
+    "Run steps starting from the given step through the final step.",
 )
 flags.DEFINE_bool(
     "verbose",
@@ -197,40 +197,40 @@ class WorkflowContext:
     gemini_cli: str | None
 
 
-def _metadata_inputs(_: str) -> List[Path]:
+def _download_metadata_inputs(_: str) -> List[Path]:
     return []
 
 
-def _metadata_outputs(prefix: str) -> List[Path]:
+def _download_metadata_outputs(prefix: str) -> List[Path]:
     return [Path(f"{prefix}_metadata.xml")]
 
 
-def _data_inputs(prefix: str) -> List[Path]:
+def _download_data_inputs(prefix: str) -> List[Path]:
     # No file dependency: data download uses flags, not metadata.xml
     return []
 
 
-def _data_outputs(prefix: str) -> List[Path]:
+def _download_data_outputs(prefix: str) -> List[Path]:
     return [Path(f"{prefix}_data.csv")]
 
 
-def _sample_inputs(prefix: str) -> List[Path]:
-    return _data_outputs(prefix)
+def _create_sample_inputs(prefix: str) -> List[Path]:
+    return _download_data_outputs(prefix)
 
 
-def _sample_outputs(prefix: str) -> List[Path]:
+def _create_sample_outputs(prefix: str) -> List[Path]:
     # Sample CSV is written at repo root, parallel to original files
     return [Path(f"{prefix}_sample.csv")]
 
 
-def _pvmap_inputs(prefix: str) -> List[Path]:
+def _create_schema_mapping_inputs(prefix: str) -> List[Path]:
     return [
         Path(f"{prefix}_sample.csv"),
         Path(f"{prefix}_metadata.xml"),
     ]
 
 
-def _pvmap_outputs(prefix: str) -> List[Path]:
+def _create_schema_mapping_outputs(prefix: str) -> List[Path]:
     return [
         SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv",
         SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv",
@@ -240,7 +240,7 @@ def _pvmap_outputs(prefix: str) -> List[Path]:
     ]
 
 
-def _run_inputs(prefix: str) -> List[Path]:
+def _process_full_data_inputs(prefix: str) -> List[Path]:
     return [
         Path(f"{prefix}_data.csv"),
         SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv",
@@ -248,7 +248,7 @@ def _run_inputs(prefix: str) -> List[Path]:
     ]
 
 
-def _run_outputs(prefix: str) -> List[Path]:
+def _process_full_data_outputs(prefix: str) -> List[Path]:
     return [
         FINAL_OUTPUT_DIR / f"{prefix}.csv",
         FINAL_OUTPUT_DIR / f"{prefix}.tmcf",
@@ -256,17 +256,17 @@ def _run_outputs(prefix: str) -> List[Path]:
     ]
 
 
-def _custom_dc_config_inputs(prefix: str) -> List[Path]:
+def _create_dc_config_inputs(prefix: str) -> List[Path]:
     return [FINAL_OUTPUT_DIR / f"{prefix}.csv"]
 
 
-def _custom_config_outputs(_: str) -> List[Path]:
+def _create_dc_config_outputs(_: str) -> List[Path]:
     # Single config name as per README and custom DC expectations.
     return [FINAL_OUTPUT_DIR / "config.json"]
 
 
-def _fingerprint_sdmx_metadata(_: str,
-                               context: WorkflowContext) -> Dict[str, Any]:
+def _fingerprint_download_metadata(_: str,
+                                   context: WorkflowContext) -> Dict[str, Any]:
     return {
         "endpoint": context.sdmx.endpoint,
         "agency": context.sdmx.agency,
@@ -286,7 +286,8 @@ def _normalize_multi_args(values: Tuple[str, ...]) -> List[str]:
     return sorted(normalized)
 
 
-def _fingerprint_sdmx_data(_: str, context: WorkflowContext) -> Dict[str, Any]:
+def _fingerprint_download_data(_: str,
+                               context: WorkflowContext) -> Dict[str, Any]:
     return {
         "endpoint": context.sdmx.endpoint,
         "agency": context.sdmx.agency,
@@ -296,11 +297,13 @@ def _fingerprint_sdmx_data(_: str, context: WorkflowContext) -> Dict[str, Any]:
     }
 
 
-def _fingerprint_sample(_: str, context: WorkflowContext) -> Dict[str, Any]:
+def _fingerprint_create_sample(_: str,
+                               context: WorkflowContext) -> Dict[str, Any]:
     return {"sample_rows": context.sample_rows}
 
 
-def _fingerprint_pvmap(prefix: str, context: WorkflowContext) -> Dict[str, Any]:
+def _fingerprint_create_schema_mapping(
+        prefix: str, context: WorkflowContext) -> Dict[str, Any]:
     return {
         "sample": f"{prefix}_sample.csv",
         "metadata": f"{prefix}_metadata.xml",
@@ -309,7 +312,8 @@ def _fingerprint_pvmap(prefix: str, context: WorkflowContext) -> Dict[str, Any]:
     }
 
 
-def _fingerprint_run(prefix: str, _: WorkflowContext) -> Dict[str, Any]:
+def _fingerprint_process_full_data(prefix: str,
+                                   _: WorkflowContext) -> Dict[str, Any]:
     return {
         "data": f"{prefix}_data.csv",
         "pvmap": f"{prefix}_pvmap.csv",
@@ -318,8 +322,8 @@ def _fingerprint_run(prefix: str, _: WorkflowContext) -> Dict[str, Any]:
     }
 
 
-def _fingerprint_custom_config(prefix: str,
-                               _: WorkflowContext) -> Dict[str, Any]:
+def _fingerprint_create_dc_config(prefix: str,
+                                  _: WorkflowContext) -> Dict[str, Any]:
     return {
         "input_csv": str(FINAL_OUTPUT_DIR / f"{prefix}.csv"),
         "output_config": str(FINAL_OUTPUT_DIR / "config.json"),
@@ -331,64 +335,64 @@ STEP_SEQUENCE: List[Step] = [
         "download-metadata",
         "Download SDMX metadata",
         version=1,
-        fingerprint_fn=_fingerprint_sdmx_metadata,
+        fingerprint_fn=_fingerprint_download_metadata,
     ),
     Step(
         "download-data",
         "Download SDMX data",
         version=1,
-        fingerprint_fn=_fingerprint_sdmx_data,
+        fingerprint_fn=_fingerprint_download_data,
     ),
     Step(
         "create-sample",
         "Create SDMX data sample",
         version=1,
-        fingerprint_fn=_fingerprint_sample,
+        fingerprint_fn=_fingerprint_create_sample,
     ),
     Step(
         "create-schema-mapping",
         "Create schema mapping from sample",
         version=1,
-        fingerprint_fn=_fingerprint_pvmap,
+        fingerprint_fn=_fingerprint_create_schema_mapping,
     ),
     Step(
         "process-full-data",
         "Process full SDMX data",
         version=1,
-        fingerprint_fn=_fingerprint_run,
+        fingerprint_fn=_fingerprint_process_full_data,
     ),
     Step(
         "create-dc-config",
         "Create Custom DC configuration",
         version=1,
-        fingerprint_fn=_fingerprint_custom_config,
+        fingerprint_fn=_fingerprint_create_dc_config,
     ),
 ]
 
 STEP_IO: Dict[str, Dict[str, callable]] = {
     "download-metadata": {
-        "inputs": _metadata_inputs,
-        "outputs": _metadata_outputs
+        "inputs": _download_metadata_inputs,
+        "outputs": _download_metadata_outputs
     },
     "download-data": {
-        "inputs": _data_inputs,
-        "outputs": _data_outputs
+        "inputs": _download_data_inputs,
+        "outputs": _download_data_outputs
     },
     "create-sample": {
-        "inputs": _sample_inputs,
-        "outputs": _sample_outputs
+        "inputs": _create_sample_inputs,
+        "outputs": _create_sample_outputs
     },
     "create-schema-mapping": {
-        "inputs": _pvmap_inputs,
-        "outputs": _pvmap_outputs
+        "inputs": _create_schema_mapping_inputs,
+        "outputs": _create_schema_mapping_outputs
     },
     "process-full-data": {
-        "inputs": _run_inputs,
-        "outputs": _run_outputs
+        "inputs": _process_full_data_inputs,
+        "outputs": _process_full_data_outputs
     },
     "create-dc-config": {
-        "inputs": _custom_dc_config_inputs,
-        "outputs": _custom_config_outputs,
+        "inputs": _create_dc_config_inputs,
+        "outputs": _create_dc_config_outputs,
     },
 }
 
@@ -423,7 +427,7 @@ def _make_sdmx_client(config: SdmxSourceConfig) -> SdmxClient:
     return SdmxClient(endpoint=endpoint, agency_id=agency)
 
 
-def _execute_sdmx_metadata(prefix: str, context: WorkflowContext) -> None:
+def _execute_download_metadata(prefix: str, context: WorkflowContext) -> None:
     config = context.sdmx
     _require_sdmx_source(config, "download-metadata")
     output_path = Path(f"{prefix}_metadata.xml")
@@ -441,7 +445,7 @@ def _execute_sdmx_metadata(prefix: str, context: WorkflowContext) -> None:
     client.download_metadata(cast(str, config.dataflow), str(output_path))
 
 
-def _execute_sdmx_data(prefix: str, context: WorkflowContext) -> None:
+def _execute_download_data(prefix: str, context: WorkflowContext) -> None:
     config = context.sdmx
     _require_sdmx_source(config, "download-data")
     output_path = Path(f"{prefix}_data.csv")
@@ -469,7 +473,7 @@ def _execute_sdmx_data(prefix: str, context: WorkflowContext) -> None:
     )
 
 
-def _execute_sample(prefix: str, context: WorkflowContext) -> None:
+def _execute_create_sample(prefix: str, context: WorkflowContext) -> None:
     input_path = Path(f"{prefix}_data.csv")
     if not input_path.is_file():
         raise app.UsageError(
@@ -495,7 +499,8 @@ def _execute_sample(prefix: str, context: WorkflowContext) -> None:
     )
 
 
-def _execute_pvmap(prefix: str, context: WorkflowContext) -> None:
+def _execute_create_schema_mapping(prefix: str,
+                                   context: WorkflowContext) -> None:
     sample_path = Path(f"{prefix}_sample.csv")
     metadata_path = Path(f"{prefix}_metadata.xml")
     if not sample_path.is_file():
@@ -538,7 +543,7 @@ def _execute_pvmap(prefix: str, context: WorkflowContext) -> None:
     generator.generate()
 
 
-def _execute_run(prefix: str, context: WorkflowContext) -> None:
+def _execute_process_full_data(prefix: str, context: WorkflowContext) -> None:
     data_path = Path(f"{prefix}_data.csv")
     pvmap_path = SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv"
     metadata_path = SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv"
@@ -576,22 +581,16 @@ def _execute_run(prefix: str, context: WorkflowContext) -> None:
 
 
 STEP_RUNNERS: Dict[str, Callable[[str, WorkflowContext], None]] = {
-    "download-metadata":
-        _execute_sdmx_metadata,
-    "download-data":
-        _execute_sdmx_data,
-    "create-sample":
-        _execute_sample,
-    "create-schema-mapping":
-        _execute_pvmap,
-    "process-full-data":
-        _execute_run,
-    "create-dc-config":
-        lambda prefix, context: _execute_custom_dc_config(prefix, context),
+    "download-metadata": _execute_download_metadata,
+    "download-data": _execute_download_data,
+    "create-sample": _execute_create_sample,
+    "create-schema-mapping": _execute_create_schema_mapping,
+    "process-full-data": _execute_process_full_data,
+    "create-dc-config": _execute_create_dc_config,
 }
 
 
-def _execute_custom_dc_config(prefix: str, context: WorkflowContext) -> None:
+def _execute_create_dc_config(prefix: str, context: WorkflowContext) -> None:
     input_csv = FINAL_OUTPUT_DIR / f"{prefix}.csv"
     output_config = FINAL_OUTPUT_DIR / "config.json"
     if not input_csv.is_file():
