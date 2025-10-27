@@ -294,7 +294,7 @@ class PVMapGenerator:
         """
         gemini_cmd = self._config.gemini_cli or 'gemini'
         sandbox_flag = "--sandbox " if self._config.enable_sandboxing else ""
-        return f"cat '{prompt_file}' | {gemini_cmd} {sandbox_flag} -y 2>&1 | tee '{log_file}'"
+        return f"cat '{prompt_file}' | {gemini_cmd} {sandbox_flag} -y -d 2>&1 | tee '{log_file}'"
 
     def _run_subprocess(self, command: str) -> int:
         """Run a subprocess command with real-time output streaming."""

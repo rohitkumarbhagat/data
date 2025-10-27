@@ -20,9 +20,70 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 ORIG_DIR="$(pwd)"
 
+# Toggle to start Custom DC after importer (default: false)
+START_CDC=${START_CDC:-false}
+WEBSITE_REPO=${WEBSITE_REPO:-}
+REST_ARGS=()
+
+while (($#)); do
+  case "$1" in
+    --start-custom-dc|--start-custom-dc=*)
+      value="${1#*=}"
+      if [[ "$value" == "$1" || "$value" == "true" ]]; then
+        START_CDC=true
+      elif [[ "$value" == "false" ]]; then
+        START_CDC=false
+      else
+        echo "Error: --start-custom-dc expects true or false." >&2
+        exit 2
+      fi
+      shift
+      ;;
+    --website-repo|--website-repo=*)
+      if [[ "$1" == "--website-repo" ]]; then
+        if [[ $# -lt 2 ]]; then
+          echo "Error: --website-repo requires a path." >&2
+          exit 2
+        fi
+        WEBSITE_REPO="$2"
+        shift 2
+      else
+        WEBSITE_REPO="${1#*=}"
+        shift
+      fi
+      ;;
+    *)
+      REST_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [[ "$START_CDC" == "true" ]]; then
+  if [[ -z "$WEBSITE_REPO" ]]; then
+    echo "Error: --website-repo is required when --start-custom-dc is set." >&2
+    exit 2
+  fi
+  if [[ ! -d "$WEBSITE_REPO" ]]; then
+    echo "Error: Custom DC repo not found at $WEBSITE_REPO" >&2
+    exit 2
+  fi
+fi
+
 cd "${REPO_ROOT}"
+echo "Setting up virtual env..."
 ./run_tests.sh -r
+echo "Activating virtual environment..."
 source .env/bin/activate
 cd "${ORIG_DIR}"
 
-python "${SCRIPT_DIR}/sdmx_agentic_importer.py" "$@"
+echo "Starting SDMX agentic importer..."
+python "${SCRIPT_DIR}/sdmx_agentic_importer.py" "${REST_ARGS[@]}"
+
+# Start Custom DC after importer completes if enabled
+if [[ "$START_CDC" == "true" ]]; then
+  echo "Starting Custom DC..."
+  cd "$WEBSITE_REPO"
+  ./run_cdc_dev_docker.sh
+fi
+
