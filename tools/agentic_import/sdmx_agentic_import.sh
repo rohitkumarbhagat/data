@@ -24,6 +24,45 @@ ORIG_DIR="$(pwd)"
 START_CDC=${START_CDC:-false}
 WEBSITE_REPO=${WEBSITE_REPO:-}
 REST_ARGS=()
+CUSTOM_DC_ENV_DEST=""
+
+run_repository_setup() {
+  cd "${REPO_ROOT}"
+  echo "Setting up virtual env..."
+  ./run_tests.sh -r
+  echo "Activating virtual environment..."
+  source .env/bin/activate
+  cd "${ORIG_DIR}"
+}
+
+run_importer() {
+  echo "Starting SDMX agentic importer..."
+  python "${SCRIPT_DIR}/sdmx_agentic_importer.py" "${REST_ARGS[@]}"
+}
+
+prepare_custom_dc_env() {
+  local env_sample="${WEBSITE_REPO}/custom_dc/env.list.sample"
+  local output_dir_path="${ORIG_DIR}/output"
+  CUSTOM_DC_ENV_DEST="${output_dir_path}/env.list"
+
+  echo "Preparing Custom DC environment file..."
+  if [[ ! -f "$env_sample" ]]; then
+    echo "Error: Expected env sample at $env_sample" >&2
+    exit 2
+  fi
+
+  mkdir -p "$output_dir_path"
+  cp "$env_sample" "$CUSTOM_DC_ENV_DEST"
+  sed -i "s|^INPUT_DIR=.*|INPUT_DIR=${output_dir_path}|" "$CUSTOM_DC_ENV_DEST"
+  sed -i "s|^OUTPUT_DIR=.*|OUTPUT_DIR=${output_dir_path}|" "$CUSTOM_DC_ENV_DEST"
+  echo "Custom DC env configured with INPUT_DIR and OUTPUT_DIR at ${output_dir_path}"
+}
+
+start_custom_dc() {
+  echo "Starting Custom DC..."
+  cd "$WEBSITE_REPO"
+  ./run_cdc_dev_docker.sh -e "$CUSTOM_DC_ENV_DEST"
+}
 
 while (($#)); do
   case "$1" in
@@ -70,36 +109,12 @@ if [[ "$START_CDC" == "true" ]]; then
   fi
 fi
 
-cd "${REPO_ROOT}"
-echo "Setting up virtual env..."
-./run_tests.sh -r
-echo "Activating virtual environment..."
-source .env/bin/activate
-cd "${ORIG_DIR}"
-
-echo "Starting SDMX agentic importer..."
-python "${SCRIPT_DIR}/sdmx_agentic_importer.py" "${REST_ARGS[@]}"
+run_repository_setup
+run_importer
 
 # Start Custom DC after importer completes if enabled
 if [[ "$START_CDC" == "true" ]]; then
-  ENV_SAMPLE="${WEBSITE_REPO}/custom_dc/env.list.sample"
-  OUTPUT_DIR_PATH="${ORIG_DIR}/output"
-  ENV_DEST="${OUTPUT_DIR_PATH}/env.list"
-
-  echo "Preparing Custom DC environment file..."
-  if [[ ! -f "$ENV_SAMPLE" ]]; then
-    echo "Error: Expected env sample at $ENV_SAMPLE" >&2
-    exit 2
-  fi
-
-  mkdir -p "$OUTPUT_DIR_PATH"
-  cp "$ENV_SAMPLE" "$ENV_DEST"
-  sed -i "s|^INPUT_DIR=.*|INPUT_DIR=${OUTPUT_DIR_PATH}|" "$ENV_DEST"
-  sed -i "s|^OUTPUT_DIR=.*|OUTPUT_DIR=${OUTPUT_DIR_PATH}|" "$ENV_DEST"
-  echo "Custom DC env configured with INPUT_DIR and OUTPUT_DIR at ${OUTPUT_DIR_PATH}"
-
-  echo "Starting Custom DC..."
-  cd "$WEBSITE_REPO"
-  ./run_cdc_dev_docker.sh -e "$ENV_DEST"
+  prepare_custom_dc_env
+  start_custom_dc
 fi
 
