@@ -22,12 +22,12 @@ subsequent runs. Use --force to ignore resume state and rerun all steps from sta
 or --step/--from_step to run specific steps.
 
 Workflow steps (in order):
-  1. sdmx-metadata: Download SDMX metadata
-  2. sdmx-data: Download SDMX data
-  3. sample: Sample SDMX data
-  4. pvmap: Generate property-value mappings from sample
-  5. run: Process full SDMX data
-  6. custom-dc-config: Generate Custom DC configuration
+  1. download-metadata: Download SDMX metadata
+  2. download-data: Download SDMX data
+  3. create-sample: Create SDMX data sample
+  4. create-schema-mapping: Create schema mapping from sample
+  5. process-full-data: Process full SDMX data
+  6. create-dc-config: Create Custom DC configuration
 
 Run with:
   python3 -m tools.agentic_import.sdmx_agentic_importer \
@@ -126,7 +126,7 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     "from_step",
     None,
-    "Run steps starting from the given step through 'run'.",
+    "Run steps starting from the given step through 'process-full-data'.",
 )
 flags.DEFINE_bool(
     "verbose",
@@ -328,65 +328,65 @@ def _fingerprint_custom_config(prefix: str,
 
 STEP_SEQUENCE: List[Step] = [
     Step(
-        "sdmx-metadata",
+        "download-metadata",
         "Download SDMX metadata",
         version=1,
         fingerprint_fn=_fingerprint_sdmx_metadata,
     ),
     Step(
-        "sdmx-data",
+        "download-data",
         "Download SDMX data",
         version=1,
         fingerprint_fn=_fingerprint_sdmx_data,
     ),
     Step(
-        "sample",
-        "Sample SDMX data",
+        "create-sample",
+        "Create SDMX data sample",
         version=1,
         fingerprint_fn=_fingerprint_sample,
     ),
     Step(
-        "pvmap",
-        "Generate PV map from sample",
+        "create-schema-mapping",
+        "Create schema mapping from sample",
         version=1,
         fingerprint_fn=_fingerprint_pvmap,
     ),
     Step(
-        "run",
+        "process-full-data",
         "Process full SDMX data",
         version=1,
         fingerprint_fn=_fingerprint_run,
     ),
     Step(
-        "custom-dc-config",
-        "Generate Custom DC configuration",
+        "create-dc-config",
+        "Create Custom DC configuration",
         version=1,
         fingerprint_fn=_fingerprint_custom_config,
     ),
 ]
 
 STEP_IO: Dict[str, Dict[str, callable]] = {
-    "sdmx-metadata": {
+    "download-metadata": {
         "inputs": _metadata_inputs,
         "outputs": _metadata_outputs
     },
-    "sdmx-data": {
+    "download-data": {
         "inputs": _data_inputs,
         "outputs": _data_outputs
     },
-    "sample": {
+    "create-sample": {
         "inputs": _sample_inputs,
         "outputs": _sample_outputs
     },
-    "pvmap": {
+    "create-schema-mapping": {
         "inputs": _pvmap_inputs,
         "outputs": _pvmap_outputs
     },
-    "run": {
+    "process-full-data": {
         "inputs": _run_inputs,
         "outputs": _run_outputs
     },
-    "custom-dc-config": {
+    "create-dc-config": {
         "inputs": _custom_dc_config_inputs,
         "outputs": _custom_config_outputs,
     },
@@ -425,7 +425,7 @@ def _make_sdmx_client(config: SdmxSourceConfig) -> SdmxClient:
 
 def _execute_sdmx_metadata(prefix: str, context: WorkflowContext) -> None:
     config = context.sdmx
-    _require_sdmx_source(config, "sdmx-metadata")
+    _require_sdmx_source(config, "download-metadata")
     output_path = Path(f"{prefix}_metadata.xml")
     client = _make_sdmx_client(config)
     if context.verbose:
@@ -443,7 +443,7 @@ def _execute_sdmx_metadata(prefix: str, context: WorkflowContext) -> None:
 
 def _execute_sdmx_data(prefix: str, context: WorkflowContext) -> None:
     config = context.sdmx
-    _require_sdmx_source(config, "sdmx-data")
+    _require_sdmx_source(config, "download-data")
     output_path = Path(f"{prefix}_data.csv")
     client = _make_sdmx_client(config)
     key_filters = _parse_key_value_pairs(config.key)
@@ -472,7 +472,8 @@ def _execute_sdmx_data(prefix: str, context: WorkflowContext) -> None:
 def _execute_sample(prefix: str, context: WorkflowContext) -> None:
     input_path = Path(f"{prefix}_data.csv")
     if not input_path.is_file():
-        raise app.UsageError(f"sample requires existing input: {input_path}")
+        raise app.UsageError(
+            f"create-sample requires existing input: {input_path}")
     output_path = Path(f"{prefix}_sample.csv")
     if context.verbose:
         logging.info(
@@ -498,9 +499,11 @@ def _execute_pvmap(prefix: str, context: WorkflowContext) -> None:
     sample_path = Path(f"{prefix}_sample.csv")
     metadata_path = Path(f"{prefix}_metadata.xml")
     if not sample_path.is_file():
-        raise app.UsageError(f"pvmap requires sample output: {sample_path}")
+        raise app.UsageError(
+            f"create-schema-mapping requires sample output: {sample_path}")
     if not metadata_path.is_file():
-        raise app.UsageError(f"pvmap requires metadata file: {metadata_path}")
+        raise app.UsageError(
+            f"create-schema-mapping requires metadata file: {metadata_path}")
 
     SAMPLE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_prefix = SAMPLE_OUTPUT_DIR / prefix
@@ -541,7 +544,8 @@ def _execute_run(prefix: str, context: WorkflowContext) -> None:
     metadata_path = SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv"
     for required in (data_path, pvmap_path, metadata_path):
         if not required.is_file():
-            raise app.UsageError(f"run requires existing input: {required}")
+            raise app.UsageError(
+                f"process-full-data requires existing input: {required}")
 
     FINAL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_prefix = FINAL_OUTPUT_DIR / prefix
@@ -572,17 +576,17 @@ def _execute_run(prefix: str, context: WorkflowContext) -> None:
 
 
 STEP_RUNNERS: Dict[str, Callable[[str, WorkflowContext], None]] = {
-    "sdmx-metadata":
+    "download-metadata":
         _execute_sdmx_metadata,
-    "sdmx-data":
+    "download-data":
         _execute_sdmx_data,
-    "sample":
+    "create-sample":
         _execute_sample,
-    "pvmap":
+    "create-schema-mapping":
         _execute_pvmap,
-    "run":
+    "process-full-data":
         _execute_run,
-    "custom-dc-config":
+    "create-dc-config":
         lambda prefix, context: _execute_custom_dc_config(prefix, context),
 }
 
@@ -592,7 +596,7 @@ def _execute_custom_dc_config(prefix: str, context: WorkflowContext) -> None:
     output_config = FINAL_OUTPUT_DIR / "config.json"
     if not input_csv.is_file():
         raise app.UsageError(
-            f"custom-dc-config requires existing input: {input_csv}")
+            f"create-dc-config requires existing input: {input_csv}")
 
     provenance_name = context.sdmx.dataflow
     source_name = context.sdmx.agency
