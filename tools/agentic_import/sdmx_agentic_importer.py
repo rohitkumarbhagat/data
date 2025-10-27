@@ -70,10 +70,11 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
+from typing import Any, ClassVar, Dict, Iterable, List, Tuple, cast
 
 from absl import app
 from absl import flags
@@ -162,24 +163,6 @@ _RUN_OUTPUT_COLUMNS = (
 
 
 @dataclass(frozen=True)
-class Step:
-    name: str
-    description: str
-    version: int
-    fingerprint_fn: Callable[[str, WorkflowContext], Dict[str, Any]]
-
-    def inputs(self, prefix: str) -> List[Path]:
-        return STEP_IO[self.name]["inputs"](prefix)
-
-    def outputs(self, prefix: str) -> List[Path]:
-        return STEP_IO[self.name]["outputs"](prefix)
-
-    def fingerprint(self, prefix: str,
-                    context: WorkflowContext) -> Dict[str, Any]:
-        return self.fingerprint_fn(prefix, context)
-
-
-@dataclass(frozen=True)
 class SdmxSourceConfig:
     endpoint: str | None
     agency: str | None
@@ -197,81 +180,30 @@ class WorkflowContext:
     gemini_cli: str | None
 
 
-def _download_metadata_inputs(_: str) -> List[Path]:
-    return []
+class WorkflowStep(ABC):
+    name: ClassVar[str]
+    description: ClassVar[str]
+    version: ClassVar[int] = 1
 
+    @abstractmethod
+    def inputs(self, prefix: str) -> List[Path]:
+        """Return required input paths."""
 
-def _download_metadata_outputs(prefix: str) -> List[Path]:
-    return [Path(f"{prefix}_metadata.xml")]
+    @abstractmethod
+    def outputs(self, prefix: str) -> List[Path]:
+        """Return expected output paths."""
 
+    @abstractmethod
+    def fingerprint(self, prefix: str,
+                    context: WorkflowContext) -> Dict[str, Any]:
+        """Return values used to detect changes in step dependencies."""
 
-def _download_data_inputs(prefix: str) -> List[Path]:
-    # No file dependency: data download uses flags, not metadata.xml
-    return []
+    @abstractmethod
+    def run(self, prefix: str, context: WorkflowContext) -> None:
+        """Execute the step."""
 
-
-def _download_data_outputs(prefix: str) -> List[Path]:
-    return [Path(f"{prefix}_data.csv")]
-
-
-def _create_sample_inputs(prefix: str) -> List[Path]:
-    return _download_data_outputs(prefix)
-
-
-def _create_sample_outputs(prefix: str) -> List[Path]:
-    # Sample CSV is written at repo root, parallel to original files
-    return [Path(f"{prefix}_sample.csv")]
-
-
-def _create_schema_mapping_inputs(prefix: str) -> List[Path]:
-    return [
-        Path(f"{prefix}_sample.csv"),
-        Path(f"{prefix}_metadata.xml"),
-    ]
-
-
-def _create_schema_mapping_outputs(prefix: str) -> List[Path]:
-    return [
-        SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv",
-        SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv",
-        SAMPLE_OUTPUT_DIR / f"{prefix}.csv",
-        SAMPLE_OUTPUT_DIR / f"{prefix}.tmcf",
-        SAMPLE_OUTPUT_DIR / f"{prefix}_stat_vars.mcf",
-    ]
-
-
-def _process_full_data_inputs(prefix: str) -> List[Path]:
-    return [
-        Path(f"{prefix}_data.csv"),
-        SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv",
-        SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv",
-    ]
-
-
-def _process_full_data_outputs(prefix: str) -> List[Path]:
-    return [
-        FINAL_OUTPUT_DIR / f"{prefix}.csv",
-        FINAL_OUTPUT_DIR / f"{prefix}.tmcf",
-        FINAL_OUTPUT_DIR / f"{prefix}_stat_vars.mcf",
-    ]
-
-
-def _create_dc_config_inputs(prefix: str) -> List[Path]:
-    return [FINAL_OUTPUT_DIR / f"{prefix}.csv"]
-
-
-def _create_dc_config_outputs(_: str) -> List[Path]:
-    # Single config name as per README and custom DC expectations.
-    return [FINAL_OUTPUT_DIR / "config.json"]
-
-
-def _fingerprint_download_metadata(_: str,
-                                   context: WorkflowContext) -> Dict[str, Any]:
-    return {
-        "endpoint": context.sdmx.endpoint,
-        "agency": context.sdmx.agency,
-        "dataflow": context.sdmx.dataflow,
-    }
+    def validate_prereqs(self, prefix: str) -> List[str]:
+        return [str(path) for path in self.inputs(prefix) if not path.exists()]
 
 
 def _normalize_multi_args(values: Tuple[str, ...]) -> List[str]:
@@ -286,115 +218,326 @@ def _normalize_multi_args(values: Tuple[str, ...]) -> List[str]:
     return sorted(normalized)
 
 
-def _fingerprint_download_data(_: str,
-                               context: WorkflowContext) -> Dict[str, Any]:
-    return {
-        "endpoint": context.sdmx.endpoint,
-        "agency": context.sdmx.agency,
-        "dataflow": context.sdmx.dataflow,
-        "key": _normalize_multi_args(context.sdmx.key),
-        "param": _normalize_multi_args(context.sdmx.param),
-    }
+class DownloadMetadataStep(WorkflowStep):
+    name = "download-metadata"
+    description = "Download SDMX metadata"
+
+    def inputs(self, _: str) -> List[Path]:
+        return []
+
+    def outputs(self, prefix: str) -> List[Path]:
+        return [Path(f"{prefix}_metadata.xml")]
+
+    def fingerprint(self, _: str, context: WorkflowContext) -> Dict[str, Any]:
+        return {
+            "endpoint": context.sdmx.endpoint,
+            "agency": context.sdmx.agency,
+            "dataflow": context.sdmx.dataflow,
+        }
+
+    def run(self, prefix: str, context: WorkflowContext) -> None:
+        config = context.sdmx
+        _require_sdmx_source(config, self.name)
+        output_path = Path(f"{prefix}_metadata.xml")
+        client = _make_sdmx_client(config)
+        if context.verbose:
+            logging.info(
+                "Starting SDMX metadata download: endpoint=%s agency=%s dataflow=%s -> %s",
+                config.endpoint,
+                config.agency,
+                config.dataflow,
+                output_path,
+            )
+        else:
+            logging.info("Downloading SDMX metadata to %s", output_path)
+        client.download_metadata(cast(str, config.dataflow), str(output_path))
 
 
-def _fingerprint_create_sample(_: str,
-                               context: WorkflowContext) -> Dict[str, Any]:
-    return {"sample_rows": context.sample_rows}
+class DownloadDataStep(WorkflowStep):
+    name = "download-data"
+    description = "Download SDMX data"
+
+    def inputs(self, _: str) -> List[Path]:
+        return []
+
+    def outputs(self, prefix: str) -> List[Path]:
+        return [Path(f"{prefix}_data.csv")]
+
+    def fingerprint(self, _: str, context: WorkflowContext) -> Dict[str, Any]:
+        return {
+            "endpoint": context.sdmx.endpoint,
+            "agency": context.sdmx.agency,
+            "dataflow": context.sdmx.dataflow,
+            "key": _normalize_multi_args(context.sdmx.key),
+            "param": _normalize_multi_args(context.sdmx.param),
+        }
+
+    def run(self, prefix: str, context: WorkflowContext) -> None:
+        config = context.sdmx
+        _require_sdmx_source(config, self.name)
+        output_path = Path(f"{prefix}_data.csv")
+        client = _make_sdmx_client(config)
+        key_filters = _parse_key_value_pairs(config.key)
+        extra_params = _parse_key_value_pairs(config.param)
+        if context.verbose:
+            logging.info(
+                "Starting SDMX data download: endpoint=%s agency=%s "
+                "dataflow=%s key=%s params=%s -> %s",
+                config.endpoint,
+                config.agency,
+                config.dataflow,
+                key_filters,
+                extra_params,
+                output_path,
+            )
+        else:
+            logging.info("Downloading SDMX data to %s", output_path)
+        client.download_data_as_csv(
+            cast(str, config.dataflow),
+            key_filters,
+            extra_params,
+            str(output_path),
+        )
 
 
-def _fingerprint_create_schema_mapping(
-        prefix: str, context: WorkflowContext) -> Dict[str, Any]:
-    return {
-        "sample": f"{prefix}_sample.csv",
-        "metadata": f"{prefix}_metadata.xml",
-        "sdmx_dataset": True,
-        "gemini_cli": context.gemini_cli,
-    }
+class CreateSampleStep(WorkflowStep):
+    name = "create-sample"
+    description = "Create SDMX data sample"
+
+    def inputs(self, prefix: str) -> List[Path]:
+        return [Path(f"{prefix}_data.csv")]
+
+    def outputs(self, prefix: str) -> List[Path]:
+        return [Path(f"{prefix}_sample.csv")]
+
+    def fingerprint(self, _: str, context: WorkflowContext) -> Dict[str, Any]:
+        return {"sample_rows": context.sample_rows}
+
+    def run(self, prefix: str, context: WorkflowContext) -> None:
+        input_path = Path(f"{prefix}_data.csv")
+        if not input_path.is_file():
+            raise app.UsageError(
+                f"{self.name} requires existing input: {input_path}")
+        output_path = Path(f"{prefix}_sample.csv")
+        if context.verbose:
+            logging.info(
+                "Starting sample: input=%s output=%s rows=%d",
+                input_path,
+                output_path,
+                context.sample_rows,
+            )
+        else:
+            logging.info("Sampling SDMX data into %s", output_path)
+        data_sampler.sample_csv_file(
+            str(input_path),
+            str(output_path),
+            {
+                "sampler_input": str(input_path),
+                "sampler_output": str(output_path),
+                "sampler_output_rows": context.sample_rows,
+            },
+        )
 
 
-def _fingerprint_process_full_data(prefix: str,
-                                   _: WorkflowContext) -> Dict[str, Any]:
-    return {
-        "data": f"{prefix}_data.csv",
-        "pvmap": f"{prefix}_pvmap.csv",
-        "metadata": f"{prefix}_metadata.csv",
-        "output_columns": _RUN_OUTPUT_COLUMNS,
-    }
+class CreateSchemaMappingStep(WorkflowStep):
+    name = "create-schema-mapping"
+    description = "Create schema mapping from sample"
+
+    def inputs(self, prefix: str) -> List[Path]:
+        return [
+            Path(f"{prefix}_sample.csv"),
+            Path(f"{prefix}_metadata.xml"),
+        ]
+
+    def outputs(self, prefix: str) -> List[Path]:
+        return [
+            SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv",
+            SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv",
+            SAMPLE_OUTPUT_DIR / f"{prefix}.csv",
+            SAMPLE_OUTPUT_DIR / f"{prefix}.tmcf",
+            SAMPLE_OUTPUT_DIR / f"{prefix}_stat_vars.mcf",
+        ]
+
+    def fingerprint(self, prefix: str,
+                    context: WorkflowContext) -> Dict[str, Any]:
+        return {
+            "sample": f"{prefix}_sample.csv",
+            "metadata": f"{prefix}_metadata.xml",
+            "sdmx_dataset": True,
+            "gemini_cli": context.gemini_cli,
+        }
+
+    def run(self, prefix: str, context: WorkflowContext) -> None:
+        sample_path = Path(f"{prefix}_sample.csv")
+        metadata_path = Path(f"{prefix}_metadata.xml")
+        if not sample_path.is_file():
+            raise app.UsageError(
+                f"{self.name} requires sample output: {sample_path}")
+        if not metadata_path.is_file():
+            raise app.UsageError(
+                f"{self.name} requires metadata file: {metadata_path}")
+
+        SAMPLE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        output_prefix = SAMPLE_OUTPUT_DIR / prefix
+        data_config = PvmapDataConfig(
+            input_data=[str(sample_path)],
+            input_metadata=[str(metadata_path)],
+            is_sdmx_dataset=True,
+        )
+        config_kwargs = {
+            "data_config": data_config,
+            "skip_confirmation": context.skip_confirmation,
+            "output_path": str(output_prefix),
+        }
+        if context.gemini_cli:
+            config_kwargs["gemini_cli"] = context.gemini_cli
+        pvmap_config = PvmapConfig(**config_kwargs)
+        if context.verbose:
+            logging.info(
+                "Starting PV map generation: sample=%s metadata=%s output=%s gemini_cli=%s",
+                sample_path,
+                metadata_path,
+                output_prefix,
+                context.gemini_cli,
+            )
+            logging.debug(
+                "PV map parameters: skip_confirmation=%s",
+                context.skip_confirmation,
+            )
+        else:
+            logging.info("Generating PV map artifacts under %s", output_prefix)
+        generator = PVMapGenerator(pvmap_config)
+        generator.generate()
 
 
-def _fingerprint_create_dc_config(prefix: str,
-                                  _: WorkflowContext) -> Dict[str, Any]:
-    return {
-        "input_csv": str(FINAL_OUTPUT_DIR / f"{prefix}.csv"),
-        "output_config": str(FINAL_OUTPUT_DIR / "config.json"),
-    }
+class ProcessFullDataStep(WorkflowStep):
+    name = "process-full-data"
+    description = "Process full SDMX data"
+
+    def inputs(self, prefix: str) -> List[Path]:
+        return [
+            Path(f"{prefix}_data.csv"),
+            SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv",
+            SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv",
+        ]
+
+    def outputs(self, prefix: str) -> List[Path]:
+        return [
+            FINAL_OUTPUT_DIR / f"{prefix}.csv",
+            FINAL_OUTPUT_DIR / f"{prefix}.tmcf",
+            FINAL_OUTPUT_DIR / f"{prefix}_stat_vars.mcf",
+        ]
+
+    def fingerprint(self, prefix: str, _: WorkflowContext) -> Dict[str, Any]:
+        return {
+            "data": f"{prefix}_data.csv",
+            "pvmap": f"{prefix}_pvmap.csv",
+            "metadata": f"{prefix}_metadata.csv",
+            "output_columns": _RUN_OUTPUT_COLUMNS,
+        }
+
+    def run(self, prefix: str, context: WorkflowContext) -> None:
+        data_path = Path(f"{prefix}_data.csv")
+        pvmap_path = SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv"
+        metadata_path = SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv"
+        for required in (data_path, pvmap_path, metadata_path):
+            if not required.is_file():
+                raise app.UsageError(
+                    f"{self.name} requires existing input: {required}")
+
+        FINAL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        output_prefix = FINAL_OUTPUT_DIR / prefix
+        command = [
+            sys.executable,
+            str(STATVAR_PROCESSOR),
+            f"--input_data={data_path}",
+            f"--pv_map={pvmap_path}",
+            f"--config_file={metadata_path}",
+            "--generate_statvar_name=True",
+            "--skip_constant_csv_columns=False",
+            f"--output_columns={_RUN_OUTPUT_COLUMNS}",
+            f"--output_path={output_prefix}",
+        ]
+        if context.verbose:
+            logging.info(
+                "Starting stat_var_processor: input=%s pvmap=%s metadata=%s -> %s",
+                data_path,
+                pvmap_path,
+                metadata_path,
+                output_prefix,
+            )
+            logging.debug("Command: %s", " ".join(command))
+        else:
+            logging.info("Running stat_var_processor for %s", prefix)
+            logging.debug("Command: %s", " ".join(command))
+        subprocess.run(command, check=True)
 
 
-STEP_SEQUENCE: List[Step] = [
-    Step(
-        "download-metadata",
-        "Download SDMX metadata",
-        version=1,
-        fingerprint_fn=_fingerprint_download_metadata,
-    ),
-    Step(
-        "download-data",
-        "Download SDMX data",
-        version=1,
-        fingerprint_fn=_fingerprint_download_data,
-    ),
-    Step(
-        "create-sample",
-        "Create SDMX data sample",
-        version=1,
-        fingerprint_fn=_fingerprint_create_sample,
-    ),
-    Step(
-        "create-schema-mapping",
-        "Create schema mapping from sample",
-        version=1,
-        fingerprint_fn=_fingerprint_create_schema_mapping,
-    ),
-    Step(
-        "process-full-data",
-        "Process full SDMX data",
-        version=1,
-        fingerprint_fn=_fingerprint_process_full_data,
-    ),
-    Step(
-        "create-dc-config",
-        "Create Custom DC configuration",
-        version=1,
-        fingerprint_fn=_fingerprint_create_dc_config,
-    ),
+class CreateDcConfigStep(WorkflowStep):
+    name = "create-dc-config"
+    description = "Create Custom DC configuration"
+
+    def inputs(self, prefix: str) -> List[Path]:
+        return [FINAL_OUTPUT_DIR / f"{prefix}.csv"]
+
+    def outputs(self, _: str) -> List[Path]:
+        return [FINAL_OUTPUT_DIR / "config.json"]
+
+    def fingerprint(self, prefix: str, _: WorkflowContext) -> Dict[str, Any]:
+        return {
+            "input_csv": str(FINAL_OUTPUT_DIR / f"{prefix}.csv"),
+            "output_config": str(FINAL_OUTPUT_DIR / "config.json"),
+        }
+
+    def run(self, prefix: str, context: WorkflowContext) -> None:
+        input_csv = FINAL_OUTPUT_DIR / f"{prefix}.csv"
+        output_config = FINAL_OUTPUT_DIR / "config.json"
+        if not input_csv.is_file():
+            raise app.UsageError(
+                f"{self.name} requires existing input: {input_csv}")
+
+        provenance_name = context.sdmx.dataflow
+        source_name = context.sdmx.agency
+        data_source_url = context.sdmx.endpoint
+        dataset_url = None
+        if context.sdmx.endpoint and context.sdmx.agency and context.sdmx.dataflow:
+            dataset_url = (f"{context.sdmx.endpoint.rstrip('/')}/data/"
+                           f"{context.sdmx.agency},{context.sdmx.dataflow},")
+
+        command = [
+            sys.executable,
+            str(CUSTOM_DC_CONFIG_GENERATOR),
+            f"--input_csv={input_csv}",
+            f"--output_config={output_config}",
+        ]
+        if provenance_name:
+            command.append(f"--provenance_name={provenance_name}")
+        if source_name:
+            command.append(f"--source_name={source_name}")
+        if data_source_url:
+            command.append(f"--data_source_url={data_source_url}")
+        if dataset_url:
+            command.append(f"--dataset_url={dataset_url}")
+        if context.verbose:
+            logging.info(
+                "Starting custom DC config generation: input=%s -> %s",
+                input_csv,
+                output_config,
+            )
+            logging.debug("Command: %s", " ".join(command))
+        else:
+            logging.info("Generating custom DC config at %s", output_config)
+        subprocess.run(command, check=True)
+
+
+STEP_SEQUENCE: List[WorkflowStep] = [
+    DownloadMetadataStep(),
+    DownloadDataStep(),
+    CreateSampleStep(),
+    CreateSchemaMappingStep(),
+    ProcessFullDataStep(),
+    CreateDcConfigStep(),
 ]
-
-STEP_IO: Dict[str, Dict[str, callable]] = {
-    "download-metadata": {
-        "inputs": _download_metadata_inputs,
-        "outputs": _download_metadata_outputs
-    },
-    "download-data": {
-        "inputs": _download_data_inputs,
-        "outputs": _download_data_outputs
-    },
-    "create-sample": {
-        "inputs": _create_sample_inputs,
-        "outputs": _create_sample_outputs
-    },
-    "create-schema-mapping": {
-        "inputs": _create_schema_mapping_inputs,
-        "outputs": _create_schema_mapping_outputs
-    },
-    "process-full-data": {
-        "inputs": _process_full_data_inputs,
-        "outputs": _process_full_data_outputs
-    },
-    "create-dc-config": {
-        "inputs": _create_dc_config_inputs,
-        "outputs": _create_dc_config_outputs,
-    },
-}
 
 
 def _parse_key_value_pairs(pairs: Tuple[str, ...]) -> Dict[str, str]:
@@ -427,215 +570,12 @@ def _make_sdmx_client(config: SdmxSourceConfig) -> SdmxClient:
     return SdmxClient(endpoint=endpoint, agency_id=agency)
 
 
-def _execute_download_metadata(prefix: str, context: WorkflowContext) -> None:
-    config = context.sdmx
-    _require_sdmx_source(config, "download-metadata")
-    output_path = Path(f"{prefix}_metadata.xml")
-    client = _make_sdmx_client(config)
-    if context.verbose:
-        logging.info(
-            "Starting SDMX metadata download: endpoint=%s agency=%s dataflow=%s -> %s",
-            config.endpoint,
-            config.agency,
-            config.dataflow,
-            output_path,
-        )
-    else:
-        logging.info("Downloading SDMX metadata to %s", output_path)
-    client.download_metadata(cast(str, config.dataflow), str(output_path))
-
-
-def _execute_download_data(prefix: str, context: WorkflowContext) -> None:
-    config = context.sdmx
-    _require_sdmx_source(config, "download-data")
-    output_path = Path(f"{prefix}_data.csv")
-    client = _make_sdmx_client(config)
-    key_filters = _parse_key_value_pairs(config.key)
-    extra_params = _parse_key_value_pairs(config.param)
-    if context.verbose:
-        logging.info(
-            "Starting SDMX data download: endpoint=%s agency=%s "
-            "dataflow=%s key=%s params=%s -> %s",
-            config.endpoint,
-            config.agency,
-            config.dataflow,
-            key_filters,
-            extra_params,
-            output_path,
-        )
-    else:
-        logging.info("Downloading SDMX data to %s", output_path)
-    client.download_data_as_csv(
-        cast(str, config.dataflow),
-        key_filters,
-        extra_params,
-        str(output_path),
-    )
-
-
-def _execute_create_sample(prefix: str, context: WorkflowContext) -> None:
-    input_path = Path(f"{prefix}_data.csv")
-    if not input_path.is_file():
-        raise app.UsageError(
-            f"create-sample requires existing input: {input_path}")
-    output_path = Path(f"{prefix}_sample.csv")
-    if context.verbose:
-        logging.info(
-            "Starting sample: input=%s output=%s rows=%d",
-            input_path,
-            output_path,
-            context.sample_rows,
-        )
-    else:
-        logging.info("Sampling SDMX data into %s", output_path)
-    data_sampler.sample_csv_file(
-        str(input_path),
-        str(output_path),
-        {
-            "sampler_input": str(input_path),
-            "sampler_output": str(output_path),
-            "sampler_output_rows": context.sample_rows,
-        },
-    )
-
-
-def _execute_create_schema_mapping(prefix: str,
-                                   context: WorkflowContext) -> None:
-    sample_path = Path(f"{prefix}_sample.csv")
-    metadata_path = Path(f"{prefix}_metadata.xml")
-    if not sample_path.is_file():
-        raise app.UsageError(
-            f"create-schema-mapping requires sample output: {sample_path}")
-    if not metadata_path.is_file():
-        raise app.UsageError(
-            f"create-schema-mapping requires metadata file: {metadata_path}")
-
-    SAMPLE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    output_prefix = SAMPLE_OUTPUT_DIR / prefix
-    data_config = PvmapDataConfig(
-        input_data=[str(sample_path)],
-        input_metadata=[str(metadata_path)],
-        is_sdmx_dataset=True,
-    )
-    config_kwargs = {
-        "data_config": data_config,
-        "skip_confirmation": context.skip_confirmation,
-        "output_path": str(output_prefix),
-    }
-    if context.gemini_cli:
-        config_kwargs["gemini_cli"] = context.gemini_cli
-    pvmap_config = PvmapConfig(**config_kwargs)
-    if context.verbose:
-        logging.info(
-            "Starting PV map generation: sample=%s metadata=%s output=%s gemini_cli=%s",
-            sample_path,
-            metadata_path,
-            output_prefix,
-            context.gemini_cli,
-        )
-        logging.debug(
-            "PV map parameters: skip_confirmation=%s",
-            context.skip_confirmation,
-        )
-    else:
-        logging.info("Generating PV map artifacts under %s", output_prefix)
-    generator = PVMapGenerator(pvmap_config)
-    generator.generate()
-
-
-def _execute_process_full_data(prefix: str, context: WorkflowContext) -> None:
-    data_path = Path(f"{prefix}_data.csv")
-    pvmap_path = SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv"
-    metadata_path = SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv"
-    for required in (data_path, pvmap_path, metadata_path):
-        if not required.is_file():
-            raise app.UsageError(
-                f"process-full-data requires existing input: {required}")
-
-    FINAL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    output_prefix = FINAL_OUTPUT_DIR / prefix
-    command = [
-        sys.executable,
-        str(STATVAR_PROCESSOR),
-        f"--input_data={data_path}",
-        f"--pv_map={pvmap_path}",
-        f"--config_file={metadata_path}",
-        "--generate_statvar_name=True",
-        "--skip_constant_csv_columns=False",
-        f"--output_columns={_RUN_OUTPUT_COLUMNS}",
-        f"--output_path={output_prefix}",
-    ]
-    if context.verbose:
-        logging.info(
-            "Starting stat_var_processor: input=%s pvmap=%s metadata=%s -> %s",
-            data_path,
-            pvmap_path,
-            metadata_path,
-            output_prefix,
-        )
-        logging.debug("Command: %s", " ".join(command))
-    else:
-        logging.info("Running stat_var_processor for %s", prefix)
-        logging.debug("Command: %s", " ".join(command))
-    subprocess.run(command, check=True)
-
-
-STEP_RUNNERS: Dict[str, Callable[[str, WorkflowContext], None]] = {
-    "download-metadata": _execute_download_metadata,
-    "download-data": _execute_download_data,
-    "create-sample": _execute_create_sample,
-    "create-schema-mapping": _execute_create_schema_mapping,
-    "process-full-data": _execute_process_full_data,
-    "create-dc-config": _execute_create_dc_config,
-}
-
-
-def _execute_create_dc_config(prefix: str, context: WorkflowContext) -> None:
-    input_csv = FINAL_OUTPUT_DIR / f"{prefix}.csv"
-    output_config = FINAL_OUTPUT_DIR / "config.json"
-    if not input_csv.is_file():
-        raise app.UsageError(
-            f"create-dc-config requires existing input: {input_csv}")
-
-    provenance_name = context.sdmx.dataflow
-    source_name = context.sdmx.agency
-    data_source_url = context.sdmx.endpoint
-    dataset_url = None
-    if context.sdmx.endpoint and context.sdmx.agency and context.sdmx.dataflow:
-        dataset_url = (f"{context.sdmx.endpoint.rstrip('/')}/data/"
-                       f"{context.sdmx.agency},{context.sdmx.dataflow},")
-
-    command = [
-        sys.executable,
-        str(CUSTOM_DC_CONFIG_GENERATOR),
-        f"--input_csv={input_csv}",
-        f"--output_config={output_config}",
-    ]
-    if provenance_name:
-        command.append(f"--provenance_name={provenance_name}")
-    if source_name:
-        command.append(f"--source_name={source_name}")
-    if data_source_url:
-        command.append(f"--data_source_url={data_source_url}")
-    if dataset_url:
-        command.append(f"--dataset_url={dataset_url}")
-    if context.verbose:
-        logging.info(
-            "Starting custom DC config generation: input=%s -> %s",
-            input_csv,
-            output_config,
-        )
-        logging.debug("Command: %s", " ".join(command))
-    else:
-        logging.info("Generating custom DC config at %s", output_config)
-    subprocess.run(command, check=True)
-
-
 def _state_path(prefix: str) -> Path:
     return STATE_DIR / f"{prefix}.state.json"
 
 
-def _confirm_step_execution(step: Step, context: WorkflowContext) -> bool:
+def _confirm_step_execution(step: WorkflowStep,
+                            context: WorkflowContext) -> bool:
     if context.skip_confirmation:
         return True
     prompt = (f"Proceed with step '{step.name}' ({step.description})? [y/N]: ")
@@ -682,7 +622,7 @@ def _outputs_exist(paths: List[Path]) -> bool:
 
 
 def _step_state_matches(
-    step: Step,
+    step: WorkflowStep,
     record: Dict[str, Any],
     prefix: str,
     context: WorkflowContext,
@@ -728,7 +668,7 @@ def determine_steps(
     step_name: str | None,
     from_step_name: str | None,
     force: bool,
-) -> Tuple[List[Step], List[str], List[str]]:
+) -> Tuple[List[WorkflowStep], List[str], List[str]]:
     if step_name:
         return ([step for step in STEP_SEQUENCE if step.name == step_name], [],
                 [])
@@ -758,7 +698,7 @@ def determine_steps(
 
 def execute_steps(
     prefix: str,
-    steps: List[Step],
+    steps: List[WorkflowStep],
     context: WorkflowContext,
     state: Dict[str, Any],
 ) -> None:
@@ -770,13 +710,7 @@ def execute_steps(
                          step.description)
         else:
             logging.info(">>> Running step: %s", step.name)
-        runner = STEP_RUNNERS.get(step.name)
-        if not runner:
-            raise NotImplementedError(f"Step '{step.name}' is not implemented.")
-
-        missing_inputs = [
-            str(path) for path in step.inputs(prefix) if not path.exists()
-        ]
+        missing_inputs = step.validate_prereqs(prefix)
         if missing_inputs:
             raise app.UsageError(
                 f"{step.name} requires existing inputs: {', '.join(missing_inputs)}; "
@@ -795,7 +729,7 @@ def execute_steps(
             "outputs": outputs,
         }
         try:
-            runner(prefix, context)
+            step.run(prefix, context)
         except Exception as exc:  # noqa: BLE001
             record.update({
                 "status": "failed",
@@ -818,7 +752,7 @@ def execute_steps(
 
 def summarize_plan(
     prefix: str,
-    steps: List[Step],
+    steps: List[WorkflowStep],
     skipped: List[str],
     rerun_reasons: List[str],
     context: WorkflowContext,
