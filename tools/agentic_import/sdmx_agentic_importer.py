@@ -153,13 +153,6 @@ flags.DEFINE_string(
 SAMPLE_OUTPUT_DIR = Path("sample_output")
 FINAL_OUTPUT_DIR = Path("output")
 STATE_DIR = Path(".datacommons")
-STATVAR_PROCESSOR = (REPO_ROOT / "tools" / "statvar_importer" /
-                     "stat_var_processor.py")
-CUSTOM_DC_CONFIG_GENERATOR = (REPO_ROOT / "tools" / "agentic_import" /
-                              "generate_custom_dc_config.py")
-_RUN_OUTPUT_COLUMNS = (
-    "observationDate,observationAbout,variableMeasured,value,"
-    "observationPeriod,measurementMethod,unit,scalingFactor")
 
 
 @dataclass(frozen=True)
@@ -413,6 +406,11 @@ class CreateSchemaMappingStep(WorkflowStep):
 class ProcessFullDataStep(WorkflowStep):
     name = "process-full-data"
     description = "Process full SDMX data"
+    PROCESSOR: ClassVar[Path] = (REPO_ROOT / "tools" / "statvar_importer" /
+                                 "stat_var_processor.py")
+    RUN_OUTPUT_COLUMNS: ClassVar[str] = (
+        "observationDate,observationAbout,variableMeasured,value,"
+        "observationPeriod,measurementMethod,unit,scalingFactor")
 
     def inputs(self, prefix: str) -> List[Path]:
         return [
@@ -433,7 +431,7 @@ class ProcessFullDataStep(WorkflowStep):
             "data": f"{prefix}_data.csv",
             "pvmap": f"{prefix}_pvmap.csv",
             "metadata": f"{prefix}_metadata.csv",
-            "output_columns": _RUN_OUTPUT_COLUMNS,
+            "output_columns": self.RUN_OUTPUT_COLUMNS,
         }
 
     def run(self, prefix: str, context: WorkflowContext) -> None:
@@ -449,13 +447,13 @@ class ProcessFullDataStep(WorkflowStep):
         output_prefix = FINAL_OUTPUT_DIR / prefix
         command = [
             sys.executable,
-            str(STATVAR_PROCESSOR),
+            str(self.PROCESSOR),
             f"--input_data={data_path}",
             f"--pv_map={pvmap_path}",
             f"--config_file={metadata_path}",
             "--generate_statvar_name=True",
             "--skip_constant_csv_columns=False",
-            f"--output_columns={_RUN_OUTPUT_COLUMNS}",
+            f"--output_columns={self.RUN_OUTPUT_COLUMNS}",
             f"--output_path={output_prefix}",
         ]
         if context.verbose:
@@ -476,6 +474,8 @@ class ProcessFullDataStep(WorkflowStep):
 class CreateDcConfigStep(WorkflowStep):
     name = "create-dc-config"
     description = "Create Custom DC configuration"
+    GENERATOR: ClassVar[Path] = (REPO_ROOT / "tools" / "agentic_import" /
+                                 "generate_custom_dc_config.py")
 
     def inputs(self, prefix: str) -> List[Path]:
         return [FINAL_OUTPUT_DIR / f"{prefix}.csv"]
@@ -506,7 +506,7 @@ class CreateDcConfigStep(WorkflowStep):
 
         command = [
             sys.executable,
-            str(CUSTOM_DC_CONFIG_GENERATOR),
+            str(self.GENERATOR),
             f"--input_csv={input_csv}",
             f"--output_config={output_config}",
         ]
