@@ -74,7 +74,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, ClassVar, Dict, Iterable, List, Tuple, cast
+from typing import Any, ClassVar, Dict, Iterable, List, Tuple, cast, Final
 
 from absl import app
 from absl import flags
@@ -404,13 +404,13 @@ class CreateSchemaMappingStep(WorkflowStep):
 
 
 class ProcessFullDataStep(WorkflowStep):
-    name = "process-full-data"
-    description = "Process full SDMX data"
-    PROCESSOR: ClassVar[Path] = (REPO_ROOT / "tools" / "statvar_importer" /
-                                 "stat_var_processor.py")
-    RUN_OUTPUT_COLUMNS: ClassVar[str] = (
+    PROCESSOR: Final[Path] = (REPO_ROOT / "tools" / "statvar_importer" /
+                              "stat_var_processor.py")
+    RUN_OUTPUT_COLUMNS: Final[str] = (
         "observationDate,observationAbout,variableMeasured,value,"
         "observationPeriod,measurementMethod,unit,scalingFactor")
+    name = "process-full-data"
+    description = "Process full SDMX data"
 
     def inputs(self, prefix: str) -> List[Path]:
         return [
@@ -472,10 +472,10 @@ class ProcessFullDataStep(WorkflowStep):
 
 
 class CreateDcConfigStep(WorkflowStep):
+    GENERATOR: Final[Path] = (REPO_ROOT / "tools" / "agentic_import" /
+                              "generate_custom_dc_config.py")
     name = "create-dc-config"
     description = "Create Custom DC configuration"
-    GENERATOR: ClassVar[Path] = (REPO_ROOT / "tools" / "agentic_import" /
-                                 "generate_custom_dc_config.py")
 
     def inputs(self, prefix: str) -> List[Path]:
         return [FINAL_OUTPUT_DIR / f"{prefix}.csv"]
