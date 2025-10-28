@@ -74,7 +74,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, ClassVar, Dict, Iterable, List, Tuple, cast, Final
+from typing import (Any, ClassVar, Dict, Iterable, List, Literal, Optional,
+                    Sequence, Tuple, TypedDict, cast, Final)
 
 from absl import app
 from absl import flags
@@ -154,6 +155,11 @@ SAMPLE_OUTPUT_DIR = Path("sample_output")
 FINAL_OUTPUT_DIR = Path("output")
 STATE_DIR = Path(".datacommons")
 
+STATUS_KEY: Final = "status"
+STATUS_SUCCESS: Final = "success"
+STATUS_FAILED: Final = "failed"
+STEPS_KEY: Final = "steps"
+
 
 @dataclass(frozen=True)
 class SdmxSourceConfig:
@@ -171,6 +177,43 @@ class WorkflowContext:
     verbose: bool
     skip_confirmation: bool
     gemini_cli: str | None
+
+
+class DownloadMetadataFingerprint(TypedDict):
+    endpoint: Optional[str]
+    agency: Optional[str]
+    dataflow: Optional[str]
+
+
+class DownloadDataFingerprint(TypedDict):
+    endpoint: Optional[str]
+    agency: Optional[str]
+    dataflow: Optional[str]
+    key: Sequence[str]
+    param: Sequence[str]
+
+
+class CreateSampleFingerprint(TypedDict):
+    sample_rows: int
+
+
+class CreateSchemaMappingFingerprint(TypedDict):
+    sample: str
+    metadata: str
+    sdmx_dataset: Literal[True]
+    gemini_cli: Optional[str]
+
+
+class ProcessFullDataFingerprint(TypedDict):
+    data: str
+    pvmap: str
+    metadata: str
+    output_columns: str
+
+
+class CreateDcConfigFingerprint(TypedDict):
+    input_csv: str
+    output_config: str
 
 
 class WorkflowStep(ABC):
@@ -221,7 +264,8 @@ class DownloadMetadataStep(WorkflowStep):
     def outputs(self, prefix: str) -> List[Path]:
         return [Path(f"{prefix}_metadata.xml")]
 
-    def fingerprint(self, _: str, context: WorkflowContext) -> Dict[str, Any]:
+    def fingerprint(self, _: str,
+                    context: WorkflowContext) -> DownloadMetadataFingerprint:
         return {
             "endpoint": context.sdmx.endpoint,
             "agency": context.sdmx.agency,
@@ -256,7 +300,8 @@ class DownloadDataStep(WorkflowStep):
     def outputs(self, prefix: str) -> List[Path]:
         return [Path(f"{prefix}_data.csv")]
 
-    def fingerprint(self, _: str, context: WorkflowContext) -> Dict[str, Any]:
+    def fingerprint(self, _: str,
+                    context: WorkflowContext) -> DownloadDataFingerprint:
         return {
             "endpoint": context.sdmx.endpoint,
             "agency": context.sdmx.agency,
@@ -303,7 +348,8 @@ class CreateSampleStep(WorkflowStep):
     def outputs(self, prefix: str) -> List[Path]:
         return [Path(f"{prefix}_sample.csv")]
 
-    def fingerprint(self, _: str, context: WorkflowContext) -> Dict[str, Any]:
+    def fingerprint(self, _: str,
+                    context: WorkflowContext) -> CreateSampleFingerprint:
         return {"sample_rows": context.sample_rows}
 
     def run(self, prefix: str, context: WorkflowContext) -> None:
@@ -352,7 +398,7 @@ class CreateSchemaMappingStep(WorkflowStep):
         ]
 
     def fingerprint(self, prefix: str,
-                    context: WorkflowContext) -> Dict[str, Any]:
+                    context: WorkflowContext) -> CreateSchemaMappingFingerprint:
         return {
             "sample": f"{prefix}_sample.csv",
             "metadata": f"{prefix}_metadata.xml",
@@ -394,8 +440,17 @@ class CreateSchemaMappingStep(WorkflowStep):
                 context.gemini_cli,
             )
             logging.debug(
-                "PV map parameters: skip_confirmation=%s",
-                context.skip_confirmation,
+                "PV map parameters: %s",
+                {
+                    "data_config": {
+                        "input_data": [str(sample_path)],
+                        "input_metadata": [str(metadata_path)],
+                        "is_sdmx_dataset": True,
+                    },
+                    "output_path": str(output_prefix),
+                    "skip_confirmation": context.skip_confirmation,
+                    "gemini_cli": context.gemini_cli,
+                },
             )
         else:
             logging.info("Generating PV map artifacts under %s", output_prefix)
@@ -426,7 +481,8 @@ class ProcessFullDataStep(WorkflowStep):
             FINAL_OUTPUT_DIR / f"{prefix}_stat_vars.mcf",
         ]
 
-    def fingerprint(self, prefix: str, _: WorkflowContext) -> Dict[str, Any]:
+    def fingerprint(self, prefix: str,
+                    _: WorkflowContext) -> ProcessFullDataFingerprint:
         return {
             "data": f"{prefix}_data.csv",
             "pvmap": f"{prefix}_pvmap.csv",
@@ -483,7 +539,8 @@ class CreateDcConfigStep(WorkflowStep):
     def outputs(self, _: str) -> List[Path]:
         return [FINAL_OUTPUT_DIR / "config.json"]
 
-    def fingerprint(self, prefix: str, _: WorkflowContext) -> Dict[str, Any]:
+    def fingerprint(self, prefix: str,
+                    _: WorkflowContext) -> CreateDcConfigFingerprint:
         return {
             "input_csv": str(FINAL_OUTPUT_DIR / f"{prefix}.csv"),
             "output_config": str(FINAL_OUTPUT_DIR / "config.json"),
@@ -592,16 +649,16 @@ def _confirm_step_execution(step: WorkflowStep,
 def _load_state(prefix: str) -> Dict[str, Any]:
     path = _state_path(prefix)
     if not path.is_file():
-        return {"steps": {}}
+        return {STEPS_KEY: {}}
     try:
         data = json.loads(path.read_text())
     except json.JSONDecodeError as exc:
         raise app.UsageError(
             f"Failed to parse state file {path}: {exc}") from exc
-    steps = data.get("steps", {})
+    steps = data.get(STEPS_KEY, {})
     if not isinstance(steps, dict):
         steps = {}
-    return {"steps": steps}
+    return {STEPS_KEY: steps}
 
 
 def _write_state(prefix: str, state: Dict[str, Any]) -> None:
@@ -609,7 +666,7 @@ def _write_state(prefix: str, state: Dict[str, Any]) -> None:
     payload = {
         "dataset_prefix": prefix,
         "updated": datetime.now(timezone.utc).isoformat(),
-        "steps": state.get("steps", {}),
+        STEPS_KEY: state.get(STEPS_KEY, {}),
     }
     path = _state_path(prefix)
     tmp_path = path.with_suffix(".tmp")
@@ -629,7 +686,7 @@ def _step_state_matches(
 ) -> Tuple[bool, str | None]:
     if not record:
         return False, "no prior state"
-    if record.get("status") != "success":
+    if record.get(STATUS_KEY) != STATUS_SUCCESS:
         return False, "status not success"
     if record.get("step_version") != step.version:
         return False, "step version changed"
@@ -681,7 +738,7 @@ def determine_steps(
 
     skipped: List[str] = []
     rerun_reasons: List[str] = []
-    steps_state = state.get("steps", {})
+    steps_state = state.get(STEPS_KEY, {})
     for index, step in enumerate(STEP_SEQUENCE):
         record = steps_state.get(step.name, {})
         matches, reason = _step_state_matches(step, record, prefix, context)
@@ -702,7 +759,7 @@ def execute_steps(
     context: WorkflowContext,
     state: Dict[str, Any],
 ) -> None:
-    steps_state = state.setdefault("steps", {})
+    steps_state = state.setdefault(STEPS_KEY, {})
     for step in steps:
         logging.info("========================================")
         if context.verbose:
@@ -732,7 +789,7 @@ def execute_steps(
             step.run(prefix, context)
         except Exception as exc:  # noqa: BLE001
             record.update({
-                "status": "failed",
+                STATUS_KEY: STATUS_FAILED,
                 "updated": datetime.now(timezone.utc).isoformat(),
                 "error": repr(exc),
             })
@@ -742,7 +799,7 @@ def execute_steps(
             raise
         else:
             record.update({
-                "status": "success",
+                STATUS_KEY: STATUS_SUCCESS,
                 "updated": datetime.now(timezone.utc).isoformat(),
             })
             steps_state[step.name] = record
