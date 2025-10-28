@@ -171,12 +171,32 @@ class SdmxSourceConfig:
 
 
 @dataclass(frozen=True)
-class WorkflowContext:
+class WorkflowConfig:
+    """Static workflow configuration used by workflow steps."""
+
     sdmx: SdmxSourceConfig
     sample_rows: int
     verbose: bool
     skip_confirmation: bool
     gemini_cli: str | None
+
+
+@dataclass(frozen=True)
+class ExecutionConfig:
+    """Per-execution behavior controlling which steps run and if force applies."""
+
+    step_name: str | None = None
+    from_step_name: str | None = None
+    force: bool = False
+
+
+@dataclass
+class ExecutionState:
+    """Ephemeral state for a single execute() invocation."""
+
+    steps: List["WorkflowStep"]
+    skipped: List[str]
+    rerun_reasons: List[str]
 
 
 class FileSig(TypedDict, total=False):
@@ -283,7 +303,7 @@ class WorkflowStep(ABC):
 
     @abstractmethod
     def fingerprint(self, prefix: str,
-                    context: WorkflowContext) -> Dict[str, Any]:
+                    context: WorkflowConfig) -> Dict[str, Any]:
         """Return values used to detect changes in step dependencies.
 
         Guidelines:
@@ -300,7 +320,7 @@ class WorkflowStep(ABC):
         """
 
     @abstractmethod
-    def run(self, prefix: str, context: WorkflowContext) -> None:
+    def run(self, prefix: str, context: WorkflowConfig) -> None:
         """Execute the step."""
 
     def validate_prereqs(self, prefix: str) -> List[str]:
@@ -330,7 +350,7 @@ class DownloadMetadataStep(WorkflowStep):
         return [Path(f"{prefix}_metadata.xml")]
 
     def fingerprint(self, _: str,
-                    context: WorkflowContext) -> DownloadMetadataFingerprint:
+                    context: WorkflowConfig) -> DownloadMetadataFingerprint:
         return {
             "endpoint": context.sdmx.endpoint,
             "agency": context.sdmx.agency,
@@ -338,22 +358,22 @@ class DownloadMetadataStep(WorkflowStep):
             "inputs": [],
         }
 
-    def run(self, prefix: str, context: WorkflowContext) -> None:
-        config = context.sdmx
-        _require_sdmx_source(config, self.name)
+    def run(self, prefix: str, context: WorkflowConfig) -> None:
+        sdmx_cfg = context.sdmx
+        _require_sdmx_source(sdmx_cfg, self.name)
         output_path = Path(f"{prefix}_metadata.xml")
-        client = _make_sdmx_client(config)
+        client = _make_sdmx_client(sdmx_cfg)
         if context.verbose:
             logging.info(
                 "Starting SDMX metadata download: endpoint=%s agency=%s dataflow=%s -> %s",
-                config.endpoint,
-                config.agency,
-                config.dataflow,
+                sdmx_cfg.endpoint,
+                sdmx_cfg.agency,
+                sdmx_cfg.dataflow,
                 output_path,
             )
         else:
             logging.info("Downloading SDMX metadata to %s", output_path)
-        client.download_metadata(cast(str, config.dataflow), str(output_path))
+        client.download_metadata(cast(str, sdmx_cfg.dataflow), str(output_path))
 
 
 class DownloadDataStep(WorkflowStep):
@@ -367,7 +387,7 @@ class DownloadDataStep(WorkflowStep):
         return [Path(f"{prefix}_data.csv")]
 
     def fingerprint(self, _: str,
-                    context: WorkflowContext) -> DownloadDataFingerprint:
+                    context: WorkflowConfig) -> DownloadDataFingerprint:
         return {
             "endpoint": context.sdmx.endpoint,
             "agency": context.sdmx.agency,
@@ -377,20 +397,20 @@ class DownloadDataStep(WorkflowStep):
             "inputs": [],
         }
 
-    def run(self, prefix: str, context: WorkflowContext) -> None:
-        config = context.sdmx
-        _require_sdmx_source(config, self.name)
+    def run(self, prefix: str, context: WorkflowConfig) -> None:
+        sdmx_cfg = context.sdmx
+        _require_sdmx_source(sdmx_cfg, self.name)
         output_path = Path(f"{prefix}_data.csv")
-        client = _make_sdmx_client(config)
-        key_filters = _parse_key_value_pairs(config.key)
-        extra_params = _parse_key_value_pairs(config.param)
+        client = _make_sdmx_client(sdmx_cfg)
+        key_filters = _parse_key_value_pairs(sdmx_cfg.key)
+        extra_params = _parse_key_value_pairs(sdmx_cfg.param)
         if context.verbose:
             logging.info(
                 "Starting SDMX data download: endpoint=%s agency=%s "
                 "dataflow=%s key=%s params=%s -> %s",
-                config.endpoint,
-                config.agency,
-                config.dataflow,
+                sdmx_cfg.endpoint,
+                sdmx_cfg.agency,
+                sdmx_cfg.dataflow,
                 key_filters,
                 extra_params,
                 output_path,
@@ -398,7 +418,7 @@ class DownloadDataStep(WorkflowStep):
         else:
             logging.info("Downloading SDMX data to %s", output_path)
         client.download_data_as_csv(
-            cast(str, config.dataflow),
+            cast(str, sdmx_cfg.dataflow),
             key_filters,
             extra_params,
             str(output_path),
@@ -416,13 +436,13 @@ class CreateSampleStep(WorkflowStep):
         return [Path(f"{prefix}_sample.csv")]
 
     def fingerprint(self, prefix: str,
-                    context: WorkflowContext) -> CreateSampleFingerprint:
+                    context: WorkflowConfig) -> CreateSampleFingerprint:
         return {
             "sample_rows": context.sample_rows,
             "inputs": fingerprint_inputs(self.inputs(prefix)),
         }
 
-    def run(self, prefix: str, context: WorkflowContext) -> None:
+    def run(self, prefix: str, context: WorkflowConfig) -> None:
         input_path = Path(f"{prefix}_data.csv")
         if not input_path.is_file():
             raise app.UsageError(
@@ -468,14 +488,14 @@ class CreateSchemaMappingStep(WorkflowStep):
         ]
 
     def fingerprint(self, prefix: str,
-                    context: WorkflowContext) -> CreateSchemaMappingFingerprint:
+                    context: WorkflowConfig) -> CreateSchemaMappingFingerprint:
         return {
             "inputs": fingerprint_inputs(self.inputs(prefix)),
             "sdmx_dataset": True,
             "gemini_cli": context.gemini_cli,
         }
 
-    def run(self, prefix: str, context: WorkflowContext) -> None:
+    def run(self, prefix: str, context: WorkflowConfig) -> None:
         sample_path = Path(f"{prefix}_sample.csv")
         metadata_path = Path(f"{prefix}_metadata.xml")
         if not sample_path.is_file():
@@ -551,13 +571,13 @@ class ProcessFullDataStep(WorkflowStep):
         ]
 
     def fingerprint(self, prefix: str,
-                    _: WorkflowContext) -> ProcessFullDataFingerprint:
+                    _: WorkflowConfig) -> ProcessFullDataFingerprint:
         return {
             "inputs": fingerprint_inputs(self.inputs(prefix)),
             "output_columns": self.RUN_OUTPUT_COLUMNS,
         }
 
-    def run(self, prefix: str, context: WorkflowContext) -> None:
+    def run(self, prefix: str, context: WorkflowConfig) -> None:
         data_path = Path(f"{prefix}_data.csv")
         pvmap_path = SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv"
         metadata_path = SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv"
@@ -607,13 +627,13 @@ class CreateDcConfigStep(WorkflowStep):
         return [FINAL_OUTPUT_DIR / "config.json"]
 
     def fingerprint(self, prefix: str,
-                    _: WorkflowContext) -> CreateDcConfigFingerprint:
+                    _: WorkflowConfig) -> CreateDcConfigFingerprint:
         return {
             "inputs": fingerprint_inputs(self.inputs(prefix)),
             "output_config": str(FINAL_OUTPUT_DIR / "config.json"),
         }
 
-    def run(self, prefix: str, context: WorkflowContext) -> None:
+    def run(self, prefix: str, context: WorkflowConfig) -> None:
         input_csv = FINAL_OUTPUT_DIR / f"{prefix}.csv"
         output_config = FINAL_OUTPUT_DIR / "config.json"
         if not input_csv.is_file():
@@ -624,7 +644,8 @@ class CreateDcConfigStep(WorkflowStep):
         source_name = context.sdmx.agency
         data_source_url = context.sdmx.endpoint
         dataset_url = None
-        if context.sdmx.endpoint and context.sdmx.agency and context.sdmx.dataflow:
+        if (context.sdmx.endpoint and context.sdmx.agency and
+                context.sdmx.dataflow):
             dataset_url = (f"{context.sdmx.endpoint.rstrip('/')}/data/"
                            f"{context.sdmx.agency},{context.sdmx.dataflow},")
 
@@ -702,7 +723,7 @@ def _step_state_matches(
     step: WorkflowStep,
     record: Dict[str, Any],
     prefix: str,
-    context: WorkflowContext,
+    context: WorkflowConfig,
 ) -> Tuple[bool, str | None]:
     if not record:
         return False, "no prior state"
@@ -732,13 +753,26 @@ class Workflow:
     def __init__(
         self,
         prefix: str,
-        context: WorkflowContext,
+        config: WorkflowConfig,
         steps: Sequence[WorkflowStep] = STEP_SEQUENCE,
     ) -> None:
         self.prefix = prefix
-        self.context = context
+        self.config = config
         self.steps = list(steps)
+        self._step_names = [step.name for step in self.steps]
         self.state = self._load_state()
+
+    def _validate_execution_config(self, exec_config: ExecutionConfig) -> None:
+        step = exec_config.step_name
+        from_step = exec_config.from_step_name
+        if step and from_step:
+            raise app.UsageError(
+                "--step and --from-step cannot be used together.")
+        if step and step not in self._step_names:
+            raise app.UsageError(f"--step must be one of {self._step_names}")
+        if from_step and from_step not in self._step_names:
+            raise app.UsageError(
+                f"--from-step must be one of {self._step_names}")
 
     def _state_path(self) -> Path:
         return STATE_DIR / f"{self.prefix}.state.json"
@@ -770,7 +804,7 @@ class Workflow:
         tmp_path.replace(path)
 
     def _confirm_step_execution(self, step: WorkflowStep) -> bool:
-        if self.context.skip_confirmation:
+        if self.config.skip_confirmation:
             return True
         prompt = f"Proceed with step '{step.name}' ({step.description})? [y/N]: "
         try:
@@ -782,20 +816,21 @@ class Workflow:
         decision = response.strip().lower()
         return decision in ("y", "yes")
 
-    def determine_steps(
+    def _determine_steps(
         self,
-        step_name: str | None,
-        from_step_name: str | None,
-        force: bool,
+        exec_config: ExecutionConfig,
+        effective_force: bool,
     ) -> Tuple[List[WorkflowStep], List[str], List[str]]:
-        if step_name:
-            return ([step for step in self.steps if step.name == step_name], [],
-                    [])
-        if from_step_name:
-            names = [step.name for step in self.steps]
-            start_index = names.index(from_step_name)
+        if exec_config.step_name:
+            selected = [
+                step for step in self.steps
+                if step.name == exec_config.step_name
+            ]
+            return (selected, [], [])
+        if exec_config.from_step_name:
+            start_index = self._step_names.index(exec_config.from_step_name)
             return (self.steps[start_index:], [], [])
-        if force:
+        if effective_force:
             return (list(self.steps), [], [])
 
         skipped: List[str] = []
@@ -807,7 +842,7 @@ class Workflow:
                 step,
                 record,
                 self.prefix,
-                self.context,
+                self.config,
             )
             if matches:
                 skipped.append(step.name)
@@ -819,7 +854,7 @@ class Workflow:
             return (self.steps[index:], skipped, rerun_reasons)
         return ([], skipped, rerun_reasons)
 
-    def summarize_plan(
+    def _summarize_plan(
         self,
         steps: List[WorkflowStep],
         skipped: List[str],
@@ -832,13 +867,13 @@ class Workflow:
             logging.info("Step start summary:")
             for reason in rerun_reasons:
                 logging.info("  * %s", reason)
-        if self.context.skip_confirmation:
+        if self.config.skip_confirmation:
             logging.info(
                 "Confirmation prompts are disabled (--skip_confirmation).")
         else:
             logging.info("Confirmation required before each step.")
-        if self.context.gemini_cli:
-            logging.info("Gemini CLI: %s", self.context.gemini_cli)
+        if self.config.gemini_cli:
+            logging.info("Gemini CLI: %s", self.config.gemini_cli)
         else:
             logging.info("Gemini CLI: default (PV map generator decides)")
         logging.info("Planned steps:")
@@ -851,11 +886,11 @@ class Workflow:
             for path in step.outputs(self.prefix):
                 logging.info("      * %s", path)
 
-    def execute(self, steps: List[WorkflowStep]) -> bool:
+    def _execute_steps(self, steps: List[WorkflowStep]) -> bool:
         steps_state = self.state.setdefault(STEPS_KEY, {})
         for step in steps:
             logging.info("========================================")
-            if self.context.verbose:
+            if self.config.verbose:
                 logging.info(">>> Starting step: %s — %s", step.name,
                              step.description)
             else:
@@ -872,7 +907,7 @@ class Workflow:
                 )
                 return False
 
-            fingerprint = step.fingerprint(self.prefix, self.context)
+            fingerprint = step.fingerprint(self.prefix, self.config)
             outputs = [str(path) for path in step.outputs(self.prefix)]
             record = {
                 "step": step.name,
@@ -881,7 +916,7 @@ class Workflow:
                 "outputs": outputs,
             }
             try:
-                step.run(self.prefix, self.context)
+                step.run(self.prefix, self.config)
             except Exception as exc:  # noqa: BLE001
                 record.update({
                     STATUS_KEY: STATUS_FAILED,
@@ -902,37 +937,34 @@ class Workflow:
                 logging.info("<<< Completed step: %s (success)", step.name)
         return True
 
-    def run(
-        self,
-        step_name: str | None = None,
-        from_step_name: str | None = None,
-        force: bool = False,
-    ) -> bool:
-        # Validate step selection
-        if step_name and from_step_name:
-            raise app.UsageError(
-                "--step and --from-step cannot be used together.")
-        valid_names = [s.name for s in self.steps]
-        if step_name and step_name not in valid_names:
-            raise app.UsageError(f"--step must be one of {valid_names}")
-        if from_step_name and from_step_name not in valid_names:
-            raise app.UsageError(f"--from-step must be one of {valid_names}")
-
-        # --force is ignored when a specific step range is requested
-        effective_force = force
-        if force and (step_name or from_step_name):
+    def execute(self, exec_config: ExecutionConfig) -> bool:
+        self._validate_execution_config(exec_config)
+        effective_force = exec_config.force
+        if exec_config.force and (exec_config.step_name or
+                                  exec_config.from_step_name):
             logging.warning(
                 "--force is ignored when used with --step or --from_step.")
             effective_force = False
 
-        steps_to_run, skipped, rerun_reasons = self.determine_steps(
-            step_name, from_step_name, effective_force)
-        self.summarize_plan(steps_to_run, skipped, rerun_reasons)
-        if not steps_to_run:
+        steps_to_run, skipped, rerun_reasons = self._determine_steps(
+            exec_config,
+            effective_force,
+        )
+        state = ExecutionState(
+            steps=steps_to_run,
+            skipped=skipped,
+            rerun_reasons=rerun_reasons,
+        )
+        self._summarize_plan(
+            state.steps,
+            state.skipped,
+            state.rerun_reasons,
+        )
+        if not state.steps:
             logging.info("Nothing to do; all steps already satisfied.")
             return True
 
-        ok = self.execute(steps_to_run)
+        ok = self._execute_steps(state.steps)
         if ok:
             logging.info("Execution complete.")
         else:
@@ -953,7 +985,7 @@ def main(argv: Iterable[str]) -> None:
         key=tuple(FLAGS.key),
         param=tuple(FLAGS.param),
     )
-    context = WorkflowContext(
+    workflow_config = WorkflowConfig(
         sdmx=sdmx_config,
         sample_rows=FLAGS.sample_rows,
         verbose=verbose,
@@ -962,8 +994,13 @@ def main(argv: Iterable[str]) -> None:
     )
 
     logging.set_verbosity(logging.DEBUG if verbose else logging.INFO)
-    workflow = Workflow(dataset_prefix, context)
-    workflow.run(step_name=step, from_step_name=from_step, force=FLAGS.force)
+    exec_config = ExecutionConfig(
+        step_name=step,
+        from_step_name=from_step,
+        force=FLAGS.force,
+    )
+    workflow = Workflow(dataset_prefix, workflow_config)
+    workflow.execute(exec_config)
 
 
 if __name__ == "__main__":
