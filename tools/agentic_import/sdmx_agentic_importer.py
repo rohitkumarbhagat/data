@@ -694,53 +694,6 @@ def _make_sdmx_client(config: SdmxSourceConfig) -> SdmxClient:
     return SdmxClient(endpoint=endpoint, agency_id=agency)
 
 
-def _state_path(prefix: str) -> Path:
-    return STATE_DIR / f"{prefix}.state.json"
-
-
-def _confirm_step_execution(step: WorkflowStep,
-                            context: WorkflowContext) -> bool:
-    if context.skip_confirmation:
-        return True
-    prompt = (f"Proceed with step '{step.name}' ({step.description})? [y/N]: ")
-    try:
-        response = input(prompt)
-    except EOFError as exc:  # pragma: no cover
-        raise app.UsageError(
-            "Interactive confirmation is required; use --skip_confirmation to bypass."
-        ) from exc
-    decision = response.strip().lower()
-    return decision in ("y", "yes")
-
-
-def _load_state(prefix: str) -> Dict[str, Any]:
-    path = _state_path(prefix)
-    if not path.is_file():
-        return {STEPS_KEY: {}}
-    try:
-        data = json.loads(path.read_text())
-    except json.JSONDecodeError as exc:
-        raise app.UsageError(
-            f"Failed to parse state file {path}: {exc}") from exc
-    steps = data.get(STEPS_KEY, {})
-    if not isinstance(steps, dict):
-        steps = {}
-    return {STEPS_KEY: steps}
-
-
-def _write_state(prefix: str, state: Dict[str, Any]) -> None:
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "dataset_prefix": prefix,
-        "updated": datetime.now(timezone.utc).isoformat(),
-        STEPS_KEY: state.get(STEPS_KEY, {}),
-    }
-    path = _state_path(prefix)
-    tmp_path = path.with_suffix(".tmp")
-    tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
-    tmp_path.replace(path)
-
-
 def _outputs_exist(paths: List[Path]) -> bool:
     return all(path.is_file() for path in paths)
 
@@ -774,6 +727,181 @@ def _step_state_matches(
     return True, None
 
 
+class Workflow:
+
+    def __init__(
+        self,
+        prefix: str,
+        context: WorkflowContext,
+        steps: Sequence[WorkflowStep] = STEP_SEQUENCE,
+    ) -> None:
+        self.prefix = prefix
+        self.context = context
+        self.steps = list(steps)
+        self.state = self._load_state()
+
+    def _state_path(self) -> Path:
+        return STATE_DIR / f"{self.prefix}.state.json"
+
+    def _load_state(self) -> Dict[str, Any]:
+        path = self._state_path()
+        if not path.is_file():
+            return {STEPS_KEY: {}}
+        try:
+            data = json.loads(path.read_text())
+        except json.JSONDecodeError as exc:
+            raise app.UsageError(
+                f"Failed to parse state file {path}: {exc}") from exc
+        steps_state = data.get(STEPS_KEY, {})
+        if not isinstance(steps_state, dict):
+            steps_state = {}
+        return {STEPS_KEY: steps_state}
+
+    def _write_state(self) -> None:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "dataset_prefix": self.prefix,
+            "updated": datetime.now(timezone.utc).isoformat(),
+            STEPS_KEY: self.state.get(STEPS_KEY, {}),
+        }
+        path = self._state_path()
+        tmp_path = path.with_suffix(".tmp")
+        tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+        tmp_path.replace(path)
+
+    def _confirm_step_execution(self, step: WorkflowStep) -> bool:
+        if self.context.skip_confirmation:
+            return True
+        prompt = f"Proceed with step '{step.name}' ({step.description})? [y/N]: "
+        try:
+            response = input(prompt)
+        except EOFError as exc:  # pragma: no cover
+            raise app.UsageError(
+                "Interactive confirmation is required; use --skip_confirmation to bypass."
+            ) from exc
+        decision = response.strip().lower()
+        return decision in ("y", "yes")
+
+    def determine_steps(
+        self,
+        step_name: str | None,
+        from_step_name: str | None,
+        force: bool,
+    ) -> Tuple[List[WorkflowStep], List[str], List[str]]:
+        if step_name:
+            return ([step for step in self.steps if step.name == step_name], [],
+                    [])
+        if from_step_name:
+            names = [step.name for step in self.steps]
+            start_index = names.index(from_step_name)
+            return (self.steps[start_index:], [], [])
+        if force:
+            return (list(self.steps), [], [])
+
+        skipped: List[str] = []
+        rerun_reasons: List[str] = []
+        steps_state = self.state.get(STEPS_KEY, {})
+        for index, step in enumerate(self.steps):
+            record = steps_state.get(step.name, {})
+            matches, reason = _step_state_matches(
+                step,
+                record,
+                self.prefix,
+                self.context,
+            )
+            if matches:
+                skipped.append(step.name)
+                continue
+            message = f"Starting step: {step.name}"
+            if reason:
+                message += f". Reason for start -> {reason}"
+            rerun_reasons.append(message)
+            return (self.steps[index:], skipped, rerun_reasons)
+        return ([], skipped, rerun_reasons)
+
+    def summarize_plan(
+        self,
+        steps: List[WorkflowStep],
+        skipped: List[str],
+        rerun_reasons: List[str],
+    ) -> None:
+        logging.info("Dataset prefix: %s", self.prefix)
+        if skipped:
+            logging.info("Skipping (already complete): %s", ", ".join(skipped))
+        if rerun_reasons:
+            logging.info("Step start summary:")
+            for reason in rerun_reasons:
+                logging.info("  * %s", reason)
+        if self.context.skip_confirmation:
+            logging.info(
+                "Confirmation prompts are disabled (--skip_confirmation).")
+        else:
+            logging.info("Confirmation required before each step.")
+        if self.context.gemini_cli:
+            logging.info("Gemini CLI: %s", self.context.gemini_cli)
+        else:
+            logging.info("Gemini CLI: default (PV map generator decides)")
+        logging.info("Planned steps:")
+        for step in steps:
+            logging.info("  - %s: %s", step.name, step.description)
+            logging.info("    Inputs:")
+            for path in step.inputs(self.prefix):
+                logging.info("      * %s", path)
+            logging.info("    Outputs:")
+            for path in step.outputs(self.prefix):
+                logging.info("      * %s", path)
+
+    def execute(self, steps: List[WorkflowStep]) -> None:
+        steps_state = self.state.setdefault(STEPS_KEY, {})
+        for step in steps:
+            logging.info("========================================")
+            if self.context.verbose:
+                logging.info(">>> Starting step: %s — %s", step.name,
+                             step.description)
+            else:
+                logging.info(">>> Running step: %s", step.name)
+            missing_inputs = step.validate_prereqs(self.prefix)
+            if missing_inputs:
+                raise app.UsageError(
+                    f"{step.name} requires existing inputs: {', '.join(missing_inputs)}; "
+                    "run prerequisite steps or provide the files.")
+            if not self._confirm_step_execution(step):
+                logging.info(
+                    "User declined to run step '%s'; stopping execution.",
+                    step.name,
+                )
+                return
+
+            fingerprint = step.fingerprint(self.prefix, self.context)
+            outputs = [str(path) for path in step.outputs(self.prefix)]
+            record = {
+                "step": step.name,
+                "step_version": step.version,
+                "inputs_fingerprint": fingerprint,
+                "outputs": outputs,
+            }
+            try:
+                step.run(self.prefix, self.context)
+            except Exception as exc:  # noqa: BLE001
+                record.update({
+                    STATUS_KEY: STATUS_FAILED,
+                    "updated": datetime.now(timezone.utc).isoformat(),
+                    "error": repr(exc),
+                })
+                steps_state[step.name] = record
+                self._write_state()
+                logging.info("<<< Completed step: %s (failure)", step.name)
+                raise
+            else:
+                record.update({
+                    STATUS_KEY: STATUS_SUCCESS,
+                    "updated": datetime.now(timezone.utc).isoformat(),
+                })
+                steps_state[step.name] = record
+                self._write_state()
+                logging.info("<<< Completed step: %s (success)", step.name)
+
+
 def _validate_step_flags(step: str | None, from_step: str | None) -> None:
     """Ensure step selection flags are valid."""
     if step and from_step:
@@ -783,128 +911,6 @@ def _validate_step_flags(step: str | None, from_step: str | None) -> None:
         raise app.UsageError(f"--step must be one of {valid_names}")
     if from_step and from_step not in valid_names:
         raise app.UsageError(f"--from-step must be one of {valid_names}")
-
-
-def determine_steps(
-    prefix: str,
-    context: WorkflowContext,
-    state: Dict[str, Any],
-    step_name: str | None,
-    from_step_name: str | None,
-    force: bool,
-) -> Tuple[List[WorkflowStep], List[str], List[str]]:
-    if step_name:
-        return ([step for step in STEP_SEQUENCE if step.name == step_name], [],
-                [])
-    if from_step_name:
-        names = [step.name for step in STEP_SEQUENCE]
-        start_index = names.index(from_step_name)
-        return (STEP_SEQUENCE[start_index:], [], [])
-    if force:
-        return (STEP_SEQUENCE, [], [])
-
-    skipped: List[str] = []
-    rerun_reasons: List[str] = []
-    steps_state = state.get(STEPS_KEY, {})
-    for index, step in enumerate(STEP_SEQUENCE):
-        record = steps_state.get(step.name, {})
-        matches, reason = _step_state_matches(step, record, prefix, context)
-        if matches:
-            skipped.append(step.name)
-            continue
-        message = f"Starting step: {step.name}"
-        if reason:
-            message += f". Reason for start -> {reason}"
-        rerun_reasons.append(message)
-        return (STEP_SEQUENCE[index:], skipped, rerun_reasons)
-    return ([], skipped, rerun_reasons)
-
-
-def execute_steps(
-    prefix: str,
-    steps: List[WorkflowStep],
-    context: WorkflowContext,
-    state: Dict[str, Any],
-) -> None:
-    steps_state = state.setdefault(STEPS_KEY, {})
-    for step in steps:
-        logging.info("========================================")
-        if context.verbose:
-            logging.info(">>> Starting step: %s — %s", step.name,
-                         step.description)
-        else:
-            logging.info(">>> Running step: %s", step.name)
-        missing_inputs = step.validate_prereqs(prefix)
-        if missing_inputs:
-            raise app.UsageError(
-                f"{step.name} requires existing inputs: {', '.join(missing_inputs)}; "
-                "run prerequisite steps or provide the files.")
-        if not _confirm_step_execution(step, context):
-            logging.info("User declined to run step '%s'; stopping execution.",
-                         step.name)
-            return
-
-        fingerprint = step.fingerprint(prefix, context)
-        outputs = [str(path) for path in step.outputs(prefix)]
-        record = {
-            "step": step.name,
-            "step_version": step.version,
-            "inputs_fingerprint": fingerprint,
-            "outputs": outputs,
-        }
-        try:
-            step.run(prefix, context)
-        except Exception as exc:  # noqa: BLE001
-            record.update({
-                STATUS_KEY: STATUS_FAILED,
-                "updated": datetime.now(timezone.utc).isoformat(),
-                "error": repr(exc),
-            })
-            steps_state[step.name] = record
-            _write_state(prefix, state)
-            logging.info("<<< Completed step: %s (failure)", step.name)
-            raise
-        else:
-            record.update({
-                STATUS_KEY: STATUS_SUCCESS,
-                "updated": datetime.now(timezone.utc).isoformat(),
-            })
-            steps_state[step.name] = record
-            _write_state(prefix, state)
-            logging.info("<<< Completed step: %s (success)", step.name)
-
-
-def summarize_plan(
-    prefix: str,
-    steps: List[WorkflowStep],
-    skipped: List[str],
-    rerun_reasons: List[str],
-    context: WorkflowContext,
-) -> None:
-    logging.info("Dataset prefix: %s", prefix)
-    if skipped:
-        logging.info("Skipping (already complete): %s", ", ".join(skipped))
-    if rerun_reasons:
-        logging.info("Step start summary:")
-        for reason in rerun_reasons:
-            logging.info("  * %s", reason)
-    if context.skip_confirmation:
-        logging.info("Confirmation prompts are disabled (--skip_confirmation).")
-    else:
-        logging.info("Confirmation required before each step.")
-    if context.gemini_cli:
-        logging.info("Gemini CLI: %s", context.gemini_cli)
-    else:
-        logging.info("Gemini CLI: default (PV map generator decides)")
-    logging.info("Planned steps:")
-    for step in steps:
-        logging.info("  - %s: %s", step.name, step.description)
-        logging.info("    Inputs:")
-        for path in step.inputs(prefix):
-            logging.info("      * %s", path)
-        logging.info("    Outputs:")
-        for path in step.outputs(prefix):
-            logging.info("      * %s", path)
 
 
 def main(argv: Iterable[str]) -> None:
@@ -935,23 +941,19 @@ def main(argv: Iterable[str]) -> None:
     logging.set_verbosity(logging.DEBUG if verbose else logging.INFO)
 
     _validate_step_flags(step, from_step)
-    state = _load_state(dataset_prefix)
-    steps_to_run, skipped, rerun_reasons = determine_steps(
-        dataset_prefix,
-        context,
-        state,
+    workflow = Workflow(dataset_prefix, context)
+    steps_to_run, skipped, rerun_reasons = workflow.determine_steps(
         step,
         from_step,
         force,
     )
 
-    summarize_plan(dataset_prefix, steps_to_run, skipped, rerun_reasons,
-                   context)
+    workflow.summarize_plan(steps_to_run, skipped, rerun_reasons)
     if not steps_to_run:
         logging.info("Nothing to do; all steps already satisfied.")
         return
 
-    execute_steps(dataset_prefix, steps_to_run, context, state)
+    workflow.execute(steps_to_run)
     logging.info("Execution complete.")
 
 
