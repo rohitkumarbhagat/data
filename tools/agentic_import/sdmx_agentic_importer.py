@@ -179,10 +179,22 @@ class WorkflowContext:
     gemini_cli: str | None
 
 
+class FileSig(TypedDict, total=False):
+    size: int
+    mtime: int
+    missing: bool
+
+
+class InputFileFingerprint(TypedDict):
+    path: str
+    sig: FileSig
+
+
 class DownloadMetadataFingerprint(TypedDict):
     endpoint: Optional[str]
     agency: Optional[str]
     dataflow: Optional[str]
+    inputs: List[InputFileFingerprint]
 
 
 class DownloadDataFingerprint(TypedDict):
@@ -191,29 +203,69 @@ class DownloadDataFingerprint(TypedDict):
     dataflow: Optional[str]
     key: Sequence[str]
     param: Sequence[str]
+    inputs: List[InputFileFingerprint]
 
 
 class CreateSampleFingerprint(TypedDict):
     sample_rows: int
+    inputs: List[InputFileFingerprint]
 
 
 class CreateSchemaMappingFingerprint(TypedDict):
-    sample: str
-    metadata: str
+    inputs: List[InputFileFingerprint]
     sdmx_dataset: Literal[True]
     gemini_cli: Optional[str]
 
 
 class ProcessFullDataFingerprint(TypedDict):
-    data: str
-    pvmap: str
-    metadata: str
+    inputs: List[InputFileFingerprint]
     output_columns: str
 
 
 class CreateDcConfigFingerprint(TypedDict):
-    input_csv: str
+    inputs: List[InputFileFingerprint]
     output_config: str
+
+
+_FILE_SIG_CACHE: Dict[str, FileSig] = {}
+
+
+def file_sig(path: Path) -> FileSig:
+    """Return cached lightweight file metadata for fingerprints.
+
+    Path.stat() issues an os.stat(2) call without reading file contents. Using
+    seconds granularity avoids hashing while remaining fast for large files.
+    """
+
+    resolved = path.resolve(strict=False)
+    key = str(resolved)
+    cached = _FILE_SIG_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    try:
+        stat_result = resolved.stat()
+    except FileNotFoundError:
+        sig: FileSig = {"missing": True}
+    else:
+        sig = {
+            "size": int(stat_result.st_size),
+            "mtime": int(stat_result.st_mtime),
+        }
+
+    _FILE_SIG_CACHE[key] = sig
+    return sig
+
+
+def fingerprint_inputs(paths: List[Path]) -> List[InputFileFingerprint]:
+    """Return canonicalized file fingerprints for the given paths."""
+
+    entries: List[InputFileFingerprint] = [{
+        "path": str(path),
+        "sig": file_sig(path),
+    } for path in paths]
+    # Sorting ensures equality checks ignore the original input order.
+    return sorted(entries, key=lambda entry: entry["path"])
 
 
 class WorkflowStep(ABC):
@@ -232,7 +284,20 @@ class WorkflowStep(ABC):
     @abstractmethod
     def fingerprint(self, prefix: str,
                     context: WorkflowContext) -> Dict[str, Any]:
-        """Return values used to detect changes in step dependencies."""
+        """Return values used to detect changes in step dependencies.
+
+        Guidelines:
+          * Capture every effective input that influences outputs (normalized
+            flags/params, file identifiers, constants).
+          * For file inputs, include a lightweight signature via `file_sig` so
+            manual edits trigger reruns without hashing file contents.
+          * Use `fingerprint_inputs()` to canonicalize file inputs so list
+            ordering does not affect comparisons.
+          * Keep the key set stable and avoid volatile values (timestamps,
+            random IDs, unsorted collections).
+          * This method may run before inputs exist; `file_sig` returns a
+            `{"missing": True}` sentinel in that case, forcing a rerun later.
+        """
 
     @abstractmethod
     def run(self, prefix: str, context: WorkflowContext) -> None:
@@ -270,6 +335,7 @@ class DownloadMetadataStep(WorkflowStep):
             "endpoint": context.sdmx.endpoint,
             "agency": context.sdmx.agency,
             "dataflow": context.sdmx.dataflow,
+            "inputs": [],
         }
 
     def run(self, prefix: str, context: WorkflowContext) -> None:
@@ -308,6 +374,7 @@ class DownloadDataStep(WorkflowStep):
             "dataflow": context.sdmx.dataflow,
             "key": _normalize_multi_args(context.sdmx.key),
             "param": _normalize_multi_args(context.sdmx.param),
+            "inputs": [],
         }
 
     def run(self, prefix: str, context: WorkflowContext) -> None:
@@ -348,9 +415,12 @@ class CreateSampleStep(WorkflowStep):
     def outputs(self, prefix: str) -> List[Path]:
         return [Path(f"{prefix}_sample.csv")]
 
-    def fingerprint(self, _: str,
+    def fingerprint(self, prefix: str,
                     context: WorkflowContext) -> CreateSampleFingerprint:
-        return {"sample_rows": context.sample_rows}
+        return {
+            "sample_rows": context.sample_rows,
+            "inputs": fingerprint_inputs(self.inputs(prefix)),
+        }
 
     def run(self, prefix: str, context: WorkflowContext) -> None:
         input_path = Path(f"{prefix}_data.csv")
@@ -400,8 +470,7 @@ class CreateSchemaMappingStep(WorkflowStep):
     def fingerprint(self, prefix: str,
                     context: WorkflowContext) -> CreateSchemaMappingFingerprint:
         return {
-            "sample": f"{prefix}_sample.csv",
-            "metadata": f"{prefix}_metadata.xml",
+            "inputs": fingerprint_inputs(self.inputs(prefix)),
             "sdmx_dataset": True,
             "gemini_cli": context.gemini_cli,
         }
@@ -484,9 +553,7 @@ class ProcessFullDataStep(WorkflowStep):
     def fingerprint(self, prefix: str,
                     _: WorkflowContext) -> ProcessFullDataFingerprint:
         return {
-            "data": f"{prefix}_data.csv",
-            "pvmap": f"{prefix}_pvmap.csv",
-            "metadata": f"{prefix}_metadata.csv",
+            "inputs": fingerprint_inputs(self.inputs(prefix)),
             "output_columns": self.RUN_OUTPUT_COLUMNS,
         }
 
@@ -542,7 +609,7 @@ class CreateDcConfigStep(WorkflowStep):
     def fingerprint(self, prefix: str,
                     _: WorkflowContext) -> CreateDcConfigFingerprint:
         return {
-            "input_csv": str(FINAL_OUTPUT_DIR / f"{prefix}.csv"),
+            "inputs": fingerprint_inputs(self.inputs(prefix)),
             "output_config": str(FINAL_OUTPUT_DIR / "config.json"),
         }
 
