@@ -851,7 +851,7 @@ class Workflow:
             for path in step.outputs(self.prefix):
                 logging.info("      * %s", path)
 
-    def execute(self, steps: List[WorkflowStep]) -> None:
+    def execute(self, steps: List[WorkflowStep]) -> bool:
         steps_state = self.state.setdefault(STEPS_KEY, {})
         for step in steps:
             logging.info("========================================")
@@ -870,7 +870,7 @@ class Workflow:
                     "User declined to run step '%s'; stopping execution.",
                     step.name,
                 )
-                return
+                return False
 
             fingerprint = step.fingerprint(self.prefix, self.context)
             outputs = [str(path) for path in step.outputs(self.prefix)]
@@ -900,17 +900,44 @@ class Workflow:
                 steps_state[step.name] = record
                 self._write_state()
                 logging.info("<<< Completed step: %s (success)", step.name)
+        return True
 
+    def run(
+        self,
+        step_name: str | None = None,
+        from_step_name: str | None = None,
+        force: bool = False,
+    ) -> bool:
+        # Validate step selection
+        if step_name and from_step_name:
+            raise app.UsageError(
+                "--step and --from-step cannot be used together.")
+        valid_names = [s.name for s in self.steps]
+        if step_name and step_name not in valid_names:
+            raise app.UsageError(f"--step must be one of {valid_names}")
+        if from_step_name and from_step_name not in valid_names:
+            raise app.UsageError(f"--from-step must be one of {valid_names}")
 
-def _validate_step_flags(step: str | None, from_step: str | None) -> None:
-    """Ensure step selection flags are valid."""
-    if step and from_step:
-        raise app.UsageError("--step and --from-step cannot be used together.")
-    valid_names = [s.name for s in STEP_SEQUENCE]
-    if step and step not in valid_names:
-        raise app.UsageError(f"--step must be one of {valid_names}")
-    if from_step and from_step not in valid_names:
-        raise app.UsageError(f"--from-step must be one of {valid_names}")
+        # --force is ignored when a specific step range is requested
+        effective_force = force
+        if force and (step_name or from_step_name):
+            logging.warning(
+                "--force is ignored when used with --step or --from_step.")
+            effective_force = False
+
+        steps_to_run, skipped, rerun_reasons = self.determine_steps(
+            step_name, from_step_name, effective_force)
+        self.summarize_plan(steps_to_run, skipped, rerun_reasons)
+        if not steps_to_run:
+            logging.info("Nothing to do; all steps already satisfied.")
+            return True
+
+        ok = self.execute(steps_to_run)
+        if ok:
+            logging.info("Execution complete.")
+        else:
+            logging.info("Execution cancelled by user.")
+        return ok
 
 
 def main(argv: Iterable[str]) -> None:
@@ -918,10 +945,6 @@ def main(argv: Iterable[str]) -> None:
     verbose = FLAGS.verbose
     step = FLAGS.step
     from_step = FLAGS.from_step
-    if FLAGS.force and (step or from_step):
-        logging.warning(
-            "--force is ignored when used with --step or --from_step.")
-    force = FLAGS.force if not (step or from_step) else False
     dataset_prefix = FLAGS.dataset_prefix
     sdmx_config = SdmxSourceConfig(
         endpoint=FLAGS.endpoint,
@@ -939,22 +962,8 @@ def main(argv: Iterable[str]) -> None:
     )
 
     logging.set_verbosity(logging.DEBUG if verbose else logging.INFO)
-
-    _validate_step_flags(step, from_step)
     workflow = Workflow(dataset_prefix, context)
-    steps_to_run, skipped, rerun_reasons = workflow.determine_steps(
-        step,
-        from_step,
-        force,
-    )
-
-    workflow.summarize_plan(steps_to_run, skipped, rerun_reasons)
-    if not steps_to_run:
-        logging.info("Nothing to do; all steps already satisfied.")
-        return
-
-    workflow.execute(steps_to_run)
-    logging.info("Execution complete.")
+    workflow.run(step_name=step, from_step_name=from_step, force=FLAGS.force)
 
 
 if __name__ == "__main__":
