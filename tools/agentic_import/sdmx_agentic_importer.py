@@ -197,6 +197,7 @@ class ExecutionState:
     steps: List["WorkflowStep"]
     skipped: List[str]
     rerun_reasons: List[str]
+    file_sig_cache: Dict[str, FileSig]
 
 
 class FileSig(TypedDict, total=False):
@@ -247,10 +248,7 @@ class CreateDcConfigFingerprint(TypedDict):
     output_config: str
 
 
-_FILE_SIG_CACHE: Dict[str, FileSig] = {}
-
-
-def file_sig(path: Path) -> FileSig:
+def file_sig(path: Path, cache: Dict[str, FileSig]) -> FileSig:
     """Return cached lightweight file metadata for fingerprints.
 
     Path.stat() issues an os.stat(2) call without reading file contents. Using
@@ -259,7 +257,7 @@ def file_sig(path: Path) -> FileSig:
 
     resolved = path.resolve(strict=False)
     key = str(resolved)
-    cached = _FILE_SIG_CACHE.get(key)
+    cached = cache.get(key)
     if cached is not None:
         return cached
 
@@ -273,16 +271,16 @@ def file_sig(path: Path) -> FileSig:
             "mtime": int(stat_result.st_mtime),
         }
 
-    _FILE_SIG_CACHE[key] = sig
+    cache[key] = sig
     return sig
 
 
-def fingerprint_inputs(paths: List[Path]) -> List[InputFileFingerprint]:
+def fingerprint_inputs(paths: List[Path], cache: Dict[str, FileSig]) -> List[InputFileFingerprint]:
     """Return canonicalized file fingerprints for the given paths."""
 
     entries: List[InputFileFingerprint] = [{
         "path": str(path),
-        "sig": file_sig(path),
+        "sig": file_sig(path, cache),
     } for path in paths]
     # Sorting ensures equality checks ignore the original input order.
     return sorted(entries, key=lambda entry: entry["path"])
@@ -302,15 +300,16 @@ class WorkflowStep(ABC):
         """Return expected output paths."""
 
     @abstractmethod
-    def fingerprint(self, prefix: str,
-                    context: WorkflowConfig) -> Dict[str, Any]:
+    def fingerprint(self, prefix: str, config: WorkflowConfig,
+                    sig_cache: Dict[str, FileSig]) -> Dict[str, Any]:
         """Return values used to detect changes in step dependencies.
 
         Guidelines:
           * Capture every effective input that influences outputs (normalized
             flags/params, file identifiers, constants).
-          * For file inputs, include a lightweight signature via `file_sig` so
-            manual edits trigger reruns without hashing file contents.
+          * For file inputs, include a lightweight signature via `file_sig`
+            (pass the provided `sig_cache`) so manual edits trigger reruns
+            without hashing file contents.
           * Use `fingerprint_inputs()` to canonicalize file inputs so list
             ordering does not affect comparisons.
           * Keep the key set stable and avoid volatile values (timestamps,
@@ -320,7 +319,7 @@ class WorkflowStep(ABC):
         """
 
     @abstractmethod
-    def run(self, prefix: str, context: WorkflowConfig) -> None:
+    def run(self, prefix: str, config: WorkflowConfig) -> None:
         """Execute the step."""
 
     def validate_prereqs(self, prefix: str) -> List[str]:
@@ -349,21 +348,21 @@ class DownloadMetadataStep(WorkflowStep):
     def outputs(self, prefix: str) -> List[Path]:
         return [Path(f"{prefix}_metadata.xml")]
 
-    def fingerprint(self, _: str,
-                    context: WorkflowConfig) -> DownloadMetadataFingerprint:
+    def fingerprint(self, _: str, config: WorkflowConfig,
+                    _: Dict[str, FileSig]) -> DownloadMetadataFingerprint:
         return {
-            "endpoint": context.sdmx.endpoint,
-            "agency": context.sdmx.agency,
-            "dataflow": context.sdmx.dataflow,
+            "endpoint": config.sdmx.endpoint,
+            "agency": config.sdmx.agency,
+            "dataflow": config.sdmx.dataflow,
             "inputs": [],
         }
 
-    def run(self, prefix: str, context: WorkflowConfig) -> None:
-        sdmx_cfg = context.sdmx
+    def run(self, prefix: str, config: WorkflowConfig) -> None:
+        sdmx_cfg = config.sdmx
         _require_sdmx_source(sdmx_cfg, self.name)
         output_path = Path(f"{prefix}_metadata.xml")
         client = _make_sdmx_client(sdmx_cfg)
-        if context.verbose:
+        if config.verbose:
             logging.info(
                 "Starting SDMX metadata download: endpoint=%s agency=%s dataflow=%s -> %s",
                 sdmx_cfg.endpoint,
@@ -386,25 +385,25 @@ class DownloadDataStep(WorkflowStep):
     def outputs(self, prefix: str) -> List[Path]:
         return [Path(f"{prefix}_data.csv")]
 
-    def fingerprint(self, _: str,
-                    context: WorkflowConfig) -> DownloadDataFingerprint:
+    def fingerprint(self, _: str, config: WorkflowConfig,
+                    _: Dict[str, FileSig]) -> DownloadDataFingerprint:
         return {
-            "endpoint": context.sdmx.endpoint,
-            "agency": context.sdmx.agency,
-            "dataflow": context.sdmx.dataflow,
-            "key": _normalize_multi_args(context.sdmx.key),
-            "param": _normalize_multi_args(context.sdmx.param),
+            "endpoint": config.sdmx.endpoint,
+            "agency": config.sdmx.agency,
+            "dataflow": config.sdmx.dataflow,
+            "key": _normalize_multi_args(config.sdmx.key),
+            "param": _normalize_multi_args(config.sdmx.param),
             "inputs": [],
         }
 
-    def run(self, prefix: str, context: WorkflowConfig) -> None:
-        sdmx_cfg = context.sdmx
+    def run(self, prefix: str, config: WorkflowConfig) -> None:
+        sdmx_cfg = config.sdmx
         _require_sdmx_source(sdmx_cfg, self.name)
         output_path = Path(f"{prefix}_data.csv")
         client = _make_sdmx_client(sdmx_cfg)
         key_filters = _parse_key_value_pairs(sdmx_cfg.key)
         extra_params = _parse_key_value_pairs(sdmx_cfg.param)
-        if context.verbose:
+        if config.verbose:
             logging.info(
                 "Starting SDMX data download: endpoint=%s agency=%s "
                 "dataflow=%s key=%s params=%s -> %s",
@@ -435,25 +434,25 @@ class CreateSampleStep(WorkflowStep):
     def outputs(self, prefix: str) -> List[Path]:
         return [Path(f"{prefix}_sample.csv")]
 
-    def fingerprint(self, prefix: str,
-                    context: WorkflowConfig) -> CreateSampleFingerprint:
+    def fingerprint(self, prefix: str, config: WorkflowConfig,
+                    sig_cache: Dict[str, FileSig]) -> CreateSampleFingerprint:
         return {
-            "sample_rows": context.sample_rows,
-            "inputs": fingerprint_inputs(self.inputs(prefix)),
+            "sample_rows": config.sample_rows,
+            "inputs": fingerprint_inputs(self.inputs(prefix), sig_cache),
         }
 
-    def run(self, prefix: str, context: WorkflowConfig) -> None:
+    def run(self, prefix: str, config: WorkflowConfig) -> None:
         input_path = Path(f"{prefix}_data.csv")
         if not input_path.is_file():
             raise app.UsageError(
                 f"{self.name} requires existing input: {input_path}")
         output_path = Path(f"{prefix}_sample.csv")
-        if context.verbose:
+        if config.verbose:
             logging.info(
                 "Starting sample: input=%s output=%s rows=%d",
                 input_path,
                 output_path,
-                context.sample_rows,
+                config.sample_rows,
             )
         else:
             logging.info("Sampling SDMX data into %s", output_path)
@@ -463,7 +462,7 @@ class CreateSampleStep(WorkflowStep):
             {
                 "sampler_input": str(input_path),
                 "sampler_output": str(output_path),
-                "sampler_output_rows": context.sample_rows,
+                "sampler_output_rows": config.sample_rows,
             },
         )
 
@@ -487,15 +486,15 @@ class CreateSchemaMappingStep(WorkflowStep):
             SAMPLE_OUTPUT_DIR / f"{prefix}_stat_vars.mcf",
         ]
 
-    def fingerprint(self, prefix: str,
-                    context: WorkflowConfig) -> CreateSchemaMappingFingerprint:
+    def fingerprint(self, prefix: str, config: WorkflowConfig,
+                    sig_cache: Dict[str, FileSig]) -> CreateSchemaMappingFingerprint:
         return {
-            "inputs": fingerprint_inputs(self.inputs(prefix)),
+            "inputs": fingerprint_inputs(self.inputs(prefix), sig_cache),
             "sdmx_dataset": True,
-            "gemini_cli": context.gemini_cli,
+            "gemini_cli": config.gemini_cli,
         }
 
-    def run(self, prefix: str, context: WorkflowConfig) -> None:
+    def run(self, prefix: str, config: WorkflowConfig) -> None:
         sample_path = Path(f"{prefix}_sample.csv")
         metadata_path = Path(f"{prefix}_metadata.xml")
         if not sample_path.is_file():
@@ -514,19 +513,19 @@ class CreateSchemaMappingStep(WorkflowStep):
         )
         config_kwargs = {
             "data_config": data_config,
-            "skip_confirmation": context.skip_confirmation,
+            "skip_confirmation": config.skip_confirmation,
             "output_path": str(output_prefix),
         }
-        if context.gemini_cli:
-            config_kwargs["gemini_cli"] = context.gemini_cli
+        if config.gemini_cli:
+            config_kwargs["gemini_cli"] = config.gemini_cli
         pvmap_config = PvmapConfig(**config_kwargs)
-        if context.verbose:
+        if config.verbose:
             logging.info(
                 "Starting PV map generation: sample=%s metadata=%s output=%s gemini_cli=%s",
                 sample_path,
                 metadata_path,
                 output_prefix,
-                context.gemini_cli,
+                config.gemini_cli,
             )
             logging.debug(
                 "PV map parameters: %s",
@@ -537,8 +536,8 @@ class CreateSchemaMappingStep(WorkflowStep):
                         "is_sdmx_dataset": True,
                     },
                     "output_path": str(output_prefix),
-                    "skip_confirmation": context.skip_confirmation,
-                    "gemini_cli": context.gemini_cli,
+                    "skip_confirmation": config.skip_confirmation,
+                    "gemini_cli": config.gemini_cli,
                 },
             )
         else:
@@ -570,14 +569,14 @@ class ProcessFullDataStep(WorkflowStep):
             FINAL_OUTPUT_DIR / f"{prefix}_stat_vars.mcf",
         ]
 
-    def fingerprint(self, prefix: str,
-                    _: WorkflowConfig) -> ProcessFullDataFingerprint:
+    def fingerprint(self, prefix: str, _: WorkflowConfig,
+                    sig_cache: Dict[str, FileSig]) -> ProcessFullDataFingerprint:
         return {
-            "inputs": fingerprint_inputs(self.inputs(prefix)),
+            "inputs": fingerprint_inputs(self.inputs(prefix), sig_cache),
             "output_columns": self.RUN_OUTPUT_COLUMNS,
         }
 
-    def run(self, prefix: str, context: WorkflowConfig) -> None:
+    def run(self, prefix: str, config: WorkflowConfig) -> None:
         data_path = Path(f"{prefix}_data.csv")
         pvmap_path = SAMPLE_OUTPUT_DIR / f"{prefix}_pvmap.csv"
         metadata_path = SAMPLE_OUTPUT_DIR / f"{prefix}_metadata.csv"
@@ -599,7 +598,7 @@ class ProcessFullDataStep(WorkflowStep):
             f"--output_columns={self.RUN_OUTPUT_COLUMNS}",
             f"--output_path={output_prefix}",
         ]
-        if context.verbose:
+        if config.verbose:
             logging.info(
                 "Starting stat_var_processor: input=%s pvmap=%s metadata=%s -> %s",
                 data_path,
@@ -626,28 +625,28 @@ class CreateDcConfigStep(WorkflowStep):
     def outputs(self, _: str) -> List[Path]:
         return [FINAL_OUTPUT_DIR / "config.json"]
 
-    def fingerprint(self, prefix: str,
-                    _: WorkflowConfig) -> CreateDcConfigFingerprint:
+    def fingerprint(self, prefix: str, _: WorkflowConfig,
+                    sig_cache: Dict[str, FileSig]) -> CreateDcConfigFingerprint:
         return {
-            "inputs": fingerprint_inputs(self.inputs(prefix)),
+            "inputs": fingerprint_inputs(self.inputs(prefix), sig_cache),
             "output_config": str(FINAL_OUTPUT_DIR / "config.json"),
         }
 
-    def run(self, prefix: str, context: WorkflowConfig) -> None:
+    def run(self, prefix: str, config: WorkflowConfig) -> None:
         input_csv = FINAL_OUTPUT_DIR / f"{prefix}.csv"
         output_config = FINAL_OUTPUT_DIR / "config.json"
         if not input_csv.is_file():
             raise app.UsageError(
                 f"{self.name} requires existing input: {input_csv}")
 
-        provenance_name = context.sdmx.dataflow
-        source_name = context.sdmx.agency
-        data_source_url = context.sdmx.endpoint
+        provenance_name = config.sdmx.dataflow
+        source_name = config.sdmx.agency
+        data_source_url = config.sdmx.endpoint
         dataset_url = None
-        if (context.sdmx.endpoint and context.sdmx.agency and
-                context.sdmx.dataflow):
-            dataset_url = (f"{context.sdmx.endpoint.rstrip('/')}/data/"
-                           f"{context.sdmx.agency},{context.sdmx.dataflow},")
+        if (config.sdmx.endpoint and config.sdmx.agency and
+                config.sdmx.dataflow):
+            dataset_url = (f"{config.sdmx.endpoint.rstrip('/')}/data/"
+                           f"{config.sdmx.agency},{config.sdmx.dataflow},")
 
         command = [
             sys.executable,
@@ -663,7 +662,7 @@ class CreateDcConfigStep(WorkflowStep):
             command.append(f"--data_source_url={data_source_url}")
         if dataset_url:
             command.append(f"--dataset_url={dataset_url}")
-        if context.verbose:
+        if config.verbose:
             logging.info(
                 "Starting custom DC config generation: input=%s -> %s",
                 input_csv,
@@ -723,7 +722,8 @@ def _step_state_matches(
     step: WorkflowStep,
     record: Dict[str, Any],
     prefix: str,
-    context: WorkflowConfig,
+    config: WorkflowConfig,
+    sig_cache: Dict[str, FileSig],
 ) -> Tuple[bool, str | None]:
     if not record:
         return False, "no prior state"
@@ -742,13 +742,19 @@ def _step_state_matches(
         )
     if not _outputs_exist(step.outputs(prefix)):
         return False, "expected output file missing"
-    fingerprint = step.fingerprint(prefix, context)
+    fingerprint = step.fingerprint(prefix, config, sig_cache)
     if record.get("inputs_fingerprint") != fingerprint:
         return False, "inputs fingerprint changed"
     return True, None
 
 
 class Workflow:
+    """Plans, resumes, and executes the SDMX agentic import workflow.
+
+    Computes fingerprints with a per-execution file-signature cache to skip
+    satisfied steps, persists step outcomes, and honors --step/--from_step/
+    --force controls.
+    """
 
     def __init__(
         self,
@@ -820,6 +826,7 @@ class Workflow:
         self,
         exec_config: ExecutionConfig,
         effective_force: bool,
+        sig_cache: Dict[str, FileSig],
     ) -> Tuple[List[WorkflowStep], List[str], List[str]]:
         if exec_config.step_name:
             selected = [
@@ -843,6 +850,7 @@ class Workflow:
                 record,
                 self.prefix,
                 self.config,
+                sig_cache,
             )
             if matches:
                 skipped.append(step.name)
@@ -886,7 +894,8 @@ class Workflow:
             for path in step.outputs(self.prefix):
                 logging.info("      * %s", path)
 
-    def _execute_steps(self, steps: List[WorkflowStep]) -> bool:
+    def _execute_steps(self, steps: List[WorkflowStep],
+                       sig_cache: Dict[str, FileSig]) -> bool:
         steps_state = self.state.setdefault(STEPS_KEY, {})
         for step in steps:
             logging.info("========================================")
@@ -907,7 +916,11 @@ class Workflow:
                 )
                 return False
 
-            fingerprint = step.fingerprint(self.prefix, self.config)
+            fingerprint = step.fingerprint(
+                self.prefix,
+                self.config,
+                sig_cache,
+            )
             outputs = [str(path) for path in step.outputs(self.prefix)]
             record = {
                 "step": step.name,
@@ -946,14 +959,17 @@ class Workflow:
                 "--force is ignored when used with --step or --from_step.")
             effective_force = False
 
+        sig_cache: Dict[str, FileSig] = {}
         steps_to_run, skipped, rerun_reasons = self._determine_steps(
             exec_config,
             effective_force,
+            sig_cache,
         )
         state = ExecutionState(
             steps=steps_to_run,
             skipped=skipped,
             rerun_reasons=rerun_reasons,
+            file_sig_cache=sig_cache,
         )
         self._summarize_plan(
             state.steps,
@@ -964,7 +980,7 @@ class Workflow:
             logging.info("Nothing to do; all steps already satisfied.")
             return True
 
-        ok = self._execute_steps(state.steps)
+        ok = self._execute_steps(state.steps, state.file_sig_cache)
         if ok:
             logging.info("Execution complete.")
         else:
