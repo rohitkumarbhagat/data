@@ -25,7 +25,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-ORIG_DIR="$(pwd)"
+CALLER_DIR="$(pwd)"
 
 # Toggle to start Custom DC after importer (default: false)
 START_CDC=${START_CDC:-false}
@@ -33,23 +33,27 @@ WEBSITE_REPO=${WEBSITE_REPO:-}
 REST_ARGS=()
 CUSTOM_DC_ENV_DEST=""
 
-run_repository_setup() {
+setup_python() {
+  local prev_dir
+  prev_dir="$(pwd)"
+  # Restore caller working directory regardless of how the function exits.
+  trap 'cd "$prev_dir"' RETURN
   cd "${REPO_ROOT}"
   echo "Setting up virtual env..."
   ./run_tests.sh -r
   echo "Activating virtual environment..."
   source .env/bin/activate
-  cd "${ORIG_DIR}"
 }
 
 run_importer() {
   echo "Starting SDMX agentic importer..."
+  cd "${CALLER_DIR}"
   python "${SCRIPT_DIR}/sdmx_agentic_importer.py" "${REST_ARGS[@]}"
 }
 
 prepare_custom_dc_env() {
   local env_sample="${WEBSITE_REPO}/custom_dc/env.list.sample"
-  local output_dir_path="${ORIG_DIR}/output"
+  local output_dir_path="${CALLER_DIR}/output"
   CUSTOM_DC_ENV_DEST="${output_dir_path}/env.list"
 
   echo "Preparing Custom DC environment file..."
@@ -116,7 +120,7 @@ if [[ "$START_CDC" == "true" ]]; then
   fi
 fi
 
-run_repository_setup
+setup_python
 run_importer
 
 # Start Custom DC after importer completes if enabled
@@ -124,4 +128,3 @@ if [[ "$START_CDC" == "true" ]]; then
   prepare_custom_dc_env
   start_custom_dc
 fi
-
