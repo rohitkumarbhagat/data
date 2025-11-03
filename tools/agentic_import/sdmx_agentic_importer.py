@@ -275,7 +275,8 @@ def file_sig(path: Path, cache: Dict[str, FileSig]) -> FileSig:
     return sig
 
 
-def fingerprint_inputs(paths: List[Path], cache: Dict[str, FileSig]) -> List[InputFileFingerprint]:
+def fingerprint_inputs(paths: List[Path],
+                       cache: Dict[str, FileSig]) -> List[InputFileFingerprint]:
     """Return canonicalized file fingerprints for the given paths."""
 
     entries: List[InputFileFingerprint] = [{
@@ -486,8 +487,9 @@ class CreateSchemaMappingStep(WorkflowStep):
             SAMPLE_OUTPUT_DIR / f"{prefix}_stat_vars.mcf",
         ]
 
-    def fingerprint(self, prefix: str, config: WorkflowConfig,
-                    sig_cache: Dict[str, FileSig]) -> CreateSchemaMappingFingerprint:
+    def fingerprint(
+            self, prefix: str, config: WorkflowConfig,
+            sig_cache: Dict[str, FileSig]) -> CreateSchemaMappingFingerprint:
         return {
             "inputs": fingerprint_inputs(self.inputs(prefix), sig_cache),
             "sdmx_dataset": True,
@@ -569,8 +571,9 @@ class ProcessFullDataStep(WorkflowStep):
             FINAL_OUTPUT_DIR / f"{prefix}_stat_vars.mcf",
         ]
 
-    def fingerprint(self, prefix: str, _: WorkflowConfig,
-                    sig_cache: Dict[str, FileSig]) -> ProcessFullDataFingerprint:
+    def fingerprint(
+            self, prefix: str, _: WorkflowConfig,
+            sig_cache: Dict[str, FileSig]) -> ProcessFullDataFingerprint:
         return {
             "inputs": fingerprint_inputs(self.inputs(prefix), sig_cache),
             "output_columns": self.RUN_OUTPUT_COLUMNS,
