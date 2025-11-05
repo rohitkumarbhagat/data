@@ -350,7 +350,7 @@ class DownloadMetadataStep(WorkflowStep):
         return [Path(f"{prefix}_metadata.xml")]
 
     def fingerprint(self, _: str, config: WorkflowConfig,
-                    _: Dict[str, FileSig]) -> DownloadMetadataFingerprint:
+                    _sig_cache: Dict[str, FileSig]) -> DownloadMetadataFingerprint:
         return {
             "endpoint": config.sdmx.endpoint,
             "agency": config.sdmx.agency,
@@ -387,7 +387,7 @@ class DownloadDataStep(WorkflowStep):
         return [Path(f"{prefix}_data.csv")]
 
     def fingerprint(self, _: str, config: WorkflowConfig,
-                    _: Dict[str, FileSig]) -> DownloadDataFingerprint:
+                    _sig_cache: Dict[str, FileSig]) -> DownloadDataFingerprint:
         return {
             "endpoint": config.sdmx.endpoint,
             "agency": config.sdmx.agency,
