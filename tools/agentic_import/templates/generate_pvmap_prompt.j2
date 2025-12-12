@@ -25,7 +25,7 @@ You **MUST** adhere to these rules at all times.
 
 - **NEVER alter input data or metadata files.**
 - **NEVER read entire data files**, as they may exceed the context window.
-- **When inspecting data files, limit reads to the first 20 lines.**
+- **When inspecting data files, limit reads to the first 100 lines.**
 - **ALWAYS read metadata files before data files.**
 - **Single source of truth for config**: All `statvar_processor` configuration/flags must be declared in `metadata.csv` as `parameter,value` rows. Do not pass flags via CLI and do not embed configuration in `pvmap.csv`; the wrapper will pass only input paths.
 
@@ -1318,8 +1318,13 @@ Follow these steps sequentially.
   below.
 - **Carefully** examine examine **sample** input data `input_data` and metadata
   `input_metadata` files to understand the structure and content of the data.
-
+- The provided input data is only a **SMALL SAMPLE** and does **NOT** contain all possible values.
+- **IMPORTANT**: Read metadata file fully to understand the structure and content of the data.
+  
 {% if dataset_type == 'sdmx' -%}
+
+- The provided input data is only a **SMALL SAMPLE** and does **NOT** contain all possible values.
+- You must treat the metadata file as the **EXHAUSTIVE** source of truth.
 
 - **SDMX Analysis**: For SDMX datasets, pay special attention to:
   - SDMX data structure definitions (DSD) in the metadata
@@ -1343,11 +1348,55 @@ Follow these steps sequentially.
 
   {%- endif %}
 
+
 **2. Generate `{{output_dir}}/{{output_basename}}_pvmap.csv` and `{{output_dir}}/{{output_basename}}_metadata.csv`**
 
 - Create the `{{output_dir}}/{{output_basename}}_pvmap.csv` file, mapping the source data columns to DataCommons properties based on your findings.
 - Create the `{{output_dir}}/{{output_basename}}_metadata.csv` file and define the necessary `statvar_processor` configuration parameters within it.
 - Configuration rule: All processor flags/settings must live in `{{output_dir}}/{{output_basename}}_metadata.csv`. Do not embed configuration in `{{output_dir}}/{{output_basename}}_pvmap.csv` and do not rely on extra CLI flags.
+
+{% if dataset_type == 'sdmx' -%}
+
+### Directive: Exhaustive Metadata Mapping
+
+The provided input data is only a SMALL SAMPLE and does NOT contain all possible values. You must treat
+the metadata file as the EXHAUSTIVE source of truth.
+
+For all categorical columns (e.g., SECTOR, FLOW_TYPE, PRICE_BASE), you must:
+  1. Ignore the data sample for code discovery: Do not limit mappings to what you see in the CSV.
+  2. Consult the Metadata: Find the corresponding Codelist in the metadata file for every column.
+  3. Map EVERY Code: Generate a specific mapping row for every single code defined in that Codelist, even
+    if it does not appear in the sample data.
+  4. Use English Names: Map the code to its English description from the metadata (converted to
+    CamelCase), never the raw ID or a generic {Data} pattern.
+
+Example
+
+Metadata Definition (Codelist `CL_STATUS`):
+  * Code P: "Provisional data"
+  * Code F: "Final data"
+  * Code E: "Estimated"
+
+Sample Input Data (Note: 'F' and 'E' are missing):
+
+  1 TIME,STATUS,VALUE
+  2 2020,P,50
+  3 2021,P,60
+
+❌ WRONG (Relies on sample or generic mapping):
+
+  1 STATUS:P,measurementMethod,ProvisionalData
+  2 # OR
+  3 STATUS,measurementMethod,oecd/status/{Data}
+
+✅ CORRECT (Exhaustive from Metadata):
+
+  1 STATUS:P,measurementMethod,ProvisionalData
+  2 STATUS:F,measurementMethod,FinalData
+  3 STATUS:E,measurementMethod,Estimated
+
+{%- endif %}
+
 ### Validation Checklist
 
 While generating the files, ensure:
