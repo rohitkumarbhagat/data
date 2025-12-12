@@ -41,7 +41,10 @@ class PVMapGeneratorTest(unittest.TestCase):
             self._cwd)  # Restore prior cwd so later tests see original state.
         self._temp_dir.cleanup()
 
-    def _make_generator(self, *, is_sdmx: bool) -> PVMapGenerator:
+    def _make_generator(self,
+                        *,
+                        is_sdmx: bool,
+                        gemini_flags: str = '') -> PVMapGenerator:
         data_config = DataConfig(
             input_data=[str(self._data_file)],
             input_metadata=[str(self._metadata_file)],
@@ -52,6 +55,7 @@ class PVMapGeneratorTest(unittest.TestCase):
             dry_run=True,
             max_iterations=3,
             output_path='output/output_file',
+            gemini_flags=gemini_flags,
         )
         return PVMapGenerator(config)
 
@@ -148,6 +152,24 @@ class PVMapGeneratorTest(unittest.TestCase):
         self._assert_prompt_content(prompt_path,
                                     expect_sdmx=True,
                                     config=generator._config)
+
+    def test_build_gemini_command_appends_flags_after_y(self):
+        generator = self._make_generator(
+            is_sdmx=False, gemini_flags='--model=foo --system "bar baz"')
+        prompt_file = Path('prompt.md')
+        prompt_file.write_text('hi')
+        log_file = Path('gemini.log')
+        cmd = generator._build_gemini_command(prompt_file, log_file)
+        self.assertIn('-y --model=foo --system "bar baz" 2>&1', cmd)
+
+    def test_build_gemini_command_no_extra_flags_when_empty(self):
+        generator = self._make_generator(is_sdmx=False, gemini_flags='')
+        prompt_file = Path('prompt.md')
+        prompt_file.write_text('hi')
+        log_file = Path('gemini.log')
+        cmd = generator._build_gemini_command(prompt_file, log_file)
+        self.assertIn(' gemini  -y 2>&1 ', cmd)
+        self.assertNotIn('--model=', cmd)
 
     def test_generate_requires_input_data(self):
         generator = PVMapGenerator(

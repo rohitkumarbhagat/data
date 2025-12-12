@@ -73,6 +73,11 @@ flags.DEFINE_string(
     'Example: "/usr/local/bin/gemini". '
     'WARNING: This value is executed in a shell - use only with trusted input.')
 
+flags.DEFINE_string(
+    'gemini_flags', None, 'Additional flags to pass to the gemini CLI. '
+    'Example: "--model experimental --debug". '
+    'WARNING: This value is executed in a shell - use only with trusted input.')
+
 
 @dataclass
 class DataConfig:
@@ -93,6 +98,7 @@ class Config:
     enable_sandboxing: bool = False
     output_path: str = 'output/output'
     gemini_cli: Optional[str] = None
+    gemini_flags: Optional[str] = None
 
 
 @dataclass
@@ -302,8 +308,11 @@ class PVMapGenerator:
         log_path = log_file.resolve()
         gemini_cmd = self._config.gemini_cli or 'gemini'
         sandbox_flag = "--sandbox" if self._config.enable_sandboxing else ""
+        extra_flags = (self._config.gemini_flags or '').strip()
+        if extra_flags:
+            extra_flags = f" {extra_flags}"
         return (
-            f"cat '{prompt_path}' | {gemini_cmd} {sandbox_flag} -y 2>&1 | tee '{log_path}'"
+            f"cat '{prompt_path}' | {gemini_cmd} {sandbox_flag} -y{extra_flags} 2>&1 | tee '{log_path}'"
         )
 
     def _run_subprocess(self, command: str) -> int:
@@ -406,7 +415,8 @@ def prepare_config() -> Config:
                   skip_confirmation=_FLAGS.skip_confirmation,
                   enable_sandboxing=_FLAGS.enable_sandboxing,
                   output_path=_FLAGS.output_path,
-                  gemini_cli=_FLAGS.gemini_cli)
+                  gemini_cli=_FLAGS.gemini_cli,
+                  gemini_flags=_FLAGS.gemini_flags)
 
 
 def main(_):

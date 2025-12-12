@@ -173,6 +173,7 @@ python $DC_DATA_REPO_PATH/tools/agentic_import/pvmap_generator.py \
 - `--input_metadata`: Comma-separated list of metadata file paths
 - `--output_path`: Output path prefix for generated files (default: output/output)
 - `--sdmx_dataset`: Set if working with SDMX dataset
+- `--gemini_flags`: Additional flags to pass to the gemini CLI. Example: `--gemini_flags="--model experimental --debug"`. WARNING: This value is executed in a shell - use only with trusted input.
 
 
 This command will generate:
