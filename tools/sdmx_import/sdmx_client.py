@@ -27,16 +27,21 @@ from typing import Dict, Any
 class SdmxClient:
     """A client for fetching data and metadata from an SDMX REST API."""
 
-    def __init__(self, endpoint: str, agency_id: str):
+    def __init__(self,
+                 endpoint: str,
+                 agency_id: str,
+                 sdmx_version: str = '2.1'):
         """
         Initializes the SdmxClient.
 
         Args:
             endpoint (str): The base URL of the SDMX REST API endpoint.
             agency_id (str): The ID of the agency providing the data.
+            sdmx_version (str): SDMX version to use (default: '2.1').
         """
         self.agency_id = agency_id
         self.endpoint = endpoint
+        self.sdmx_version = sdmx_version
         self.client = self._new_sdmx_client()
 
     def _new_sdmx_client(self) -> sdmx.Client:
@@ -52,21 +57,27 @@ class SdmxClient:
         sdmx.add_source(custom_source, override=True)
         return sdmx.Client(source_id)
 
-    def download_metadata(self, dataflow_id: str, output_path: str):
+    def download_metadata(self,
+                          dataflow_id: str,
+                          output_path: str,
+                          version: str = None):
         """
         Fetches the complete metadata for a dataflow and saves it to a file as raw SDMX-ML (XML).
 
         Args:
             dataflow_id: The ID of the dataflow to retrieve
             output_path: Path where the metadata should be saved
+            version: Version of the artifact to retrieve (default: latest)
         """
         try:
             logging.info(
-                f"Fetching raw metadata for dataflow: {dataflow_id}...")
+                f"Fetching raw metadata for dataflow: {dataflow_id} (version: {version})..."
+            )
             flow_msg = self.client.dataflow(dataflow_id,
                                             agency_id=self.agency_id,
                                             params={'references': 'all'},
-                                            tofile=output_path)
+                                            tofile=output_path,
+                                            version=version)
             logging.info(
                 f"Successfully received response: {flow_msg.response.url}")
 
@@ -89,22 +100,54 @@ class SdmxClient:
             )
             raise
 
-    def download_data_as_csv(self, dataflow_id: str, key: Dict[str, Any],
-                             params: Dict[str, Any], output_path: str):
+    def download_data_as_csv(self,
+                             dataflow_id: str,
+                             key: Dict[str, Any],
+                             params: Dict[str, Any],
+                             output_path: str,
+                             version: str = None):
         """
         Fetches data, converts it to a pandas DataFrame, and saves as CSV.
         """
         try:
-            logging.info(f"Fetching data for dataflow: {dataflow_id}")
+            logging.info(
+                f"Fetching data for dataflow: {dataflow_id} (version: {version})"
+            )
             logging.info(f"with params: {params}")
             logging.info(f"and key: {key}")
-            data_msg = self.client.data(dataflow_id,
-                                        key=key,
-                                        params=params,
-                                        agency_id=self.agency_id)
+            if self.sdmx_version == '2.1':
+                # SDMX 2.1 data query workaround:
+                # 1. Fetch DSD explicitly using standard structure query (supports separate params)
+                #    This prevents client.data() from doing a broken implicit lookup with the combined ID.
+                logging.info("Pre-fetching DSD for SDMX 2.1 compatibility...")
+                flow_msg = self.client.dataflow(dataflow_id,
+                                                agency_id=self.agency_id,
+                                                version=version)
+                dsd = flow_msg.dataflow[dataflow_id].structure
+
+                # 2. Construct combined ID for the data query: AGENCY,FLOW,VERSION
+                id_parts = [self.agency_id, dataflow_id]
+                if version:
+                    id_parts.append(version)
+                resource_id = ','.join(id_parts)
+
+                # 3. Call client.data with combined ID + pre-fetched DSD
+                data_msg = self.client.data(resource_id,
+                                            key=key,
+                                            params=params,
+                                            dsd=dsd)
+            else:
+                # SDMX 3.0 or other: Pass explicitly
+                data_msg = self.client.data(dataflow_id,
+                                            key=key,
+                                            params=params,
+                                            agency_id=self.agency_id,
+                                            version=version)
             logging.info(
                 f"Successfully received response: {data_msg.response.url}")
 
+            # Write to CSV
+            logging.info("Converting response to pandas DataFrame...")
             df = sdmx.to_pandas(data_msg).reset_index()
             df.to_csv(output_path, index=False)
             logging.info(f"Successfully saved data to '{output_path}'")

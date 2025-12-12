@@ -56,6 +56,8 @@ flags.DEFINE_multi_string(
     'param', [],
     'Query parameters as key:value pairs (e.g., --param=startPeriod:2022)')
 
+flags.DEFINE_string('version', None, 'Version of the artifact to retrieve')
+
 # Logging flags
 flags.DEFINE_bool('verbose', False, 'Enable verbose logging')
 flags.DEFINE_bool('quiet', False, 'Only show errors')
@@ -136,6 +138,7 @@ def handle_download_metadata() -> None:
     logging.info(f"Endpoint: {FLAGS.endpoint}")
     logging.info(f"Agency: {FLAGS.agency}")
     logging.info(f"Dataflow: {FLAGS.dataflow}")
+    logging.info(f"Version: {FLAGS.version}")
     logging.info(f"Output: {FLAGS.output_path}")
 
     # Validate inputs
@@ -147,7 +150,8 @@ def handle_download_metadata() -> None:
 
     # Create client and download metadata
     client = SdmxClient(FLAGS.endpoint, FLAGS.agency)
-    client.download_metadata(FLAGS.dataflow, FLAGS.output_path)
+    client.download_metadata(FLAGS.dataflow, FLAGS.output_path,
+                             version=FLAGS.version)
     logging.info(f"Successfully downloaded metadata to: {FLAGS.output_path}")
 
 
@@ -163,6 +167,7 @@ def handle_download_data() -> None:
     logging.info(f"Endpoint: {FLAGS.endpoint}")
     logging.info(f"Agency: {FLAGS.agency}")
     logging.info(f"Dataflow: {FLAGS.dataflow}")
+    logging.info(f"Version: {FLAGS.version}")
     logging.info(f"Output: {FLAGS.output_path}")
 
     # Parse key and params from multi-value flags
@@ -181,8 +186,11 @@ def handle_download_data() -> None:
 
     # Create client and download data
     client = SdmxClient(FLAGS.endpoint, FLAGS.agency)
-    client.download_data_as_csv(FLAGS.dataflow, data_key, data_params,
-                                FLAGS.output_path)
+    client.download_data_as_csv(FLAGS.dataflow,
+                                data_key,
+                                data_params,
+                                FLAGS.output_path,
+                                version=FLAGS.version)
     logging.info(f"Successfully downloaded data to: {FLAGS.output_path}")
 
 
