@@ -1,0 +1,29 @@
+You are an expert in SDMX metadata and Data Commons schema mapping.
+
+TASK
+- Read the candidate items JSON at: {{ input_items_path }}
+- Read the search results JSON at: {{ input_search_path }}
+- Write a patch JSON file at: {{ output_path }}
+
+RULES
+- Output must be valid JSON only.
+- The output JSON must match this schema exactly:
+  {
+    "items": [
+      {
+        "item_key": "...",
+        "enriched_name": "...",
+        "enriched_description": "..."
+      }
+    ]
+  }
+- Use search snippets and item context to produce concise, informative text.
+- enriched_name should be short and specific (<= 80 chars).
+- enriched_description should be concise and informative (<= 240 chars).
+- If information is insufficient, omit the item from the output.
+- Do not include URLs in enriched_name or enriched_description.
+- Do not modify input files.
+
+OUTPUT
+- Write the JSON to {{ output_path }}.
+- Do not print anything else.
