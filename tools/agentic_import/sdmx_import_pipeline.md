@@ -103,6 +103,15 @@ source .env/bin/activate
 streamlit run tools/agentic_import/sdmx_import_demo_app.py
 ```
 
+To launch while defaulting the app's working directory to your chosen
+`$WORKING_DIR`, run from that directory and use the repository venv Python:
+
+```bash
+cd $WORKING_DIR
+$DC_DATA_REPO_PATH/.env/bin/python -m streamlit run \
+  $DC_DATA_REPO_PATH/tools/agentic_import/sdmx_import_demo_app.py
+```
+
 ### Expected Environment
 
 -   `DC_API_KEY` must be set in your shell environment.
