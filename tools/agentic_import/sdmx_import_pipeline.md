@@ -93,6 +93,36 @@ The pipeline automatically saves its state to a `<dataset_prefix>.state.json` fi
 -   **Skipping**: Steps that have already completed successfully will be skipped unless `--force` is used.
 -   **Input Hashing**: The pipeline tracks input configuration. If critical configuration changes, it may trigger re-execution of steps.
 
+## Streamlit Demo UI
+
+For local demos, this repo includes a wizard-style Streamlit UI:
+
+```bash
+cd $DC_DATA_REPO_PATH
+source .env/bin/activate
+streamlit run tools/agentic_import/sdmx_import_demo_app.py
+```
+
+### Expected Environment
+
+-   `DC_API_KEY` must be set in your shell environment.
+-   Gemini CLI must be installed and executable (for example, `gemini` in `PATH`).
+-   Use a writable working directory so pipeline outputs and state files can be created.
+
+### Demo Run Modes
+
+-   **Auto-confirm ON**: Runs the full pipeline in non-interactive mode (`--skip_confirmation`).
+-   **Auto-confirm OFF**: Uses a pause-before-mapping profile:
+    1. Runs `download-data`, `download-metadata`, and `create-sample`.
+    2. Pauses in the UI before schema mapping.
+    3. Resume continues from schema mapping onward using saved state.
+
+### Demo Limitations
+
+-   The UI is intended for local demos only (single user, single Streamlit session).
+-   Resume support is scoped to the current Streamlit session state.
+-   Live progress is derived from `.state.json` plus log parsing and may lag briefly while subprocesses update output files.
+
 ## Troubleshooting
 
 -   **Gemini CLI Errors**: If the schema mapping step fails, check the Gemini CLI logs in `.datacommons/runs/<gemini_run_id>/` (e.g., `output_gemini_20250915_163906_1234`, includes `gemini_cli.log` and `processor.log`). Refer to the [main README](./README.md#debugging) for detailed debugging instructions.

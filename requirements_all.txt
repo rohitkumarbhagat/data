@@ -25,5 +25,6 @@ rdp
 requests-mock
 s2sphere
 sentence-transformers
+streamlit
 tabula-py
 yapf
