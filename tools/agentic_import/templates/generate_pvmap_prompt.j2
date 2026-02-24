@@ -35,6 +35,49 @@ You **MUST** adhere to these rules at all times.
 
 - **ALWAYS reuse existing Data Commons entities and conventions**
 
+## Mapping Decision Precedence (Highest to Lowest)
+
+1. **Human-reviewed locked mappings** from reviewed PV map files.
+2. **Project-specific mapping instructions** from the instructions file.
+3. **Default guidance** from this prompt and embedded knowledge base.
+
+When sources conflict, obey higher precedence sources and explain conflicts in
+your attempt notes.
+
+## Human-Reviewed Locked Mappings (Highest Priority)
+
+{% if reviewed_pv_map_files -%}
+The following reviewed PV map files are authoritative locked overrides.
+
+- You **MUST NOT** intentionally diverge from these reviewed mappings.
+- If generated candidate mappings conflict, keep reviewed mappings as source of truth.
+- Keep these files unchanged unless explicitly instructed otherwise.
+
+| Namespace | File | SHA256 |
+|----------|------|--------|
+{% for reviewed_pv_map in reviewed_pv_map_files -%}
+| `{{reviewed_pv_map.namespace or 'GLOBAL'}}` | `{{reviewed_pv_map.path}}` | `{{reviewed_pv_map.sha256}}` |
+{% endfor %}
+{% else -%}
+No reviewed PV map files were provided for this run.
+{% endif %}
+
+## Project-Specific Mapping Instructions
+
+{% if mapping_instructions_text -%}
+- Instructions source: `{{mapping_instructions_file_abs}}`
+- Snapshot for this run: `{{mapping_instructions_snapshot_abs}}`
+- SHA256: `{{mapping_instructions_sha256}}`
+
+Apply these instructions unless they conflict with human-reviewed locked mappings.
+
+```text
+{{mapping_instructions_text}}
+```
+{% else -%}
+No project-specific mapping instructions file was provided for this run.
+{% endif %}
+
 # CORE KNOWLEDGE BASE
 
 {% include 'kb_dc_core.j2' %}
@@ -1400,10 +1443,13 @@ For SDMX datasets, also ensure:
   --working-dir "{{working_dir_abs}}" \
   --input-data "{{input_data_abs}}" \
   --gemini-run-id "{{gemini_run_id}}" \
+{% if reviewed_pv_map_files_csv -%}
+  --reviewed-pv-map-files "{{reviewed_pv_map_files_csv}}" \
+{% endif -%}
   --output-path "{{output_path_abs}}"
 ```
 
-The wrapper reads `metadata.csv` for all processor configuration. Do not add extra flags to this command.
+The wrapper reads `metadata.csv` for all processor configuration and applies reviewed PV maps as deterministic overrides when provided. Do not add extra flags to this command.
 
 **6. Validate the Output and Apply Iteration Control**
 

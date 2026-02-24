@@ -152,6 +152,9 @@ Generate the PV map and metadata files using the pvmap_generator with command-li
 python $DC_DATA_REPO_PATH/tools/agentic_import/pvmap_generator.py \
   --input_data="sample_data.csv" \
   --input_metadata="metadata_file1.json,metadata_file2.xml,metadata_file3.txt" \
+  --mapping_instructions_file="mapping_instructions.md" \
+  --reviewed_pv_map_files="sample_output/output_pvmap_human.csv" \
+  --feedback_report_path="sample_output/output_feedback_report.csv" \
   --output_path="sample_output/output"
 ```
 
@@ -164,6 +167,9 @@ For **SDMX datasets**:
 python $DC_DATA_REPO_PATH/tools/agentic_import/pvmap_generator.py \
   --input_data="sample_data.csv" \
   --input_metadata="sdmx_metadata.json" \
+  --mapping_instructions_file="mapping_instructions.md" \
+  --reviewed_pv_map_files="sample_output/output_pvmap_human.csv" \
+  --feedback_report_path="sample_output/output_feedback_report.csv" \
   --output_path="sample_output/output" \
   --sdmx_dataset
 ```
@@ -173,6 +179,9 @@ python $DC_DATA_REPO_PATH/tools/agentic_import/pvmap_generator.py \
 - `--input_metadata`: Comma-separated list of metadata file paths
 - `--output_path`: Output path prefix for generated files (default: output/output)
 - `--sdmx_dataset`: Set if working with SDMX dataset
+- `--mapping_instructions_file`: Optional markdown/text file with project-specific mapping guidance
+- `--reviewed_pv_map_files`: Optional comma-separated reviewed override maps (`<path>` or `namespace:<path>`)
+- `--feedback_report_path`: Optional report output path comparing generated mappings vs reviewed overrides
 
 
 This command will generate:
@@ -182,6 +191,10 @@ This command will generate:
   - `output.csv`: Sample input data converted to Data Commons observations (each row represents one Data Commons observation)
   - `output.tmcf`: Template MCF file
   - `output_stat_vars.mcf`: Statistical variables MCF file
+  - `output_feedback_report.csv`: Feedback audit report (if reviewed maps were provided)
+- `.datacommons/runs/<gemini_run_id>/` artifacts including:
+  - `mapping_instructions.md` and `mapping_instructions.sha256` (if instructions file provided)
+  - `reviewed_pv_maps.csv` manifest with file hashes (if reviewed maps provided)
 
 **Validation:**
 - Check that `sample_output/output.csv` contains Data Commons observations with valid format for sample data
@@ -199,7 +212,7 @@ Process the full input data (not sample data) using the PV map and metadata file
 OUTPUT_COLUMNS="observationDate,observationAbout,variableMeasured,value,observationPeriod,measurementMethod,unit,scalingFactor"
 python "$DC_DATA_REPO_PATH/tools/statvar_importer/stat_var_processor.py" \
   --input_data="input_data.csv" \
-  --pv_map="sample_output/output_pvmap.csv" \
+  --pv_map="sample_output/output_pvmap.csv,sample_output/output_pvmap_human.csv" \
   --config_file="sample_output/output_metadata.csv" \
   --generate_statvar_name=True \
   --skip_constant_csv_columns=False \
@@ -211,6 +224,7 @@ python "$DC_DATA_REPO_PATH/tools/statvar_importer/stat_var_processor.py" \
 **Validation:**
 - Check that `final_output/output.csv` contains Data Commons observations with a valid format for the full input data.
 - Validate new StatVar schema in `final_output/output_stat_vars.mcf`.
+- If using reviewed maps, verify feedback report statuses (`matched`, `conflict`, `missing_in_candidate`) in `sample_output/output_feedback_report.csv`.
 
 ## Custom Data Commons Import (Optional)
 

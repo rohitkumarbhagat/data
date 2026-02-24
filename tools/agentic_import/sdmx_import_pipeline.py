@@ -100,6 +100,16 @@ def _define_flags() -> None:
     flags.DEFINE_string("working_dir", None,
                         "Working directory for the pipeline.")
 
+    flags.DEFINE_list(
+        "reviewed_pv_map_files", [],
+        "Optional reviewed PV map files for hard-lock overrides. Entries "
+        "can be '<path>' or 'namespace:<path>'.")
+
+    flags.DEFINE_string(
+        "mapping_instructions_file", None,
+        "Optional markdown/text file with project-specific instructions for "
+        "PV map generation.")
+
 
 def _format_time(value: datetime) -> str:
     if value.tzinfo is None:
@@ -128,12 +138,64 @@ def _resolve_dataset_prefix(config: PipelineConfig) -> str:
 
 
 def _compute_critical_input_hash(config: PipelineConfig) -> str:
+    def _resolve_optional_file(path_value: str | None) -> Path | None:
+        if not path_value:
+            return None
+        path = Path(path_value).expanduser()
+        if not path.is_absolute():
+            working_dir = Path(config.run.working_dir or os.getcwd())
+            path = working_dir / path
+        return path.resolve()
+
+    def _resolve_pv_map_entry_path(entry: str) -> tuple[str, Path]:
+        normalized = entry.strip()
+        namespace = ""
+        path_token = normalized
+        if ":" in normalized:
+            namespace, path_token = normalized.split(":", 1)
+        path = Path(path_token).expanduser()
+        if not path.is_absolute():
+            working_dir = Path(config.run.working_dir or os.getcwd())
+            path = working_dir / path
+        resolved = path.resolve()
+        cli_value = f"{namespace}:{resolved}" if namespace else str(resolved)
+        return cli_value, resolved
+
+    def _sha256_file(path: Path) -> str | None:
+        if not path.is_file():
+            return None
+        hasher = hashlib.sha256()
+        with open(path, "rb") as file_obj:
+            while True:
+                chunk = file_obj.read(1024 * 1024)
+                if not chunk:
+                    break
+                hasher.update(chunk)
+        return hasher.hexdigest()
+
+    reviewed_maps = []
+    for entry in config.run.reviewed_pv_map_files:
+        cli_value, resolved_path = _resolve_pv_map_entry_path(entry)
+        reviewed_maps.append({
+            "entry": cli_value,
+            "sha256": _sha256_file(resolved_path),
+        })
+
+    mapping_instructions_path = _resolve_optional_file(
+        config.run.mapping_instructions_file)
+
     payload = {
         FLAG_SDMX_AGENCY: config.sdmx.agency,
         FLAG_SDMX_DATAFLOW_ID: config.sdmx.dataflow.id,
         FLAG_SDMX_ENDPOINT: config.sdmx.endpoint,
         FLAG_SDMX_DATAFLOW_KEY: config.sdmx.dataflow.key,
         FLAG_SDMX_DATAFLOW_PARAM: config.sdmx.dataflow.param,
+        "run.reviewed_pv_map_files": reviewed_maps,
+        "run.mapping_instructions_file":
+            str(mapping_instructions_path) if mapping_instructions_path else None,
+        "run.mapping_instructions_sha256":
+            _sha256_file(mapping_instructions_path)
+            if mapping_instructions_path else None,
     }
     serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
@@ -317,6 +379,8 @@ def prepare_config() -> PipelineConfig:
             verbose=FLAGS.verbose,
             skip_confirmation=FLAGS.skip_confirmation,
             gemini_cli=FLAGS.gemini_cli,
+            reviewed_pv_map_files=tuple(FLAGS.reviewed_pv_map_files or []),
+            mapping_instructions_file=FLAGS.mapping_instructions_file,
         ),
     )
 

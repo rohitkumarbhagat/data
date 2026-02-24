@@ -26,6 +26,7 @@ WORKING_DIR=""
 INPUT_DATA=""
 GEMINI_RUN_ID=""
 OUTPUT_PATH=""
+REVIEWED_PV_MAP_FILES=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -53,6 +54,14 @@ while [[ $# -gt 0 ]]; do
       OUTPUT_PATH="$2"
       shift 2
       ;;
+    --reviewed-pv-map-files)
+      if [[ -n "${REVIEWED_PV_MAP_FILES}" ]]; then
+        REVIEWED_PV_MAP_FILES="${REVIEWED_PV_MAP_FILES},$2"
+      else
+        REVIEWED_PV_MAP_FILES="$2"
+      fi
+      shift 2
+      ;;
     *)
       echo "Unknown option $1"
       exit 1
@@ -63,7 +72,7 @@ done
 # Validate required parameters
 if [[ -z "$PYTHON_INTERPRETER" || -z "$SCRIPT_DIR" || -z "$WORKING_DIR" || -z "$INPUT_DATA" || -z "$GEMINI_RUN_ID" || -z "$OUTPUT_PATH" ]]; then
   echo "Error: Missing required parameters"
-  echo "Usage: $0 --python PYTHON --script-dir SCRIPT_DIR --working-dir WORKING_DIR --input-data INPUT_DATA --gemini-run-id GEMINI_RUN_ID --output-path OUTPUT_PATH"
+  echo "Usage: $0 --python PYTHON --script-dir SCRIPT_DIR --working-dir WORKING_DIR --input-data INPUT_DATA --gemini-run-id GEMINI_RUN_ID --output-path OUTPUT_PATH [--reviewed-pv-map-files MAPS]"
   exit 1
 fi
 
@@ -84,13 +93,18 @@ BACKUP_LOG="${RUN_DIR}/backup.log"
 OUTPUT_COUNTERS="${RUN_DIR}/output_counters.csv"
 # Keep CSV column ordering predictable across runs when importing multiple files.
 OUTPUT_COLUMNS="observationDate,observationAbout,variableMeasured,value,observationPeriod,measurementMethod,unit,scalingFactor"
+PV_MAP_FILES="${OUTPUT_PREFIX}_pvmap.csv"
+if [[ -n "${REVIEWED_PV_MAP_FILES}" ]]; then
+  PV_MAP_FILES="${PV_MAP_FILES},${REVIEWED_PV_MAP_FILES}"
+  echo "Applying reviewed PV map overrides: ${REVIEWED_PV_MAP_FILES}"
+fi
 # TODO : Add existing_statvar_mcf, existing_schema_mcf support
 # Run statvar processor with output going to persistent log
 # Keep constant-value columns because custom DC imports read the CSV directly and skip the TMCF.
 echo "Running statvar processor..."
 "${PYTHON_INTERPRETER}" "${SCRIPT_DIR}/statvar_importer/stat_var_processor.py" \
   --input_data="${INPUT_DATA}" \
-  --pv_map="${OUTPUT_PREFIX}_pvmap.csv" \
+  --pv_map="${PV_MAP_FILES}" \
   --config_file="${OUTPUT_PREFIX}_metadata.csv" \
   --generate_statvar_name=True \
   --skip_constant_csv_columns=False \

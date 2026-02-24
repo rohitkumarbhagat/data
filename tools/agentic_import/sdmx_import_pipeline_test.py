@@ -541,6 +541,9 @@ class RunPipelineTest(SdmxTestBase):
                     "sdmx.endpoint": config.sdmx.endpoint,
                     "sdmx.dataflow.key": config.sdmx.dataflow.key,
                     "sdmx.dataflow.param": config.sdmx.dataflow.param,
+                    "run.reviewed_pv_map_files": [],
+                    "run.mapping_instructions_file": None,
+                    "run.mapping_instructions_sha256": None,
                 },
                 sort_keys=True,
                 separators=(",", ":")).encode("utf-8")).hexdigest()
@@ -946,6 +949,36 @@ class SdmxStepTest(SdmxTestBase):
         # No input files created, run should fail
         self._assert_run_fails_without_input(step, ".*")
 
+    def test_create_schema_map_step_includes_reviewed_maps_and_instructions(
+            self) -> None:
+        reviewed_pv_map = Path(self._tmpdir) / "reviewed.csv"
+        reviewed_pv_map.write_text("key,property,value\nA,populationType,dcs:Person")
+        mapping_instructions = Path(self._tmpdir) / "instructions.md"
+        mapping_instructions.write_text("# mapping instructions")
+        config = PipelineConfig(run=RunConfig(
+            command="test",
+            dataset_prefix="demo",
+            working_dir=self._tmpdir,
+            verbose=True,
+            reviewed_pv_map_files=(
+                "reviewed.csv",
+                "observationAbout:reviewed.csv",
+            ),
+            mapping_instructions_file="instructions.md",
+        ),)
+        step = CreateSchemaMapStep(name="test-step", config=config)
+        context = step._prepare_command()
+
+        reviewed_arg = next(
+            arg for arg in context.full_command
+            if arg.startswith("--reviewed_pv_map_files="))
+        self.assertIn(str(reviewed_pv_map.resolve()), reviewed_arg)
+        self.assertIn(f"observationAbout:{reviewed_pv_map.resolve()}",
+                      reviewed_arg)
+        self.assertIn(
+            f"--mapping_instructions_file={mapping_instructions.resolve()}",
+            context.full_command)
+
     def test_process_full_data_step_caches_plan(self) -> None:
         config = PipelineConfig(run=RunConfig(
             command="test",
@@ -985,6 +1018,40 @@ class SdmxStepTest(SdmxTestBase):
             ],
         )
 
+    def test_process_full_data_step_applies_reviewed_maps_last(self) -> None:
+        reviewed_global = Path(self._tmpdir) / "reviewed_global.csv"
+        reviewed_global.write_text(
+            "key,property,value\nA,populationType,dcs:Person")
+        reviewed_namespaced = Path(self._tmpdir) / "reviewed_obs.csv"
+        reviewed_namespaced.write_text(
+            "key,property,value\nB,observationAbout,geoId/06")
+        config = PipelineConfig(run=RunConfig(
+            command="test",
+            dataset_prefix="demo",
+            working_dir=self._tmpdir,
+            verbose=True,
+            reviewed_pv_map_files=(
+                "reviewed_global.csv",
+                "observationAbout:reviewed_obs.csv",
+            ),
+        ),)
+        step = ProcessFullDataStep(name="test-step", config=config)
+
+        self._create_test_input_files("demo")
+        self._assert_run_and_dry_run_use_same_plan(
+            step,
+            log_contains="stat_var_processor.py",
+            cmd_contains="stat_var_processor.py",
+            extra_cmd_checks=[
+                lambda command: self.assertIn(
+                    "--pv_map="
+                    f"{Path(self._tmpdir) / 'sample_output' / 'demo_pvmap.csv'},"
+                    f"{reviewed_global.resolve()},"
+                    f"observationAbout:{reviewed_namespaced.resolve()}",
+                    command),
+            ],
+        )
+
     def test_process_full_data_step_dry_run_succeeds_if_input_missing(
             self) -> None:
         config = PipelineConfig(run=RunConfig(
@@ -1007,6 +1074,19 @@ class SdmxStepTest(SdmxTestBase):
         step = ProcessFullDataStep(name="test-step", config=config)
         # Missing input files, run should fail
         self._assert_run_fails_without_input(step, ".*")
+
+    def test_process_full_data_step_run_fails_if_reviewed_map_missing(
+            self) -> None:
+        config = PipelineConfig(run=RunConfig(
+            command="test",
+            dataset_prefix="demo",
+            working_dir=self._tmpdir,
+            verbose=True,
+            reviewed_pv_map_files=("missing_reviewed.csv",),
+        ),)
+        step = ProcessFullDataStep(name="test-step", config=config)
+        self._create_test_input_files("demo")
+        self._assert_run_fails_without_input(step, "missing_reviewed.csv")
 
     def test_create_dc_config_step_caches_plan(self) -> None:
         config = self._build_config(dataset_prefix="demo",

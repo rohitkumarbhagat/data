@@ -58,6 +58,8 @@ class RunConfig:
     verbose: bool = False
     skip_confirmation: bool = False
     gemini_cli: str | None = None
+    reviewed_pv_map_files: tuple[str, ...] = ()
+    mapping_instructions_file: str | None = None
 
 
 @dataclass(frozen=True)

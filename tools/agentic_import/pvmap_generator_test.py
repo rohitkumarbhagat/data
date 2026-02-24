@@ -15,9 +15,11 @@
 # limitations under the License.
 
 import os
+import csv
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tools.agentic_import.pvmap_generator import (Config, DataConfig,
                                                   GenerationResult,
@@ -35,13 +37,31 @@ class PVMapGeneratorTest(unittest.TestCase):
         self._data_file.write_text('header\nvalue')
         self._metadata_file = Path('metadata.csv')
         self._metadata_file.write_text('parameter,value')
+        self._reviewed_pv_map = Path('reviewed_pvmap.csv')
+        self._reviewed_pv_map.write_text(
+            'key,property,value\n'
+            'Age_18_24,populationType,dcs:Person\n'
+            'Age_65_plus,populationType,dcs:PersonGroup\n'
+            'MedianIncome,measurementDenominator,Count_Person\n')
+        self._mapping_instructions = Path('mapping_instructions.md')
+        self._mapping_instructions.write_text(
+            '# Mapping Rules\n'
+            '- Prefer populationType dcs:Person unless table is household-level.\n'
+        )
 
     def tearDown(self):
         os.chdir(
             self._cwd)  # Restore prior cwd so later tests see original state.
         self._temp_dir.cleanup()
 
-    def _make_generator(self, *, is_sdmx: bool) -> PVMapGenerator:
+    def _make_generator(self,
+                        *,
+                        is_sdmx: bool,
+                        dry_run: bool = True,
+                        reviewed_pv_map_files: list[str] | None = None,
+                        feedback_report_path: str | None = None,
+                        mapping_instructions_file: str | None = None
+                        ) -> PVMapGenerator:
         data_config = DataConfig(
             input_data=[str(self._data_file)],
             input_metadata=[str(self._metadata_file)],
@@ -49,9 +69,13 @@ class PVMapGeneratorTest(unittest.TestCase):
         )
         config = Config(
             data_config=data_config,
-            dry_run=True,
+            dry_run=dry_run,
             max_iterations=3,
             output_path='output/output_file',
+            skip_confirmation=True,
+            reviewed_pv_map_files=reviewed_pv_map_files,
+            feedback_report_path=feedback_report_path,
+            mapping_instructions_file=mapping_instructions_file,
         )
         return PVMapGenerator(config)
 
@@ -131,6 +155,76 @@ class PVMapGeneratorTest(unittest.TestCase):
         # Working directory reference should match the temp execution root.
         expected_working_dir = str(Path(self._temp_dir.name).resolve())
         self.assertIn(expected_working_dir, prompt_text)
+
+    def test_prompt_includes_reviewed_maps_and_mapping_instructions(self):
+        generator = self._make_generator(
+            is_sdmx=False,
+            reviewed_pv_map_files=[
+                str(self._reviewed_pv_map),
+                f'observationAbout:{self._reviewed_pv_map}'
+            ],
+            mapping_instructions_file=str(self._mapping_instructions))
+        result = generator.generate()
+        prompt_text = self._read_prompt_path(result).read_text()
+
+        self.assertIn('Human-Reviewed Locked Mappings', prompt_text)
+        self.assertIn(str(self._reviewed_pv_map.resolve()), prompt_text)
+        self.assertIn('--reviewed-pv-map-files', prompt_text)
+        self.assertIn('Project-Specific Mapping Instructions', prompt_text)
+        self.assertIn(str(self._mapping_instructions.resolve()), prompt_text)
+        self.assertIn('Prefer populationType dcs:Person', prompt_text)
+
+        # Reproducibility artifacts should be written in run directory.
+        instructions_snapshot = result.run_dir / 'mapping_instructions.md'
+        instructions_hash = result.run_dir / 'mapping_instructions.sha256'
+        reviewed_manifest = result.run_dir / 'reviewed_pv_maps.csv'
+        self.assertTrue(instructions_snapshot.is_file())
+        self.assertTrue(instructions_hash.is_file())
+        self.assertTrue(reviewed_manifest.is_file())
+
+    def test_generate_writes_feedback_report_for_reviewed_maps(self):
+        feedback_path = Path('output/reports/custom_feedback.csv')
+        generator = self._make_generator(
+            is_sdmx=False,
+            dry_run=False,
+            reviewed_pv_map_files=[str(self._reviewed_pv_map)],
+            feedback_report_path=str(feedback_path))
+
+        def _fake_run_subprocess(_command: str) -> int:
+            generated_pvmap = Path(f'{generator._output_path_abs}_pvmap.csv')
+            generated_pvmap.write_text('key,property,value\n'
+                                       'Age_18_24,populationType,dcs:Person\n'
+                                       'Age_65_plus,populationType,dcs:Person\n')
+            return 0
+
+        with mock.patch.object(generator,
+                               '_run_subprocess',
+                               side_effect=_fake_run_subprocess):
+            result = generator.generate()
+
+        self.assertEqual(result.feedback_report_path, feedback_path.resolve())
+        self.assertTrue(result.feedback_report_path.is_file())
+
+        with open(result.feedback_report_path,
+                  encoding='utf-8',
+                  newline='') as report_file:
+            rows = list(csv.DictReader(report_file))
+        statuses = {row['status'] for row in rows}
+        self.assertIn('matched', statuses)
+        self.assertIn('conflict', statuses)
+        self.assertIn('missing_in_candidate', statuses)
+
+    def test_rejects_missing_reviewed_pv_map_file(self):
+        with self.assertRaises(ValueError):
+            self._make_generator(
+                is_sdmx=False,
+                reviewed_pv_map_files=['missing_reviewed_pvmap.csv'])
+
+    def test_rejects_missing_mapping_instructions_file(self):
+        with self.assertRaises(ValueError):
+            self._make_generator(
+                is_sdmx=False,
+                mapping_instructions_file='missing_instructions.md')
 
     def test_generate_prompt_csv(self):
         generator = self._make_generator(is_sdmx=False)

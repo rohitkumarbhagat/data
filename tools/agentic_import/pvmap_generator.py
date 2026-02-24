@@ -15,6 +15,8 @@
 # limitations under the License.
 
 import copy
+import csv
+import hashlib
 import os
 import platform
 import random
@@ -86,6 +88,21 @@ def _define_flags():
         flags.DEFINE_string(
             'working_dir', None,
             'Working directory for the generator (default: current directory)')
+
+        flags.DEFINE_list(
+            'reviewed_pv_map_files', [],
+            'Optional reviewed PV map files to enforce as locked overrides. '
+            'Entries may be "<path>" or "namespace:<path>".')
+
+        flags.DEFINE_string(
+            'feedback_report_path', None,
+            'Optional output path for feedback report CSV. '
+            'Defaults to .datacommons/runs/<run_id>/feedback_report.csv')
+
+        flags.DEFINE_string(
+            'mapping_instructions_file', None,
+            'Optional markdown/text file with project-specific mapping '
+            'instructions to embed in the Gemini prompt.')
     except flags.DuplicateFlagError:
         pass
 
@@ -110,6 +127,9 @@ class Config:
     output_path: str = 'output/output'
     gemini_cli: Optional[str] = None
     working_dir: Optional[str] = None
+    reviewed_pv_map_files: Optional[List[str]] = None
+    feedback_report_path: Optional[str] = None
+    mapping_instructions_file: Optional[str] = None
 
 
 @dataclass
@@ -120,6 +140,18 @@ class GenerationResult:
     gemini_log_path: Path
     gemini_command: str
     sandbox_enabled: bool
+    feedback_report_path: Optional[Path] = None
+
+
+@dataclass(frozen=True)
+class ReviewedPVMapFile:
+    namespace: Optional[str]
+    path: Path
+
+    def cli_value(self) -> str:
+        if self.namespace:
+            return f'{self.namespace}:{self.path}'
+        return str(self.path)
 
 
 class PVMapGenerator:
@@ -150,6 +182,20 @@ class PVMapGenerator:
                 self._validate_and_convert_path(path)
                 for path in self._config.data_config.input_metadata
             ]
+
+        # Parse and validate reviewed PV map files.
+        self._reviewed_pv_map_files = self._parse_reviewed_pv_map_files(
+            self._config.reviewed_pv_map_files or [])
+        self._config.reviewed_pv_map_files = [
+            pv_map.cli_value() for pv_map in self._reviewed_pv_map_files
+        ]
+
+        # Parse and validate mapping instruction file if provided.
+        self._mapping_instructions_path = self._parse_mapping_instructions_path(
+            self._config.mapping_instructions_file)
+        self._config.mapping_instructions_file = (
+            str(self._mapping_instructions_path)
+            if self._mapping_instructions_path else None)
 
         # Parse output_path into absolute path, handling relative paths and ~ expansion
         output_path_raw = self._config.output_path
@@ -184,6 +230,15 @@ class PVMapGenerator:
         self._run_dir = self._datacommons_dir / 'runs' / self._gemini_run_id
         self._run_dir.mkdir(parents=True, exist_ok=True)
 
+        if self._config.feedback_report_path:
+            feedback_report_path = self._validate_and_convert_path(
+                self._config.feedback_report_path)
+        else:
+            feedback_report_path = self._run_dir / 'feedback_report.csv'
+        feedback_report_path.parent.mkdir(parents=True, exist_ok=True)
+        self._feedback_report_path = feedback_report_path
+        self._config.feedback_report_path = str(self._feedback_report_path)
+
     def _validate_and_convert_path(self, path: str) -> Path:
         """Convert path to absolute and validate it's within working directory."""
         p = Path(path).expanduser()
@@ -197,6 +252,39 @@ class PVMapGenerator:
             raise ValueError(
                 f"Path '{path}' is outside working directory '{working_dir}'")
         return real_path
+
+    def _parse_reviewed_pv_map_file(self, entry: str) -> ReviewedPVMapFile:
+        entry = (entry or '').strip()
+        if not entry:
+            raise ValueError('reviewed PV map file entries cannot be empty')
+
+        namespace = None
+        path_string = entry
+        if ':' in entry:
+            namespace, path_string = entry.split(':', 1)
+            if not namespace or not path_string:
+                raise ValueError(
+                    f"Invalid reviewed PV map entry '{entry}'. Expected "
+                    "'<path>' or 'namespace:<path>'.")
+
+        path = self._validate_and_convert_path(path_string)
+        if not path.is_file():
+            raise ValueError(f"Reviewed PV map file not found: {path}")
+        return ReviewedPVMapFile(namespace=namespace, path=path)
+
+    def _parse_reviewed_pv_map_files(
+            self, entries: List[str]) -> List[ReviewedPVMapFile]:
+        return [self._parse_reviewed_pv_map_file(entry) for entry in entries]
+
+    def _parse_mapping_instructions_path(self, path: Optional[str]
+                                        ) -> Optional[Path]:
+        if not path:
+            return None
+        resolved_path = self._validate_and_convert_path(path)
+        if not resolved_path.is_file():
+            raise ValueError(
+                f"Mapping instructions file not found: {resolved_path}")
+        return resolved_path
 
     def _initialize_datacommons_dir(self) -> Path:
         """Initialize and return the .datacommons directory path."""
@@ -225,6 +313,15 @@ class PVMapGenerator:
         print(f"Output path: {self._config.output_path}")
         print(f"Output directory: {self._output_dir_abs}")
         print(f"Output basename: {self._output_basename}")
+        if self._reviewed_pv_map_files:
+            print("Reviewed PV map files (locked overrides):")
+            for pv_map in self._reviewed_pv_map_files:
+                print(f"  - {pv_map.cli_value()}")
+        if self._mapping_instructions_path:
+            print(
+                "Project-specific mapping instructions: "
+                f"{self._mapping_instructions_path}")
+        print(f"Feedback report path: {self._feedback_report_path}")
         print(
             f"Sandboxing: {'Enabled' if self._config.enable_sandboxing else 'Disabled'}"
         )
@@ -280,7 +377,9 @@ class PVMapGenerator:
             prompt_path=prompt_file,
             gemini_log_path=gemini_log_file,
             gemini_command=gemini_command,
-            sandbox_enabled=self._config.enable_sandboxing)
+            sandbox_enabled=self._config.enable_sandboxing,
+            feedback_report_path=(self._feedback_report_path
+                                  if self._reviewed_pv_map_files else None))
 
         # Check if we're in dry run mode
         if self._config.dry_run:
@@ -307,6 +406,7 @@ class PVMapGenerator:
 
         exit_code = self._run_subprocess(gemini_command)
         if exit_code == 0:
+            self._generate_feedback_report()
             logging.info("Gemini CLI completed successfully")
             return result
 
@@ -392,6 +492,10 @@ class PVMapGenerator:
         # Point to tools/ directory (parent of agentic_import)
         tools_dir = os.path.abspath(os.path.join(_SCRIPT_DIR, '..'))  # Absolute
 
+        mapping_instructions_context = self._prepare_mapping_instructions_context(
+        )
+        reviewed_pv_map_context = self._prepare_reviewed_pv_map_context()
+
         template_vars = {
             'working_dir_abs':
                 working_dir,
@@ -419,7 +523,20 @@ class PVMapGenerator:
             'output_basename':
                 self._output_basename,  # Base name for pvmap/metadata files
             'run_dir_abs':
-                str(self._run_dir)
+                str(self._run_dir),
+            'reviewed_pv_map_files':
+                reviewed_pv_map_context,
+            'reviewed_pv_map_files_csv':
+                ','.join(
+                    [item['cli_value'] for item in reviewed_pv_map_context]),
+            'mapping_instructions_file_abs':
+                mapping_instructions_context['source_path'],
+            'mapping_instructions_text':
+                mapping_instructions_context['content'],
+            'mapping_instructions_sha256':
+                mapping_instructions_context['sha256'],
+            'mapping_instructions_snapshot_abs':
+                mapping_instructions_context['snapshot_path'],
         }
 
         # Render template with these variables
@@ -432,6 +549,175 @@ class PVMapGenerator:
 
         logging.info("Generated prompt written to: %s", output_file)
         return output_file
+
+    def _prepare_reviewed_pv_map_context(self) -> List[dict]:
+        """Collect reviewed PV map metadata and persist an artifact in run dir."""
+        context: List[dict] = []
+        if not self._reviewed_pv_map_files:
+            return context
+
+        manifest_path = self._run_dir / 'reviewed_pv_maps.csv'
+        with open(manifest_path, 'w', newline='', encoding='utf-8') as output:
+            writer = csv.writer(output)
+            writer.writerow(['namespace', 'path', 'sha256', 'cli_value'])
+            for reviewed_pv_map in self._reviewed_pv_map_files:
+                checksum = self._sha256_file(reviewed_pv_map.path)
+                cli_value = reviewed_pv_map.cli_value()
+                namespace_value = reviewed_pv_map.namespace or ''
+                writer.writerow(
+                    [namespace_value,
+                     str(reviewed_pv_map.path), checksum, cli_value])
+                context.append({
+                    'namespace': reviewed_pv_map.namespace,
+                    'path': str(reviewed_pv_map.path),
+                    'sha256': checksum,
+                    'cli_value': cli_value,
+                })
+        return context
+
+    def _prepare_mapping_instructions_context(self) -> dict:
+        """Copy mapping instructions into run artifacts and return metadata."""
+        if not self._mapping_instructions_path:
+            return {
+                'source_path': '',
+                'content': '',
+                'sha256': '',
+                'snapshot_path': '',
+            }
+
+        content = self._mapping_instructions_path.read_text(encoding='utf-8')
+        checksum = hashlib.sha256(content.encode('utf-8')).hexdigest()
+        snapshot_path = self._run_dir / 'mapping_instructions.md'
+        sha_path = self._run_dir / 'mapping_instructions.sha256'
+        snapshot_path.write_text(content, encoding='utf-8')
+        sha_path.write_text(f'{checksum}\n', encoding='utf-8')
+
+        return {
+            'source_path': str(self._mapping_instructions_path),
+            'content': content,
+            'sha256': checksum,
+            'snapshot_path': str(snapshot_path),
+        }
+
+    def _parse_pv_map_rows(self, path: Path,
+                           namespace: Optional[str]) -> List[dict]:
+        """Parses PV map CSV rows into key/property/value entries."""
+        rows: List[dict] = []
+        if not path.is_file():
+            return rows
+
+        with open(path, newline='', encoding='utf-8') as csv_file:
+            reader = csv.reader(csv_file)
+            for row_number, row in enumerate(reader, start=1):
+                if not row:
+                    continue
+                columns = [column.strip() for column in row]
+                if not any(columns):
+                    continue
+                key = columns[0]
+                if not key or key.startswith('#') or key.lower() == 'key':
+                    continue
+                for i in range(1, len(columns), 2):
+                    if i + 1 >= len(columns):
+                        continue
+                    prop = columns[i]
+                    value = columns[i + 1]
+                    if not prop:
+                        continue
+                    rows.append({
+                        'namespace': namespace,
+                        'key': key,
+                        'property': prop,
+                        'value': value,
+                        'source_file': str(path),
+                        'row_number': row_number,
+                    })
+        return rows
+
+    def _pvmap_lookup(self, rows: List[dict]) -> dict:
+        """Builds a lookup map keyed by namespace/key/property."""
+        lookup = {}
+        for row in rows:
+            lookup[(row['namespace'], row['key'], row['property'])] = row['value']
+        return lookup
+
+    def _generate_feedback_report(self) -> None:
+        """Generates feedback report comparing generated and reviewed mappings."""
+        if not self._reviewed_pv_map_files:
+            return
+
+        generated_pvmap_path = Path(f'{self._output_path_abs}_pvmap.csv')
+        generated_rows = self._parse_pv_map_rows(generated_pvmap_path, None)
+        generated_lookup = self._pvmap_lookup(generated_rows)
+
+        reviewed_rows: List[dict] = []
+        for reviewed_pv_map in self._reviewed_pv_map_files:
+            reviewed_rows.extend(
+                self._parse_pv_map_rows(reviewed_pv_map.path,
+                                        reviewed_pv_map.namespace))
+
+        effective_lookup = dict(generated_lookup)
+        for row in reviewed_rows:
+            effective_lookup[(row['namespace'], row['key'],
+                              row['property'])] = row['value']
+
+        self._feedback_report_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self._feedback_report_path,
+                  'w',
+                  newline='',
+                  encoding='utf-8') as csv_file:
+            writer = csv.DictWriter(
+                csv_file,
+                fieldnames=[
+                    'status',
+                    'namespace',
+                    'key',
+                    'property',
+                    'candidate_value',
+                    'reviewed_value',
+                    'effective_value',
+                    'reviewed_map_file',
+                    'row_number',
+                ])
+            writer.writeheader()
+            for row in reviewed_rows:
+                namespace = row['namespace']
+                key = row['key']
+                prop = row['property']
+                reviewed_value = row['value']
+                candidate_value = generated_lookup.get((None, key, prop))
+                if candidate_value is None:
+                    status = 'missing_in_candidate'
+                    candidate_value = ''
+                elif candidate_value == reviewed_value:
+                    status = 'matched'
+                else:
+                    status = 'conflict'
+                effective_value = effective_lookup.get((namespace, key, prop),
+                                                       '')
+                writer.writerow({
+                    'status': status,
+                    'namespace': namespace or 'GLOBAL',
+                    'key': key,
+                    'property': prop,
+                    'candidate_value': candidate_value,
+                    'reviewed_value': reviewed_value,
+                    'effective_value': effective_value,
+                    'reviewed_map_file': row['source_file'],
+                    'row_number': row['row_number'],
+                })
+
+        logging.info("Feedback report written to: %s", self._feedback_report_path)
+
+    def _sha256_file(self, path: Path) -> str:
+        hasher = hashlib.sha256()
+        with open(path, 'rb') as file_obj:
+            while True:
+                chunk = file_obj.read(1024 * 1024)
+                if not chunk:
+                    break
+                hasher.update(chunk)
+        return hasher.hexdigest()
 
 
 def prepare_config() -> Config:
@@ -449,7 +735,10 @@ def prepare_config() -> Config:
                   enable_sandboxing=_FLAGS.enable_sandboxing,
                   output_path=_FLAGS.output_path,
                   gemini_cli=_FLAGS.gemini_cli,
-                  working_dir=_FLAGS.working_dir)
+                  working_dir=_FLAGS.working_dir,
+                  reviewed_pv_map_files=_FLAGS.reviewed_pv_map_files,
+                  feedback_report_path=_FLAGS.feedback_report_path,
+                  mapping_instructions_file=_FLAGS.mapping_instructions_file)
 
 
 def main(_):

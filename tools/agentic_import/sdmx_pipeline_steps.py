@@ -59,6 +59,30 @@ def _run_command(command: Sequence[str], *, verbose: bool) -> None:
     subprocess.run(command, check=True)
 
 
+def _resolve_pv_map_entry(entry: str, working_dir: Path) -> tuple[str, Path]:
+    """Resolves a PV map file entry that may be namespace-scoped."""
+    normalized = entry.strip()
+    if not normalized:
+        raise ValueError("reviewed_pv_map_files cannot contain empty entries")
+
+    namespace: str | None = None
+    path_token = normalized
+    if ":" in normalized:
+        namespace, path_token = normalized.split(":", 1)
+        if not namespace or not path_token:
+            raise ValueError(
+                f"Invalid reviewed pv map entry '{entry}'. Expected "
+                "'<path>' or 'namespace:<path>'.")
+
+    map_path = Path(path_token).expanduser()
+    if not map_path.is_absolute():
+        map_path = working_dir / map_path
+    resolved_path = map_path.resolve()
+    cli_value = (f"{namespace}:{resolved_path}"
+                 if namespace else str(resolved_path))
+    return cli_value, resolved_path
+
+
 class SdmxStep(Step):
     """Base class for SDMX steps that carries immutable config and version."""
 
@@ -258,13 +282,15 @@ class CreateSampleStep(SdmxStep):
 class CreateSchemaMapStep(SdmxStep):
     """Builds schema mappings for transformed data."""
 
-    VERSION = "1"
+    VERSION = "2"
 
     @dataclass(frozen=True)
     class _StepContext:
         sample_path: Path
         metadata_path: Path
         output_prefix: Path
+        reviewed_pv_map_paths: tuple[Path, ...]
+        mapping_instructions_path: Path | None
         full_command: list[str]
 
     def __init__(self, *, name: str, config: PipelineConfig) -> None:
@@ -286,6 +312,26 @@ class CreateSchemaMapStep(SdmxStep):
             "--sdmx_dataset",
             f"--output_path={output_prefix}",
         ]
+        reviewed_cli_values: list[str] = []
+        reviewed_paths: list[Path] = []
+        for entry in self._config.run.reviewed_pv_map_files:
+            cli_value, resolved_path = _resolve_pv_map_entry(
+                entry, working_dir)
+            reviewed_cli_values.append(cli_value)
+            reviewed_paths.append(resolved_path)
+        if reviewed_cli_values:
+            args.append(
+                f"--reviewed_pv_map_files={','.join(reviewed_cli_values)}")
+
+        mapping_instructions_path = None
+        if self._config.run.mapping_instructions_file:
+            path = Path(self._config.run.mapping_instructions_file).expanduser()
+            if not path.is_absolute():
+                path = working_dir / path
+            mapping_instructions_path = path.resolve()
+            args.append(
+                f"--mapping_instructions_file={mapping_instructions_path}")
+
         if self._config.run.skip_confirmation:
             args.append("--skip_confirmation")
         if self._config.run.gemini_cli:
@@ -297,6 +343,8 @@ class CreateSchemaMapStep(SdmxStep):
             sample_path=sample_path,
             metadata_path=metadata_path,
             output_prefix=output_prefix,
+            reviewed_pv_map_paths=tuple(reviewed_paths),
+            mapping_instructions_path=mapping_instructions_path,
             full_command=full_command)
         return self._context
 
@@ -307,6 +355,15 @@ class CreateSchemaMapStep(SdmxStep):
         if not context.metadata_path.is_file():
             raise RuntimeError(
                 f"Metadata file missing: {context.metadata_path}")
+        for reviewed_pv_map_path in context.reviewed_pv_map_paths:
+            if not reviewed_pv_map_path.is_file():
+                raise RuntimeError(
+                    "Reviewed PV map file missing: "
+                    f"{reviewed_pv_map_path}")
+        if (context.mapping_instructions_path and
+                not context.mapping_instructions_path.is_file()):
+            raise RuntimeError("Mapping instructions file missing: "
+                               f"{context.mapping_instructions_path}")
         context.output_prefix.parent.mkdir(parents=True, exist_ok=True)
         logging.info(
             f"Starting PV map generation: {' '.join(context.full_command)} -> {context.output_prefix}"
@@ -323,7 +380,7 @@ class CreateSchemaMapStep(SdmxStep):
 class ProcessFullDataStep(SdmxStep):
     """Processes full SDMX data into DC artifacts."""
 
-    VERSION = "1"
+    VERSION = "2"
 
     RUN_OUTPUT_COLUMNS: ClassVar[str] = (
         "observationDate,observationAbout,variableMeasured,value,"
@@ -333,6 +390,7 @@ class ProcessFullDataStep(SdmxStep):
     class _StepContext:
         input_data_path: Path
         pv_map_path: Path
+        reviewed_pv_map_paths: tuple[Path, ...]
         metadata_path: Path
         full_command: list[str]
         output_prefix: Path
@@ -353,9 +411,19 @@ class ProcessFullDataStep(SdmxStep):
                          f"{dataset_prefix}_metadata.csv")
         output_prefix = working_dir / FINAL_OUTPUT_DIR / dataset_prefix
 
+        reviewed_cli_values: list[str] = []
+        reviewed_paths: list[Path] = []
+        for entry in self._config.run.reviewed_pv_map_files:
+            cli_value, resolved_path = _resolve_pv_map_entry(
+                entry, working_dir)
+            reviewed_cli_values.append(cli_value)
+            reviewed_paths.append(resolved_path)
+
+        pv_map_files = [str(pv_map_path)] + reviewed_cli_values
+
         args = [
             f"--input_data={input_data_path}",
-            f"--pv_map={pv_map_path}",
+            f"--pv_map={','.join(pv_map_files)}",
             f"--config_file={metadata_path}",
             "--generate_statvar_name=True",
             "--skip_constant_csv_columns=False",
@@ -366,6 +434,7 @@ class ProcessFullDataStep(SdmxStep):
         self._context = ProcessFullDataStep._StepContext(
             input_data_path=input_data_path,
             pv_map_path=pv_map_path,
+            reviewed_pv_map_paths=tuple(reviewed_paths),
             metadata_path=metadata_path,
             full_command=full_command,
             output_prefix=output_prefix,
@@ -379,6 +448,11 @@ class ProcessFullDataStep(SdmxStep):
             if not required.is_file():
                 raise RuntimeError(
                     f"{self.name} requires existing input: {required}")
+        for reviewed_pv_map_path in context.reviewed_pv_map_paths:
+            if not reviewed_pv_map_path.is_file():
+                raise RuntimeError(
+                    f"{self.name} requires existing input: "
+                    f"{reviewed_pv_map_path}")
         # Ensure output directory exists
         context.output_prefix.parent.mkdir(parents=True, exist_ok=True)
         logging.info(
