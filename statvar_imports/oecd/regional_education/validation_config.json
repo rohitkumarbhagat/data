@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "rules": [
+    {
+      "rule_id": "check_deleted_records_percent",
+      "validator": "DELETED_RECORDS_PERCENT",
+      "params": {
+        "threshold": 5
+      }
+    },
+    {
+      "rule_id": "check_stats_non_empty",
+      "validator": "SQL_VALIDATOR",
+      "params": {
+        "query": "SELECT COUNT(*) AS statvar_count FROM stats",
+        "condition": "statvar_count > 0"
+      }
+    },
+    {
+      "rule_id": "check_fractional_values_range",
+      "validator": "SQL_VALIDATOR",
+      "params": {
+        "query": "SELECT StatVar, MinValue, MaxValue FROM stats",
+        "condition": "MinValue >= 0 AND MaxValue <= 100"
+      }
+    },
+    {
+      "rule_id": "check_units_are_percent",
+      "validator": "SQL_VALIDATOR",
+      "params": {
+        "query": "SELECT StatVar, Units FROM stats",
+        "condition": "LOWER(COALESCE(Units, '')) LIKE '%percent%'"
+      }
+    }
+  ]
+}

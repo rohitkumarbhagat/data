@@ -67,6 +67,7 @@
             "source_files": [
                 "gcs_output/input_files/*"
             ],
+            "validation_config_file": "validation_config.json",
             "cron_schedule": "30 05 * * 1"
         }
     ]
