@@ -35,6 +35,7 @@
           "cleaned_csv": "output_files/registered_unemployed_by_education_level_region_gender_month_output.csv"
         }
       ],
+      "validation_config_file": "validation_config.json",
       "cron_schedule": "0 02 * * 6"
     }
   ]
