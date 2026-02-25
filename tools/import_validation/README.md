@@ -27,6 +27,38 @@ python3 -m tools.import_validation.runner \
 
 The script will exit with a status code of `1` if any validation fails, and `0` on success.
 
+## Linting a Single Validation Config
+
+Use the config linter to validate one `validation_config.json` file and its
+manifest wiring before running an import.
+
+### Usage
+
+```bash
+python3 -m tools.import_validation.config_linter \
+    --config=<path_to_validation_config.json>
+```
+
+Optional flags:
+
+- `--manifest`: Explicit path to `manifest.json`. If omitted, the linter uses
+  the sibling manifest next to the config file.
+- `--skip_manifest_check`: Lint only the config file and skip manifest wiring.
+
+### Linter Exit Codes
+
+- `0`: Valid config (and manifest wiring valid unless skipped).
+- `1`: Invalid config/wiring. The linter prints `ERROR:` and `FIX:` lines.
+- `2`: Runtime/usage failure (bad path, unreadable file, invalid JSON syntax,
+  or invalid JSON root type).
+
+### Example
+
+```bash
+python3 -m tools.import_validation.config_linter \
+    --config=statvar_imports/mongolia_imports/mongolia_health/validation_config.json
+```
+
 ## Configuration
 
 The behavior of the validation framework is controlled by a JSON configuration file. This file uses a structured schema to define a series of validation rules.
