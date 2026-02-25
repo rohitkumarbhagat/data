@@ -17,8 +17,8 @@
           "cleaned_csv": "output_files/tennessee_output.csv"
         }
       ],
+      "validation_config_file": "validation_config.json",
       "cron_schedule": "0 05 * * 5"
     }
   ]
 }
-

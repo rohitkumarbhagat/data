@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "rules": [
+    {
+      "rule_id": "check_deleted_records_percent",
+      "validator": "DELETED_RECORDS_PERCENT",
+      "params": {
+        "threshold": 10
+      }
+    },
+    {
+      "rule_id": "check_stats_non_empty",
+      "validator": "SQL_VALIDATOR",
+      "params": {
+        "query": "SELECT COUNT(*) AS statvar_count FROM stats",
+        "condition": "statvar_count > 0"
+      }
+    },
+    {
+      "rule_id": "check_all_statvars_have_observations",
+      "validator": "SQL_VALIDATOR",
+      "params": {
+        "query": "SELECT StatVar, NumObservations FROM stats",
+        "condition": "NumObservations > 0"
+      }
+    },
+    {
+      "rule_id": "check_date_range_consistency",
+      "validator": "SQL_VALIDATOR",
+      "params": {
+        "query": "SELECT StatVar, MinDate, MaxDate FROM stats",
+        "condition": "MinDate <= MaxDate"
+      }
+    },
+    {
+      "rule_id": "check_non_negative_values",
+      "validator": "SQL_VALIDATOR",
+      "params": {
+        "query": "SELECT StatVar, MinValue FROM stats",
+        "condition": "MinValue >= 0"
+      }
+    },
+    {
+      "rule_id": "check_rate_units_per_100k",
+      "validator": "SQL_VALIDATOR",
+      "params": {
+        "query": "SELECT StatVar, Units FROM stats WHERE StatVar LIKE '%AsAFractionOf%'",
+        "condition": "Units = 'Per100000Persons'"
+      }
+    }
+  ]
+}
