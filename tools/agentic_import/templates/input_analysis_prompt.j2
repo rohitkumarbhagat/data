@@ -1,0 +1,131 @@
+You are an expert Data Commons dataset analyst. Your task is to analyze the
+provided dataset inputs and write a structured JSON analysis file.
+
+# OUTPUT
+- Write valid JSON only to: {{ analysis_output_path_abs }}
+- Do not print extra prose outside the JSON file.
+- Use the key name `dc_kb_prompts` for follow-up knowledge-base prompts.
+- Do not use product-specific knowledge-base names anywhere in the output.
+
+# INPUTS
+```json
+{
+  "input_data": ["{{ input_data_abs }}"],
+  "input_metadata": {{ input_metadata_abs | tojson }},
+  "dataset_type": "{{ dataset_type }}",
+  "output_prefix": "{{ output_prefix_abs }}",
+  "working_dir": "{{ working_dir_abs }}",
+  "previous_analysis": {{ previous_analysis_abs | tojson }},
+  "category_taxonomy_json": {{ category_taxonomy_abs | tojson }}
+}
+```
+
+# ANALYSIS RULES
+1. Read the full input files listed above.
+2. Produce best-effort classification even if taxonomy guidance is missing.
+3. If a category taxonomy JSON is provided:
+   - treat it as prior guidance only
+   - reuse an existing category or subcategory when the match is strong
+   - use alias matches when meaning is the same but naming differs
+   - propose a new category or subcategory when the input does not fit cleanly
+4. If a previous analysis JSON is provided:
+   - preserve and carry forward existing `human_feedback`
+   - treat that feedback as hard context
+   - regenerate the model analysis around it
+5. Do not force-fit weak category matches.
+6. Keep all output machine readable and consistent for Web UI review.
+
+# REQUIRED JSON STRUCTURE
+Return a JSON object with these top-level keys:
+
+- `dataset_summary`
+- `dataset_classification`
+- `column_analysis`
+- `observation_model`
+- `time_analysis`
+- `place_analysis`
+- `indicator_analysis`
+- `sdmx_analysis`
+- `dc_kb_prompts`
+- `feedback_context`
+
+Each top-level section must include:
+
+- `value`
+- `confidence`
+- `rationale`
+- `human_feedback`
+
+`dataset_classification.value` must include:
+
+- `category`
+- `subcategory`
+- `taxonomy_match_status`
+
+Allowed `taxonomy_match_status` values:
+
+- `matched_existing`
+- `matched_alias`
+- `proposed_new`
+- `uncertain`
+
+`dc_kb_prompts.value` must be a list of prompt objects. Each prompt object must
+include:
+
+- `id`
+- `title`
+- `prompt_text`
+- `why_this_matters`
+- `expected_output_json_shape`
+
+Create prompts for at least:
+
+- category and subcategory confirmation
+- similar existing import or mapping pattern discovery
+- statvar pattern guidance
+- entity and place resolution guidance
+
+# CLASSIFICATION SIGNALS
+Use signals such as:
+
+- dataset file names
+- dataset titles or metadata labels
+- column names
+- indicator names or codes
+- unit and time cues
+- place cues
+{% if dataset_type == 'sdmx' %}
+- extracted SDMX dataflow names and descriptions
+- extracted SDMX dimensions, measures, attributes, concepts, codelists, and constraints
+{% endif %}
+
+{% if dataset_type == 'sdmx' %}
+# SDMX DATASET DETECTED
+
+The metadata input is extracted SDMX JSON, not raw XML. Reason over the JSON
+structure directly.
+
+For `sdmx_analysis.value`, identify:
+
+- likely series-defining dimensions
+- likely observation value fields
+- likely time dimension
+- likely place dimension
+- unresolved codes or concepts that need external DC knowledge-base help
+
+Also use SDMX evidence to improve `dataset_classification`, `column_analysis`,
+`time_analysis`, and `place_analysis`.
+{% else %}
+# NON-SDMX DATASET
+
+Set `sdmx_analysis.value` to a brief explanation that SDMX-specific analysis is
+not applicable for this run.
+{% endif %}
+
+# OUTPUT QUALITY RULES
+- Keep the JSON stable and easy to diff across reruns.
+- Prefer concise rationales tied to concrete evidence from the inputs.
+- Keep `human_feedback` fields present even when empty.
+- Use `dc_kb_prompts` as generic knowledge-base follow-up prompts.
+
+Write the JSON file to `{{ analysis_output_path_abs }}` now.
