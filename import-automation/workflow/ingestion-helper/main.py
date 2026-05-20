@@ -8,6 +8,10 @@ from absl import flags
 import import_utils
 from flask import jsonify
 from aggregation_utils import AggregationUtils
+from aggregation_spec_utils import AggregationRunner
+from aggregation_spec_utils import AggregationSpec
+from aggregation_spec_utils import LocalJsonlSink
+from aggregation_spec_utils import SpannerSqlSource
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -53,6 +57,19 @@ def _validate_params(request_json, required_params):
     return None
 
 
+def _get_aggregation_spec(spec_name, spanner):
+    if spec_name == 'sample_nodes_to_local_jsonl':
+        return AggregationSpec(
+            name=spec_name,
+            source=SpannerSqlSource(
+                spanner.graph_database,
+                'SELECT subject_id, name FROM Node LIMIT 10',
+            ),
+            sink=LocalJsonlSink('/tmp/aggregation_spec_nodes.jsonl'),
+        )
+    return None
+
+
 @functions_framework.http
 def ingestion_helper(request):
     """
@@ -74,7 +91,6 @@ def ingestion_helper(request):
                             location=FLAGS.location,
                             model_id=os.environ.get('EMBEDDING_MODEL_ID',
                                                     'text-embedding-005'))
-    storage = StorageClient(FLAGS.gcs_bucket_id)
 
     if action_type == 'get_import_info':
         # Gets the details of imports that are ready for ingestion.
@@ -164,6 +180,7 @@ def ingestion_helper(request):
         if next_refresh:
             params['next_refresh'] = next_refresh
         if status == 'STAGING':
+            storage = StorageClient(FLAGS.gcs_bucket_id)
             version = os.path.basename(request_json.get('latestVersion', ''))
             if not version:
                 return (f'Empty version for import {import_name}', 500)
@@ -194,6 +211,7 @@ def ingestion_helper(request):
         logging.info(
             f"Updating import {import_name} to version {version} comment:{comment}"
         )
+        storage = StorageClient(FLAGS.gcs_bucket_id)
         override = request_json.get('override', False)
         if version == 'STAGING':
             version = storage.get_staging_version(import_name)
@@ -282,6 +300,18 @@ def ingestion_helper(request):
                 return ('Aggregation failed', 500)
         except Exception as e:
             return (f"Aggregation failed: {str(e)}", 500)
+
+    elif action_type == 'run_aggregation_spec':
+        spec_name = request_json.get('specName', 'sample_nodes_to_local_jsonl')
+        spec = _get_aggregation_spec(spec_name, spanner)
+        if not spec:
+            return (f'Unknown aggregation spec: {spec_name}', 400)
+
+        try:
+            row_count = AggregationRunner().run(spec)
+            return (f'OK [Spec: {spec_name} Rows: {row_count}]', 200)
+        except Exception as e:
+            return (f"Aggregation spec failed: {str(e)}", 500)
 
     else:
         return (f'Unknown actionType: {action_type}', 400)
