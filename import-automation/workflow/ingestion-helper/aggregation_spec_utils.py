@@ -97,6 +97,7 @@ class SpannerTableSink:
             return
 
         values = [[row[column] for column in self.columns] for row in rows]
+        # Use a mutation pool here if this sink needs higher write throughput.
         with self.database.batch() as batch:
             batch.insert_or_update(table=self.table,
                                    columns=self.columns,
