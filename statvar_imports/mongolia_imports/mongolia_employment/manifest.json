@@ -2,6 +2,7 @@
   "import_specifications": [
     {
       "import_name": "Mongolia_Employment",
+      "validation_config_file": "validation_config.json",
       "curator_emails": ["support@datacommons.org"],
       "provenance_url": "https://www.1212.mn/en/statcate",
       "provenance_description": "Data related to the Mongolia's labour and business at country level",
@@ -39,4 +40,3 @@
     }
   ]
 }
-
