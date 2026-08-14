@@ -3,6 +3,7 @@
     "import_specifications": [
         {
             "import_name": "CDC_StandardizedPrecipitationIndex",
+            "validation_config_file": "validation_config.json",
             "curator_emails": [
                 "support@datacommons.org"
             ],
