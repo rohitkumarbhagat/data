@@ -2,6 +2,7 @@
   "import_specifications": [
     {
       "import_name": "OECDQuarterlyGDP",
+      "validation_config_file": "validation_config.json",
       "import_type": "statvar_processor",
       "gcs_bucket": "datcom-prod-imports",
       "curator_emails": [
