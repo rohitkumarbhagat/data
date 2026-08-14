@@ -1,0 +1,5 @@
+"MinDate","StatVar","observationPeriods","MeasurementMethods","NumPlaces","ScalingFactors","Units"
+"2016-01-01","Median_Concentration_AirPollutant_Ozone","[P8H]","[]","3107","[]","[PartsPerBillion]"
+"2016-01-01","Mean_Concentration_AirPollutant_Ozone","[P8H]","[]","3107","[]","[PartsPerBillion]"
+"2016-01-01","PopulationWeighted_Concentration_AirPollutant_Ozone","[P8H]","[]","3107","[]","[PartsPerBillion]"
+"2016-01-01","Max_Concentration_AirPollutant_Ozone","[P8H]","[]","3107","[]","[PartsPerBillion]"

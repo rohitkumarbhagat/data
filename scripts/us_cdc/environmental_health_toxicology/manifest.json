@@ -107,6 +107,7 @@
         },
         {
             "import_name": "CDC_OzoneCounty",
+            "validation_config_file": "validation_config.json",
             "curator_emails": [
                 "support@datacommons.org"
             ],
