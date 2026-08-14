@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "rules": [
+    {
+      "rule_id": "check_deleted_records_percent",
+      "description": "Checks that the percentage of deleted points is within the threshold.",
+      "validator": "DELETED_RECORDS_PERCENT",
+      "params": {
+        "threshold": 0.1
+      }
+    },
+    {
+      "rule_id": "check_goldens_summary_report_input0",
+      "validator": "GOLDENS_CHECK",
+      "params": {
+        "golden_files": "../../../../golden_data/golden_summary_report_input0.csv",
+        "input_files": "../../input0/genmcf/summary_report.csv"
+      }
+    },
+    {
+      "rule_id": "check_goldens_summary_report_input1",
+      "validator": "GOLDENS_CHECK",
+      "params": {
+        "golden_files": "../../../../golden_data/golden_summary_report_input1.csv",
+        "input_files": "../../input1/genmcf/summary_report.csv"
+      }
+    },
+    {
+      "rule_id": "check_goldens_summary_report_input2",
+      "validator": "GOLDENS_CHECK",
+      "params": {
+        "golden_files": "../../../../golden_data/golden_summary_report_input2.csv",
+        "input_files": "../../input2/genmcf/summary_report.csv"
+      }
+    },
+    {
+      "rule_id": "check_goldens_summary_report_input3",
+      "validator": "GOLDENS_CHECK",
+      "params": {
+        "golden_files": "../../../../golden_data/golden_summary_report_input3.csv",
+        "input_files": "../../input3/genmcf/summary_report.csv"
+      }
+    }
+  ]
+}
