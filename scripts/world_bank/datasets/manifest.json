@@ -2,6 +2,7 @@
     "import_specifications": [
         {
             "import_name": "WorldBankDatasets",
+            "validation_config_file": "validation_config.json",
             "curator_emails": [
                 "support@datacommons.org"
             ],
