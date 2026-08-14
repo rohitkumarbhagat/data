@@ -2,6 +2,7 @@
     "import_specifications": [
         {
             "import_name": "CDC_NORS_NonInfectious",
+            "validation_config_file": "validation_config.json",
             "curator_emails": [
                 "support@datacommons.org"
             ],
