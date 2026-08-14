@@ -2,6 +2,7 @@
   "import_specifications": [
     {
       "import_name": "US_Urban_Schools_Teachers_And_Staff",
+      "validation_config_file": "validation_config.json",
       "curator_emails": ["support@datacommons.org"],
       "provenance_url": "https://civilrightsdata.ed.gov/data",
       "provenance_description": "This import contains US data on the number of FTE teachers and staff at each school.",
@@ -28,4 +29,3 @@
     }
   ]
 }
-
