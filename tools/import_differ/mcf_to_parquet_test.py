@@ -36,9 +36,12 @@ observationDate: "2024"
 measurementMethod: dcid:Census
 value: 2
 
+
 Node: Count_Person
 typeOf: dcid:StatisticalVariable
 name: "Count Person"
+populationType: dcid:Person
+statType: dcid:measuredValue
 '''
 
 
@@ -53,28 +56,38 @@ class McfToParquetTest(unittest.TestCase):
     def tearDown(self):
         self._temp_dir.cleanup()
 
-    def test_converts_small_file_without_mcf_shards(self):
+    def test_converts_small_file_without_mcf_shards_and_retains_csv(self):
         output_path = self._root / 'output'
 
-        summary = mcf_to_parquet.convert_mcf_to_parquet(str(self._input_path),
-                                                        str(output_path),
-                                                        len(_MCF) + 1)
+        summary = mcf_to_parquet.convert_mcf_to_parquet(
+            str(self._input_path), str(output_path), shard_size_bytes=len(_MCF))
 
         self.assertFalse(summary['was_sharded'])
-        self.assertEqual(3, summary['input_nodes'])
+        self.assertEqual(3, summary['input_node_blocks'])
+        self.assertEqual(3, summary['mcf_nodes'])
         self.assertEqual(3, summary['parquet_nodes'])
-        self.assertTrue(summary['node_count_matches'])
+        self.assertTrue(summary['parquet_matches_mcf_nodes'])
         self.assertFalse((output_path / 'mcf_shards').exists())
+        self.assertTrue((output_path / 'csv' / 'part-00000.csv').exists())
+
         table = pq.read_table(output_path / 'parquet' / 'part-00000.parquet')
         self.assertEqual(3, table.num_rows)
-        self.assertIn('measurementMethod', table.column_names)
+        self.assertEqual(list(mcf_to_parquet._PARQUET_COLUMNS),
+                         table.column_names)
+        rows = table.to_pylist()
+        schema_row = next(row for row in rows if row['Node'] == 'Count_Person')
+        self.assertEqual('"Count Person"', schema_row['name'])
+        self.assertEqual(
+            {
+                'populationType': 'dcid:Person',
+                'statType': 'dcid:measuredValue',
+            }, json.loads(schema_row['extra_properties_json']))
 
-    def test_shards_at_node_boundaries_and_uses_one_parquet_schema(self):
+    def test_shards_at_blank_boundaries_and_preserves_input_bytes(self):
         output_path = self._root / 'output'
 
         summary = mcf_to_parquet.convert_mcf_to_parquet(str(self._input_path),
                                                         str(output_path),
-                                                        shard_threshold_bytes=1,
                                                         shard_size_bytes=1)
 
         self.assertTrue(summary['was_sharded'])
@@ -89,16 +102,21 @@ class McfToParquetTest(unittest.TestCase):
         self.assertEqual(3, len(parquet_paths))
         schemas = [pq.read_schema(path) for path in parquet_paths]
         self.assertTrue(all(schema == schemas[0] for schema in schemas))
+        self.assertEqual(3, summary['mcf_nodes'])
         self.assertEqual(3, summary['parquet_nodes'])
-        self.assertEqual(
-            2,
-            sum(part['observation_nodes'] for part in summary['parquet_parts']))
-        self.assertEqual(
-            1, sum(part['schema_nodes'] for part in summary['parquet_parts']))
 
-        with (output_path / 'summary.json').open('r', encoding='utf-8') as file:
-            saved_summary = json.load(file)
-        self.assertEqual(summary, saved_summary)
+    def test_deletes_csv_only_when_requested(self):
+        output_path = self._root / 'output'
+
+        summary = mcf_to_parquet.convert_mcf_to_parquet(
+            str(self._input_path),
+            str(output_path),
+            shard_size_bytes=len(_MCF),
+            delete_csv=True)
+
+        self.assertTrue(summary['delete_csv'])
+        self.assertFalse(summary['parts'][0]['csv_retained'])
+        self.assertEqual([], list((output_path / 'csv').iterdir()))
 
 
 if __name__ == '__main__':
