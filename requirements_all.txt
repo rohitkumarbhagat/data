@@ -21,6 +21,7 @@ jinja2
 matplotlib
 netCDF4
 protobuf
+pyarrow
 rasterio
 rdp
 requests-mock

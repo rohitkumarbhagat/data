@@ -33,10 +33,15 @@ class ShardingWriter:
             self._fptr = open(dest_file, 'w')
 
         self._fptr.write(data)
-        self._nbytes += len(data)
+        self._nbytes += len(data.encode('utf-8'))
         if self._nbytes > self._shard_size:
             # Rollover shard.
-            self._fptr.close()
-            self._fptr = None
+            self.close()
             self._nbytes = 0
             self._shard_id += 1
+
+    def close(self):
+        """Close the current shard, if one is open."""
+        if self._fptr:
+            self._fptr.close()
+            self._fptr = None
