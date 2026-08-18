@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Downloads one GCS MCF file, converts it locally, and uploads every Parquet
-# part to an empty GCS prefix. The temporary directory is retained by default.
+# Converts one GCS or local MCF file and uploads every Parquet part to an empty
+# GCS prefix. The temporary directory is retained by default.
 #
 # Usage:
 #   tools/import_differ/bq/gcs_mcf_to_parquet.sh \
@@ -30,16 +30,18 @@ set -euo pipefail
 
 usage() {
   printf '%s\n' \
-    'Download one MCF file from GCS, convert it locally, and upload Parquet parts.' \
+    'Convert one GCS or local MCF file and upload Parquet parts.' \
     '' \
     'Usage:' \
-    '  gcs_mcf_to_parquet.sh --input-gcs-file GCS_OBJECT --output-gcs-dir GCS_DIR' \
+    '  gcs_mcf_to_parquet.sh INPUT_OPTION --output-gcs-dir GCS_DIR' \
     '                             [--shard-size-bytes BYTES] [--workers N]' \
     '                             [--cleanup-temp]' \
     '' \
     'Required options:' \
-    '  --input-gcs-file GCS_OBJECT  One source MCF object, such as' \
+    '  Specify exactly one input option:' \
+    '  --input-gcs-file GCS_OBJECT  Source MCF object, such as' \
     '                               gs://bucket/path/nodes-deleted.mcf.' \
+    '  --input-local-file FILE      Source MCF file on the local filesystem.' \
     '  --output-gcs-dir GCS_DIR     Empty destination prefix for part-*.parquet.' \
     '' \
     'Optional options:' \
@@ -50,7 +52,7 @@ usage() {
     '  -h, --help                   Show this help.' \
     '' \
     'Preflight checks:' \
-    '  The input object and output bucket must exist and be accessible.' \
+    '  The input file and output bucket must exist and be accessible.' \
     '  The output prefix must not contain any files.' \
     '  A missing prefix does not need creation; GCS creates it on first upload.' \
     '' \
@@ -69,6 +71,7 @@ require_value() {
 }
 
 input_gcs_file=""
+input_local_file=""
 output_gcs_dir=""
 shard_size_bytes=""
 workers=""
@@ -79,6 +82,11 @@ while [[ $# -gt 0 ]]; do
     --input-gcs-file)
       require_value "$@"
       input_gcs_file="$2"
+      shift 2
+      ;;
+    --input-local-file)
+      require_value "$@"
+      input_local_file="$2"
       shift 2
       ;;
     --output-gcs-dir)
@@ -112,8 +120,22 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$input_gcs_file" != gs://* || "$input_gcs_file" == */ ]]; then
+if [[ -n "$input_gcs_file" && -n "$input_local_file" ]]; then
+  echo "Specify exactly one of --input-gcs-file or --input-local-file." >&2
+  exit 2
+fi
+if [[ -z "$input_gcs_file" && -z "$input_local_file" ]]; then
+  echo "Specify exactly one of --input-gcs-file or --input-local-file." >&2
+  exit 2
+fi
+if [[ -n "$input_gcs_file" &&
+      ( "$input_gcs_file" != gs://* || "$input_gcs_file" == */ ) ]]; then
   echo "--input-gcs-file must name one GCS object." >&2
+  exit 2
+fi
+if [[ -n "$input_local_file" &&
+      ( ! -f "$input_local_file" || ! -r "$input_local_file" ) ]]; then
+  echo "Local input file does not exist or is not readable: $input_local_file" >&2
   exit 2
 fi
 if [[ "$output_gcs_dir" != gs://* ]]; then
@@ -143,7 +165,8 @@ if [[ ! -x "$python_bin" ]]; then
 fi
 
 output_gcs_dir="${output_gcs_dir%/}"
-if ! gcloud storage objects describe "$input_gcs_file" >/dev/null; then
+if [[ -n "$input_gcs_file" ]] &&
+   ! gcloud storage objects describe "$input_gcs_file" >/dev/null; then
   echo "GCS input object does not exist or is not accessible: $input_gcs_file" >&2
   exit 1
 fi
@@ -178,19 +201,24 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Starting MCF to Parquet pipeline."
-echo "Input GCS file: $input_gcs_file"
 echo "Output GCS directory: $output_gcs_dir"
 echo "Temporary directory: $temp_dir"
-mkdir -p "$temp_dir/download"
-input_name="${input_gcs_file##*/}"
-local_input="$temp_dir/download/$input_name"
 local_output="$temp_dir/output"
 
-echo "Downloading $input_gcs_file to $local_input..."
-gcloud storage cp "$input_gcs_file" "$local_input"
+if [[ -n "$input_gcs_file" ]]; then
+  echo "Input GCS file: $input_gcs_file"
+  mkdir -p "$temp_dir/download"
+  input_name="${input_gcs_file##*/}"
+  local_input="$temp_dir/download/$input_name"
+  echo "Downloading $input_gcs_file to $local_input..."
+  gcloud storage cp "$input_gcs_file" "$local_input"
+else
+  local_input="$input_local_file"
+  echo "Input local file: $local_input"
+fi
 
 converter_args=(
-  --input "$local_input"
+  --input="$local_input"
   --output-dir "$local_output"
 )
 if [[ -n "$shard_size_bytes" ]]; then

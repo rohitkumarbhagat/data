@@ -102,10 +102,11 @@ class CloudParquetScriptsTest(unittest.TestCase):
         path.write_text(contents, encoding='utf-8')
         path.chmod(0o755)
 
-    def _run(self, script: Path, *args: str, **env_values):
+    def _run(self, script: Path, *args: str, cwd=None, **env_values):
         env = self._env.copy()
         env.update(env_values)
         return subprocess.run([str(script), *args],
+                              cwd=cwd,
                               env=env,
                               capture_output=True,
                               text=True,
@@ -129,8 +130,61 @@ class CloudParquetScriptsTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn('Required options:', result.stdout)
         self.assertIn('Preflight checks:', result.stdout)
+        self.assertIn('--input-local-file', result.stdout)
         self.assertIn('Default: 524288000', result.stdout)
         self.assertIn('Default: 8', result.stdout)
+
+    def test_gcs_script_requires_exactly_one_input(self):
+        result = self._run(_GCS_SCRIPT, '--output-gcs-dir',
+                           'gs://output/parquet')
+
+        self.assertEqual(2, result.returncode)
+        self.assertIn('Specify exactly one', result.stderr)
+
+        local_input = self._root / 'input.mcf'
+        local_input.write_text('Node: test\n', encoding='utf-8')
+        result = self._run(_GCS_SCRIPT, *self._gcs_args(), '--input-local-file',
+                           str(local_input))
+
+        self.assertEqual(2, result.returncode)
+        self.assertIn('Specify exactly one', result.stderr)
+
+    def test_gcs_script_rejects_missing_local_input(self):
+        missing_input = self._root / 'missing.mcf'
+
+        result = self._run(_GCS_SCRIPT, '--input-local-file',
+                           str(missing_input), '--output-gcs-dir',
+                           'gs://output/parquet')
+
+        self.assertEqual(2, result.returncode)
+        self.assertIn('does not exist or is not readable', result.stderr)
+
+    def test_gcs_script_converts_local_input_without_downloading(self):
+        local_input = self._root / '-input.mcf'
+        local_input.write_text(
+            'Node: observation1\n'
+            'typeOf: dcid:StatVarObservation\n'
+            'variableMeasured: dcid:Count_Person\n'
+            'observationAbout: dcid:country/USA\n'
+            'value: 100\n',
+            encoding='utf-8')
+
+        result = self._run(_GCS_SCRIPT,
+                           '--input-local-file',
+                           local_input.name,
+                           '--output-gcs-dir',
+                           'gs://output/parquet',
+                           '--workers',
+                           '1',
+                           '--cleanup-temp',
+                           cwd=self._root)
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue(local_input.exists())
+        self.assertIn(f'Input local file: {local_input.name}', result.stdout)
+        command_log = self._command_log.read_text(encoding='utf-8')
+        self.assertNotIn('storage objects describe', command_log)
+        self.assertNotIn('storage cp gs://', command_log)
 
     def test_gcs_script_rejects_invalid_workers(self):
         result = self._run(_GCS_SCRIPT, '--input-gcs-file',
