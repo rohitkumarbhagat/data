@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 from pathlib import Path
 import shutil
@@ -118,6 +119,8 @@ class CloudParquetScriptsTest(unittest.TestCase):
             'gs://output/parquet',
             '--shard-size-bytes',
             '1',
+            '--workers',
+            '2',
         )
 
     def test_gcs_script_help_is_self_contained(self):
@@ -127,6 +130,15 @@ class CloudParquetScriptsTest(unittest.TestCase):
         self.assertIn('Required options:', result.stdout)
         self.assertIn('Preflight checks:', result.stdout)
         self.assertIn('Default: 524288000', result.stdout)
+        self.assertIn('Default: 8', result.stdout)
+
+    def test_gcs_script_rejects_invalid_workers(self):
+        result = self._run(_GCS_SCRIPT, '--input-gcs-file',
+                           'gs://input/nodes-deleted.mcf', '--output-gcs-dir',
+                           'gs://output/parquet', '--workers', '0')
+
+        self.assertEqual(2, result.returncode)
+        self.assertIn('--workers must be a positive integer', result.stderr)
 
     def test_gcs_script_fails_when_output_contains_files(self):
         result = self._run(_GCS_SCRIPT,
@@ -159,6 +171,9 @@ class CloudParquetScriptsTest(unittest.TestCase):
         self.assertTrue(temp_dir.is_dir())
         self.assertEqual(
             2, len(list((temp_dir / 'output/parquet').glob('*.parquet'))))
+        summary = json.loads(
+            (temp_dir / 'output/summary.json').read_text(encoding='utf-8'))
+        self.assertEqual(2, summary['workers'])
         shutil.rmtree(temp_dir)
 
     def test_gcs_script_cleans_temp_directory_when_requested(self):

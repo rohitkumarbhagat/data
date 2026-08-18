@@ -60,7 +60,10 @@ class McfToParquetTest(unittest.TestCase):
         output_path = self._root / 'output'
 
         summary = mcf_to_parquet.convert_mcf_to_parquet(
-            str(self._input_path), str(output_path), shard_size_bytes=len(_MCF))
+            str(self._input_path),
+            str(output_path),
+            shard_size_bytes=len(_MCF),
+            workers=1)
 
         self.assertFalse(summary['was_sharded'])
         self.assertEqual(3, summary['input_node_blocks'])
@@ -88,7 +91,8 @@ class McfToParquetTest(unittest.TestCase):
 
         summary = mcf_to_parquet.convert_mcf_to_parquet(str(self._input_path),
                                                         str(output_path),
-                                                        shard_size_bytes=1)
+                                                        shard_size_bytes=1,
+                                                        workers=2)
 
         self.assertTrue(summary['was_sharded'])
         self.assertEqual(3, len(summary['shards']))
@@ -104,6 +108,23 @@ class McfToParquetTest(unittest.TestCase):
         self.assertTrue(all(schema == schemas[0] for schema in schemas))
         self.assertEqual(3, summary['mcf_nodes'])
         self.assertEqual(3, summary['parquet_nodes'])
+        self.assertEqual(2, summary['workers'])
+
+    def test_notifies_when_each_shard_is_ready(self):
+        shards_dir = self._root / 'shards'
+        ready_paths = []
+
+        def on_source_ready(part_index, source_path):
+            self.assertEqual(len(ready_paths), part_index)
+            if part_index == 0:
+                self.assertFalse((shards_dir / 'part_1.mcf').exists())
+            ready_paths.append(source_path)
+
+        source_paths, _ = mcf_to_parquet._scan_and_shard(
+            self._input_path, shards_dir, 1, on_source_ready)
+
+        self.assertEqual(source_paths, ready_paths)
+        self.assertEqual(3, len(ready_paths))
 
     def test_deletes_csv_only_when_requested(self):
         output_path = self._root / 'output'
@@ -112,7 +133,8 @@ class McfToParquetTest(unittest.TestCase):
             str(self._input_path),
             str(output_path),
             shard_size_bytes=len(_MCF),
-            delete_csv=True)
+            delete_csv=True,
+            workers=1)
 
         self.assertTrue(summary['delete_csv'])
         self.assertFalse(summary['parts'][0]['csv_retained'])

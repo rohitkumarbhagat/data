@@ -23,6 +23,7 @@
 #
 # Optional:
 #   --shard-size-bytes 268435456
+#   --workers 8
 #   --cleanup-temp
 
 set -euo pipefail
@@ -33,7 +34,8 @@ usage() {
     '' \
     'Usage:' \
     '  gcs_mcf_to_parquet.sh --input-gcs-file GCS_OBJECT --output-gcs-dir GCS_DIR' \
-    '                             [--shard-size-bytes BYTES] [--cleanup-temp]' \
+    '                             [--shard-size-bytes BYTES] [--workers N]' \
+    '                             [--cleanup-temp]' \
     '' \
     'Required options:' \
     '  --input-gcs-file GCS_OBJECT  One source MCF object, such as' \
@@ -42,6 +44,7 @@ usage() {
     '' \
     'Optional options:' \
     '  --shard-size-bytes BYTES     Soft MCF shard limit. Default: 524288000.' \
+    '  --workers N                  Parallel conversion processes. Default: 8.' \
     '  --cleanup-temp               Delete temporary files on success or failure.' \
     '                               By default, the temporary directory is retained.' \
     '  -h, --help                   Show this help.' \
@@ -68,6 +71,7 @@ require_value() {
 input_gcs_file=""
 output_gcs_dir=""
 shard_size_bytes=""
+workers=""
 cleanup_temp=false
 
 while [[ $# -gt 0 ]]; do
@@ -85,6 +89,11 @@ while [[ $# -gt 0 ]]; do
     --shard-size-bytes)
       require_value "$@"
       shard_size_bytes="$2"
+      shift 2
+      ;;
+    --workers)
+      require_value "$@"
+      workers="$2"
       shift 2
       ;;
     --cleanup-temp)
@@ -113,6 +122,10 @@ if [[ "$output_gcs_dir" != gs://* ]]; then
 fi
 if [[ -n "$shard_size_bytes" && ! "$shard_size_bytes" =~ ^[1-9][0-9]*$ ]]; then
   echo "--shard-size-bytes must be a positive integer." >&2
+  exit 2
+fi
+if [[ -n "$workers" && ! "$workers" =~ ^[1-9][0-9]*$ ]]; then
+  echo "--workers must be a positive integer." >&2
   exit 2
 fi
 
@@ -182,6 +195,9 @@ converter_args=(
 )
 if [[ -n "$shard_size_bytes" ]]; then
   converter_args+=(--shard-size-bytes "$shard_size_bytes")
+fi
+if [[ -n "$workers" ]]; then
+  converter_args+=(--workers "$workers")
 fi
 echo "Converting $local_input to Parquet..."
 "$python_bin" "$script_dir/mcf_to_parquet.py" "${converter_args[@]}"

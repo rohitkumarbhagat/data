@@ -29,12 +29,13 @@ CSV after its corresponding Parquet part is written successfully.
 """
 
 import argparse
+from concurrent.futures import ProcessPoolExecutor
 import csv
-import hashlib
 import json
 import os
 from pathlib import Path
 import sys
+from typing import Callable
 
 from absl import logging
 import pyarrow as pa
@@ -45,11 +46,11 @@ _DATA_DIR = os.path.dirname(os.path.dirname(os.path.dirname(_SCRIPT_DIR)))
 sys.path.append(_DATA_DIR)
 sys.path.append(os.path.join(_DATA_DIR, 'tools', 'statvar_importer'))
 
-from util.sharding_writer import ShardingWriter
 import mcf_file_util
 
 _MIB = 1024 * 1024
 _DEFAULT_SHARD_SIZE_BYTES = 500 * _MIB
+_DEFAULT_WORKERS = 8
 _PARQUET_BATCH_SIZE = 100_000
 _PARQUET_COLUMNS = (
     '_node_key',
@@ -71,36 +72,82 @@ _GENERATED_COLUMNS = {'_node_key', 'extra_properties_json'}
 _CSV_KEY_COLUMN = 'key'
 
 
-def _write_node_block(shard_writer: ShardingWriter, node_block: list[bytes]):
-    shard_writer.write(b''.join(node_block).decode('utf-8'))
+class BinaryShardingWriter:
+    """Writes bytes to MCF shards without splitting node blocks."""
+
+    def __init__(self, base_path: Path, shard_size: int):
+        self._base_path = base_path
+        self._shard_size = shard_size
+        self._shard_index = 0
+        self._shard_bytes = 0
+        self._shard_file = None
+        self._shard_path = None
+
+    def write(self, data: bytes) -> Path | None:
+        if self._shard_file is None:
+            self._shard_path = Path(
+                f'{self._base_path}_{self._shard_index}.mcf')
+            self._shard_file = self._shard_path.open('wb')
+
+        self._shard_file.write(data)
+        self._shard_bytes += len(data)
+        if self._shard_bytes > self._shard_size:
+            return self.close()
+        return None
+
+    def close(self) -> Path | None:
+        if self._shard_file is None:
+            return None
+
+        self._shard_file.close()
+        closed_path = self._shard_path
+        self._shard_file = None
+        self._shard_path = None
+        self._shard_bytes = 0
+        self._shard_index += 1
+        return closed_path
 
 
-def _scan_and_shard(input_path: Path, shards_dir: Path,
-                    shard_size_bytes: int) -> tuple[list[Path], dict]:
+def _write_node_block(shard_writer: BinaryShardingWriter,
+                      node_block: list[bytes]) -> Path | None:
+    return shard_writer.write(b''.join(node_block))
+
+
+def _scan_and_shard(
+        input_path: Path, shards_dir: Path, shard_size_bytes: int,
+        on_source_ready: Callable[[int, Path],
+                                  None]) -> tuple[list[Path], dict]:
     input_size = input_path.stat().st_size
     should_shard = input_size > shard_size_bytes
-    input_hash = hashlib.sha256()
     input_node_blocks = 0
     node_block = []
     has_content = False
     at_node_boundary = False
     shard_writer = None
+    closed_shard = None
+    source_paths = []
+
+    def source_ready(source_path: Path):
+        source_paths.append(source_path)
+        on_source_ready(len(source_paths) - 1, source_path)
 
     if should_shard:
         shards_dir.mkdir(parents=True)
-        shard_writer = ShardingWriter(str(shards_dir / 'part'),
-                                      shard_size=shard_size_bytes)
+        shard_writer = BinaryShardingWriter(shards_dir / 'part',
+                                            shard_size_bytes)
 
     try:
         with input_path.open('rb') as input_file:
             for raw_line in input_file:
-                input_hash.update(raw_line)
                 is_blank = not raw_line.strip()
 
                 if not is_blank and at_node_boundary:
                     input_node_blocks += 1
                     if should_shard:
-                        _write_node_block(shard_writer, node_block)
+                        closed_shard = _write_node_block(
+                            shard_writer, node_block)
+                        if closed_shard:
+                            source_ready(closed_shard)
                     node_block = []
                     has_content = False
                     at_node_boundary = False
@@ -117,16 +164,18 @@ def _scan_and_shard(input_path: Path, shards_dir: Path,
         if has_content:
             input_node_blocks += 1
         if should_shard and node_block:
-            _write_node_block(shard_writer, node_block)
+            closed_shard = _write_node_block(shard_writer, node_block)
+            if closed_shard:
+                source_ready(closed_shard)
     finally:
         if shard_writer:
-            shard_writer.close()
+            closed_shard = shard_writer.close()
 
-    if should_shard:
-        source_paths = sorted(shards_dir.glob('part_*.mcf'),
-                              key=lambda path: int(path.stem.rsplit('_', 1)[1]))
-    else:
-        source_paths = [input_path]
+    if closed_shard:
+        source_ready(closed_shard)
+
+    if not should_shard:
+        source_ready(input_path)
 
     shard_summaries = [{
         'file': str(path),
@@ -134,7 +183,6 @@ def _scan_and_shard(input_path: Path, shards_dir: Path,
     } for path in source_paths] if should_shard else []
     return source_paths, {
         'input_bytes': input_size,
-        'input_sha256': input_hash.hexdigest(),
         'input_node_blocks': input_node_blocks,
         'was_sharded': should_shard,
         'shards': shard_summaries,
@@ -142,7 +190,9 @@ def _scan_and_shard(input_path: Path, shards_dir: Path,
 
 
 def _convert_mcf_to_csv(source_path: Path, csv_path: Path) -> int:
-    logging.info(f"Converting MCF to CSV intermediate: {source_path.name} -> {csv_path.name}")
+    logging.info(
+        f"Converting MCF to CSV intermediate: {source_path.name} -> {csv_path.name}"
+    )
     nodes = mcf_file_util.load_mcf_nodes(str(source_path))
     mcf_file_util.write_mcf_nodes([nodes], str(csv_path))
     if not csv_path.exists():
@@ -171,7 +221,8 @@ def _parquet_record(csv_row: dict) -> dict:
 
 
 def _write_parquet_part(csv_path: Path, parquet_path: Path) -> dict:
-    logging.info(f"Writing Parquet part from {csv_path.name} -> {parquet_path.name}...")
+    logging.info(
+        f"Writing Parquet part from {csv_path.name} -> {parquet_path.name}...")
     schema = pa.schema(
         [pa.field(column, pa.string()) for column in _PARQUET_COLUMNS])
     batch = []
@@ -237,7 +288,8 @@ def _convert_part(source_path: Path, csv_path: Path, parquet_path: Path,
 def convert_mcf_to_parquet(input_file: str,
                            output_dir: str,
                            shard_size_bytes: int = _DEFAULT_SHARD_SIZE_BYTES,
-                           delete_csv: bool = False) -> dict:
+                           delete_csv: bool = False,
+                           workers: int = _DEFAULT_WORKERS) -> dict:
     """Converts a local MCF file to CSV and Parquet parts."""
     input_path = Path(input_file).expanduser().resolve()
     output_path = Path(output_dir).expanduser().resolve()
@@ -245,6 +297,8 @@ def convert_mcf_to_parquet(input_file: str,
         raise ValueError(f'Input MCF file does not exist: {input_path}')
     if shard_size_bytes <= 0:
         raise ValueError('Shard size must be greater than zero.')
+    if workers <= 0:
+        raise ValueError('Workers must be greater than zero.')
     if output_path.exists() and any(output_path.iterdir()):
         raise ValueError(f'Output directory is not empty: {output_path}')
 
@@ -258,21 +312,27 @@ def convert_mcf_to_parquet(input_file: str,
     csv_dir.mkdir()
     parquet_dir.mkdir()
 
-    source_paths, scan_summary = _scan_and_shard(input_path, shards_dir,
-                                                 shard_size_bytes)
-    logging.info(
-        f"MCF scan complete: {scan_summary['input_node_blocks']} node block(s), "
-        f"{len(source_paths)} part(s) to convert (sharded: {scan_summary['was_sharded']})"
-    )
-    parts = []
-    for part_index, source_path in enumerate(source_paths):
+    part_futures = {}
+    with ProcessPoolExecutor(max_workers=workers) as executor:
+
+        def submit_part(part_index: int, source_path: Path):
+            csv_path = csv_dir / f'part-{part_index:05d}.csv'
+            parquet_path = parquet_dir / f'part-{part_index:05d}.parquet'
+            part_futures[part_index] = executor.submit(_convert_part,
+                                                       source_path, csv_path,
+                                                       parquet_path, delete_csv)
+
+        source_paths, scan_summary = _scan_and_shard(input_path, shards_dir,
+                                                     shard_size_bytes,
+                                                     submit_part)
         logging.info(
-            f"Starting part {part_index + 1}/{len(source_paths)}: {source_path.name}"
+            f"MCF scan complete: {scan_summary['input_node_blocks']} node block(s), "
+            f"{len(source_paths)} part(s) to convert (sharded: {scan_summary['was_sharded']})"
         )
-        csv_path = csv_dir / f'part-{part_index:05d}.csv'
-        parquet_path = parquet_dir / f'part-{part_index:05d}.parquet'
-        parts.append(
-            _convert_part(source_path, csv_path, parquet_path, delete_csv))
+        parts = [
+            part_futures[part_index].result()
+            for part_index in range(len(source_paths))
+        ]
 
     mcf_nodes = sum(part['mcf_nodes'] for part in parts)
     parquet_nodes = sum(part['parquet_nodes'] for part in parts)
@@ -281,6 +341,7 @@ def convert_mcf_to_parquet(input_file: str,
         'output_directory': str(output_path),
         'shard_size_bytes': shard_size_bytes,
         'delete_csv': delete_csv,
+        'workers': workers,
         **scan_summary,
         'parquet_schema': list(_PARQUET_COLUMNS),
         'parts': parts,
@@ -318,11 +379,18 @@ def main():
         action='store_true',
         help='Delete each CSV after its Parquet part is written successfully.',
     )
+    parser.add_argument(
+        '--workers',
+        type=int,
+        default=_DEFAULT_WORKERS,
+        help=f'Parallel conversion processes (default: {_DEFAULT_WORKERS}).',
+    )
     args = parser.parse_args()
     summary = convert_mcf_to_parquet(args.input,
                                      args.output_dir,
                                      shard_size_bytes=args.shard_size_bytes,
-                                     delete_csv=args.delete_csv)
+                                     delete_csv=args.delete_csv,
+                                     workers=args.workers)
     print(json.dumps(summary, indent=2))
 
 
