@@ -45,7 +45,7 @@ usage() {
     '  --table TABLE              Destination BigQuery table ID.' \
     '' \
     'Optional options:' \
-    '  --ttl-seconds SECONDS      Table lifetime. Default: 86400 (one day).' \
+    '  --ttl-seconds SECONDS      Table lifetime. Default: 604800 (one week).' \
     '  --replace-bq-table         Replace the table if it already exists.' \
     '                             By default, an existing table causes failure.' \
     '  -h, --help                 Show this help.' \
@@ -72,7 +72,7 @@ parquet_gcs_dir=""
 project=""
 dataset=""
 table=""
-ttl_seconds=86400
+ttl_seconds=604800
 replace_bq_table=false
 
 while [[ $# -gt 0 ]]; do

@@ -111,6 +111,7 @@ class ImportVersionToBqTest(unittest.TestCase):
         self.assertEqual('US_Urban_Schools', summary['import_name'])
         self.assertEqual('2026_08_14', summary['version'])
         self.assertEqual(1, summary['processed_count'])
+        self.assertEqual(604800, summary['ttl_seconds'])
 
         table_info = summary['tables'][0]
         self.assertEqual('input0', table_info['input_folder'])

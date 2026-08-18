@@ -19,7 +19,7 @@ Usage:
     --project=my-project \
     --dataset=my_dataset \
     [--replace-bq-table] \
-    [--ttl-seconds=86400]
+    [--ttl-seconds=604800]
 """
 
 import argparse
@@ -38,7 +38,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 _GCS_MCF_TO_PARQUET_SH = _SCRIPT_DIR / 'gcs_mcf_to_parquet.sh'
 _LOAD_PARQUET_TO_BQ_SH = _SCRIPT_DIR / 'load_gcs_parquet_to_bigquery.sh'
 
-_DEFAULT_TTL_SECONDS = 86400
+_DEFAULT_TTL_SECONDS = 604800
 
 
 def sanitize_identifier(name: str) -> str:

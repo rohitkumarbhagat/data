@@ -260,7 +260,7 @@ class CloudParquetScriptsTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn('Required options:', result.stdout)
         self.assertIn('Preflight checks:', result.stdout)
-        self.assertIn('Default: 86400', result.stdout)
+        self.assertIn('Default: 604800', result.stdout)
 
     def test_bq_script_fails_when_table_exists(self):
         result = self._run(_BQ_SCRIPT,
@@ -298,7 +298,7 @@ class CloudParquetScriptsTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         commands = self._command_log.read_text()
         self.assertIn('--replace=true', commands)
-        self.assertIn('update --expiration=86400', commands)
+        self.assertIn('update --expiration=604800', commands)
 
     def test_bq_script_accepts_custom_ttl(self):
         result = self._run(_BQ_SCRIPT, *self._bq_args(), '--ttl-seconds',
