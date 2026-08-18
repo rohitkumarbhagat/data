@@ -14,10 +14,10 @@
 """Converts an import version's MCF files to BigQuery tables.
 
 Usage:
-  .env/bin/python tools/import_differ/bq/import_version_to_bq.py \\
-    --import-name=US_Urban_Schools_Teachers_And_Staff \\
-    --version=latest \\
-    --bq-project=my-project \\
+  .env/bin/python tools/import_differ/bq/import_version_to_bq.py \
+    --import-name=US_Urban_Schools_Teachers_And_Staff \
+    --version=latest \
+    --bq-project=my-project \
     --bq-dataset=my_dataset
 """
 
