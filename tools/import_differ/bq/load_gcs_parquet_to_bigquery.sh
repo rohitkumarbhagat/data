@@ -17,7 +17,7 @@
 # BigQuery table. The table expires after one day by default.
 #
 # Usage:
-#   tools/import_differ/load_gcs_parquet_to_bigquery.sh \
+#   tools/import_differ/bq/load_gcs_parquet_to_bigquery.sh \
 #     --parquet-gcs-dir gs://bucket/path/parquet \
 #     --project my-project \
 #     --dataset my_dataset \
@@ -55,7 +55,7 @@ usage() {
     '  The destination table must not exist unless --force-bq is supplied.' \
     '' \
     'Example:' \
-    '  tools/import_differ/load_gcs_parquet_to_bigquery.sh \' \
+    '  tools/import_differ/bq/load_gcs_parquet_to_bigquery.sh \' \
     '    --parquet-gcs-dir gs://bucket/output/deleted-nodes-parquet \' \
     '    --project my-project --dataset my_dataset --table deleted_nodes'
 }

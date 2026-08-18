@@ -19,7 +19,7 @@ import unittest
 
 import pyarrow.parquet as pq
 
-from tools.import_differ import mcf_to_parquet
+from tools.import_differ.bq import mcf_to_parquet
 
 _MCF = b'''Node: obs1
 typeOf: dcid:StatVarObservation

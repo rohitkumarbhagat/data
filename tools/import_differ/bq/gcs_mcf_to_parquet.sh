@@ -17,7 +17,7 @@
 # part to an empty GCS prefix. The temporary directory is retained by default.
 #
 # Usage:
-#   tools/import_differ/gcs_mcf_to_parquet.sh \
+#   tools/import_differ/bq/gcs_mcf_to_parquet.sh \
 #     --input-gcs-file gs://bucket/path/nodes-deleted.mcf \
 #     --output-gcs-dir gs://bucket/path/parquet
 #
@@ -52,7 +52,7 @@ usage() {
     '  A missing prefix does not need creation; GCS creates it on first upload.' \
     '' \
     'Example:' \
-    '  tools/import_differ/gcs_mcf_to_parquet.sh \' \
+    '  tools/import_differ/bq/gcs_mcf_to_parquet.sh \' \
     '    --input-gcs-file gs://bucket/input/nodes-deleted.mcf \' \
     '    --output-gcs-dir gs://bucket/output/deleted-nodes-parquet'
 }
@@ -122,7 +122,7 @@ command -v gcloud >/dev/null || {
 }
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd -- "$script_dir/../.." && pwd)"
+repo_root="$(cd -- "$script_dir/../../.." && pwd)"
 python_bin="$repo_root/.env/bin/python"
 if [[ ! -x "$python_bin" ]]; then
   echo "Repository Python is missing: $python_bin" >&2

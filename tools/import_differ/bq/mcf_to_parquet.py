@@ -15,7 +15,7 @@
 
 Usage from the repository root:
 
-  .env/bin/python tools/import_differ/mcf_to_parquet.py \
+  .env/bin/python tools/import_differ/bq/mcf_to_parquet.py \
     --input=/path/to/nodes-deleted.mcf \
     --output-dir=/path/to/output
 
@@ -40,7 +40,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_DATA_DIR = os.path.dirname(os.path.dirname(_SCRIPT_DIR))
+_DATA_DIR = os.path.dirname(os.path.dirname(os.path.dirname(_SCRIPT_DIR)))
 sys.path.append(_DATA_DIR)
 sys.path.append(os.path.join(_DATA_DIR, 'tools', 'statvar_importer'))
 
