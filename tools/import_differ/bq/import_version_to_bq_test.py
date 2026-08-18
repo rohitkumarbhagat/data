@@ -104,6 +104,7 @@ class ImportVersionToBqTest(unittest.TestCase):
             project='test-project',
             dataset='test_dataset',
             replace_bq_table=False,
+            workers=4,
             runner=fake_runner,
         )
 
@@ -118,6 +119,10 @@ class ImportVersionToBqTest(unittest.TestCase):
             table_info['bq_table'])
         self.assertEqual('GENERATED', table_info['parquet_status'])
         self.assertEqual('CREATED', table_info['bq_status'])
+        generate_command = next(command for command in commands_run
+                                if 'gcs_mcf_to_parquet.sh' in str(command[0]))
+        self.assertEqual(
+            '4', generate_command[generate_command.index('--workers') + 1])
 
     def test_multiple_mcfs_in_single_input_generates_distinct_table_names(self):
         def fake_runner(cmd, **kwargs):

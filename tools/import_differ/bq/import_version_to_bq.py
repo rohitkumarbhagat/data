@@ -147,6 +147,7 @@ def generate_parquet(
     mcf_gcs_file: str,
     parquet_gcs_dir: str,
     shard_size_bytes: Optional[int] = None,
+    workers: Optional[int] = None,
     cleanup_temp: bool = False,
     runner: Optional[Callable[..., subprocess.CompletedProcess]] = None
 ) -> None:
@@ -163,6 +164,8 @@ def generate_parquet(
     ]
     if shard_size_bytes:
         cmd.extend(['--shard-size-bytes', str(shard_size_bytes)])
+    if workers is not None:
+        cmd.extend(['--workers', str(workers)])
     if cleanup_temp:
         cmd.append('--cleanup-temp')
 
@@ -220,6 +223,7 @@ def import_version_to_bq(
     replace_bq_table: bool = False,
     ttl_seconds: int = _DEFAULT_TTL_SECONDS,
     shard_size_bytes: Optional[int] = None,
+    workers: Optional[int] = None,
     cleanup_temp: bool = False,
     runner: Optional[Callable[..., subprocess.CompletedProcess]] = None
 ) -> dict:
@@ -285,6 +289,7 @@ def import_version_to_bq(
                     mcf_file,
                     parquet_dir,
                     shard_size_bytes=shard_size_bytes,
+                    workers=workers,
                     cleanup_temp=cleanup_temp,
                     runner=runner,
                 )
@@ -360,6 +365,11 @@ def main():
         default=None,
         help='Soft MCF shard limit in bytes.')
     parser.add_argument(
+        '--workers',
+        type=int,
+        default=None,
+        help='Parallel MCF conversion processes. Default: 8.')
+    parser.add_argument(
         '--cleanup-temp',
         action='store_true',
         help='Delete local temporary conversion directories.')
@@ -372,6 +382,7 @@ def main():
         replace_bq_table=args.replace_bq_table,
         ttl_seconds=args.ttl_seconds,
         shard_size_bytes=args.shard_size_bytes,
+        workers=args.workers,
         cleanup_temp=args.cleanup_temp,
     )
     print(json.dumps(summary, indent=2))
