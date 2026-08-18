@@ -220,10 +220,10 @@ class CloudParquetScriptsTest(unittest.TestCase):
         self.assertIn('dataset does not exist', result.stderr)
         self.assertNotIn(' load ', f' {self._command_log.read_text()} ')
 
-    def test_bq_script_replaces_table_only_with_force(self):
+    def test_bq_script_replaces_table_only_with_replace_flag(self):
         result = self._run(_BQ_SCRIPT,
                            *self._bq_args(),
-                           '--force-bq',
+                           '--replace-bq-table',
                            MOCK_BQ_TABLE_EXISTS='1')
 
         self.assertEqual(0, result.returncode, result.stderr)

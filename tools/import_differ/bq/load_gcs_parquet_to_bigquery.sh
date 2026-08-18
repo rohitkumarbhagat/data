@@ -25,7 +25,7 @@
 #
 # Optional:
 #   --ttl-seconds 172800
-#   --force-bq
+#   --replace-bq-table
 
 set -euo pipefail
 
@@ -36,7 +36,7 @@ usage() {
     'Usage:' \
     '  load_gcs_parquet_to_bigquery.sh --parquet-gcs-dir GCS_DIR' \
     '      --project PROJECT --dataset DATASET --table TABLE' \
-    '      [--ttl-seconds SECONDS] [--force-bq]' \
+    '      [--ttl-seconds SECONDS] [--replace-bq-table]' \
     '' \
     'Required options:' \
     '  --parquet-gcs-dir GCS_DIR  Prefix containing part-*.parquet files.' \
@@ -46,13 +46,13 @@ usage() {
     '' \
     'Optional options:' \
     '  --ttl-seconds SECONDS      Table lifetime. Default: 86400 (one day).' \
-    '  --force-bq                 Replace the table if it already exists.' \
+    '  --replace-bq-table         Replace the table if it already exists.' \
     '                             By default, an existing table causes failure.' \
     '  -h, --help                 Show this help.' \
     '' \
     'Preflight checks:' \
     '  The dataset must exist and at least one *.parquet object must be present.' \
-    '  The destination table must not exist unless --force-bq is supplied.' \
+    '  The destination table must not exist unless --replace-bq-table is supplied.' \
     '' \
     'Example:' \
     '  tools/import_differ/bq/load_gcs_parquet_to_bigquery.sh \' \
@@ -73,7 +73,7 @@ project=""
 dataset=""
 table=""
 ttl_seconds=86400
-force_bq=false
+replace_bq_table=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -102,8 +102,8 @@ while [[ $# -gt 0 ]]; do
       ttl_seconds="$2"
       shift 2
       ;;
-    --force-bq)
-      force_bq=true
+    --replace-bq-table)
+      replace_bq_table=true
       shift
       ;;
     --help|-h)
@@ -164,9 +164,9 @@ table_exists=false
 if bq --project_id="$project" show "$table_ref" >/dev/null 2>&1; then
   table_exists=true
 fi
-if [[ "$table_exists" == true && "$force_bq" == false ]]; then
+if [[ "$table_exists" == true && "$replace_bq_table" == false ]]; then
   echo "BigQuery table already exists: $table_ref" >&2
-  echo "Pass --force-bq to replace it." >&2
+  echo "Pass --replace-bq-table to replace it." >&2
   exit 1
 fi
 
@@ -176,7 +176,7 @@ load_args=(
   load
   --source_format=PARQUET
 )
-if [[ "$force_bq" == true ]]; then
+if [[ "$replace_bq_table" == true ]]; then
   load_args+=(--replace=true)
 fi
 echo "Loading Parquet files from $parquet_gcs_dir/*.parquet into $table_ref..."
