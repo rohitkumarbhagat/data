@@ -182,8 +182,8 @@ class ImportVersionToBqTest(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError,
                                     'Failed to check Parquet directory'):
-            import_version_to_bq.check_parquet_dir_has_files(
-                'gs://bucket/parquet', runner=fake_runner)
+            import_version_to_bq.check_output_dir_has_files(
+                'gs://bucket/parquet', 'parquet', runner=fake_runner)
         with self.assertRaisesRegex(RuntimeError,
                                     'Failed to check BigQuery table'):
             import_version_to_bq.check_bq_table_exists('project',
@@ -235,7 +235,7 @@ class ImportVersionToBqTest(unittest.TestCase):
                     if pattern.endswith('*.parquet'):
                         return subprocess.CompletedProcess(
                             cmd, 1, stdout='', stderr='No URLs matched')
-                if 'gcs_mcf_to_parquet.sh' in cmd_text:
+                if 'gcs_mcf_to_bigquery_files.sh' in cmd_text:
                     return subprocess.CompletedProcess(cmd,
                                                        0,
                                                        stdout='',
@@ -245,7 +245,7 @@ class ImportVersionToBqTest(unittest.TestCase):
                                                        1,
                                                        stdout='',
                                                        stderr='Not found')
-                if 'load_gcs_parquet_to_bigquery.sh' in cmd_text:
+                if 'load_gcs_files_to_bigquery.sh' in cmd_text:
                     return subprocess.CompletedProcess(cmd,
                                                        0,
                                                        stdout='',
@@ -264,6 +264,7 @@ class ImportVersionToBqTest(unittest.TestCase):
             )
 
         self.assertEqual('scripts/example', summary['import_path'])
+        self.assertEqual('parquet', summary['format'])
         self.assertEqual(['input0'], summary['import_inputs'])
         self.assertEqual(1, summary['processed_count'])
         self.assertEqual(
@@ -274,7 +275,7 @@ class ImportVersionToBqTest(unittest.TestCase):
 
         generate_commands = [
             command for command in commands_run
-            if 'gcs_mcf_to_parquet.sh' in str(command[0])
+            if 'gcs_mcf_to_bigquery_files.sh' in str(command[0])
         ]
         self.assertEqual(2, len(generate_commands))
         self.assertTrue(
@@ -282,10 +283,43 @@ class ImportVersionToBqTest(unittest.TestCase):
                 for command in generate_commands))
         load_commands = [
             command for command in commands_run
-            if 'load_gcs_parquet_to_bigquery.sh' in str(command[0])
+            if 'load_gcs_files_to_bigquery.sh' in str(command[0])
         ]
         self.assertEqual(1, len(load_commands))
-        self.assertEqual(2, load_commands[0].count('--parquet-gcs-dir'))
+        self.assertEqual(2, load_commands[0].count('--gcs-dir'))
+        self.assertEqual(
+            'parquet', load_commands[0][load_commands[0].index('--format') + 1])
+
+    def test_avro_helpers_generate_and_load_avro(self):
+        commands_run = []
+
+        def fake_runner(cmd, **kwargs):
+            commands_run.append(list(cmd))
+            return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
+
+        import_version_to_bq.generate_output(
+            'gs://bucket/table.mcf',
+            'gs://bucket/table_avro',
+            'avro',
+            workers=4,
+            runner=fake_runner,
+        )
+        import_version_to_bq.load_output_to_bigquery(
+            ['gs://bucket/table_avro'],
+            'avro',
+            'project',
+            'dataset',
+            'table',
+            runner=fake_runner,
+        )
+
+        generate_command, load_command = commands_run
+        self.assertEqual(
+            'avro', generate_command[generate_command.index('--format') + 1])
+        self.assertIn('gs://bucket/table_avro', generate_command)
+        self.assertEqual('avro',
+                         load_command[load_command.index('--format') + 1])
+        self.assertIn('gs://bucket/table_avro', load_command)
 
     def test_dry_run_reports_paths_and_status_without_changes(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -346,8 +380,8 @@ class ImportVersionToBqTest(unittest.TestCase):
                                 0 if table_exists else 1,
                                 stdout='Table' if table_exists else '',
                                 stderr='' if table_exists else 'Not found')
-                        if ('gcs_mcf_to_parquet.sh' in cmd_text or
-                                'load_gcs_parquet_to_bigquery.sh' in cmd_text):
+                        if ('gcs_mcf_to_bigquery_files.sh' in cmd_text or
+                                'load_gcs_files_to_bigquery.sh' in cmd_text):
                             self.fail(
                                 f'Dry run invoked mutating command: {cmd}')
                         self.fail(f'Unexpected command: {cmd}')
@@ -366,6 +400,7 @@ class ImportVersionToBqTest(unittest.TestCase):
 
                     table = summary['tables'][0]
                     self.assertTrue(summary['dry_run'])
+                    self.assertEqual('parquet', summary['format'])
                     self.assertEqual(
                         'test-project:test_dataset.Example_Import__v1__input0',
                         table['bq_table'])
@@ -377,6 +412,75 @@ class ImportVersionToBqTest(unittest.TestCase):
                         'gs://imports/scripts/example/Example_Import/v1/input0/genmcf/table_mcf_existing_parquet',
                         'gs://imports/scripts/example/Example_Import/v1/input0/genmcf/table_mcf_missing_parquet',
                     ], table['parquet_dirs'])
+
+    def test_avro_dry_run_uses_avro_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir)
+            self._write_manifest(repo_root, 'scripts/example', 'Example_Import',
+                                 ['output/data.tmcf'])
+
+            def fake_runner(cmd, **kwargs):
+                cmd_text = ' '.join(str(part) for part in cmd)
+                if cmd[:3] == ['gcloud', 'storage', 'cat']:
+                    return subprocess.CompletedProcess(cmd,
+                                                       1,
+                                                       stdout='',
+                                                       stderr='No URLs matched')
+                if cmd[:3] == ['gcloud', 'storage', 'ls']:
+                    pattern = cmd[3]
+                    if pattern.endswith('Example_Import/'):
+                        return subprocess.CompletedProcess(
+                            cmd,
+                            0,
+                            stdout=('gs://imports/scripts/example/'
+                                    'Example_Import/v1/\n'),
+                            stderr='')
+                    if pattern.endswith('/v1/'):
+                        return subprocess.CompletedProcess(
+                            cmd,
+                            0,
+                            stdout=('gs://imports/scripts/example/'
+                                    'Example_Import/v1/input0/\n'),
+                            stderr='')
+                    if pattern.endswith('table_mcf_*.mcf'):
+                        prefix = pattern.removesuffix('table_mcf_*.mcf')
+                        return subprocess.CompletedProcess(
+                            cmd,
+                            0,
+                            stdout=f'{prefix}table_mcf_data.mcf\n',
+                            stderr='')
+                    if pattern.endswith('*.avro'):
+                        return subprocess.CompletedProcess(
+                            cmd, 1, stdout='', stderr='No URLs matched')
+                if cmd[0] == 'bq':
+                    return subprocess.CompletedProcess(cmd,
+                                                       1,
+                                                       stdout='',
+                                                       stderr='Not found')
+                if ('gcs_mcf_to_bigquery_files.sh' in cmd_text or
+                        'load_gcs_files_to_bigquery.sh' in cmd_text):
+                    self.fail(f'Dry run invoked mutating command: {cmd}')
+                self.fail(f'Unexpected command: {cmd}')
+
+            summary = import_version_to_bq.import_version_to_bq(
+                import_name='Example_Import',
+                version='v1',
+                project='test-project',
+                dataset='test_dataset',
+                gcs_base_path='gs://imports',
+                dry_run=True,
+                output_format='avro',
+                repo_root=repo_root,
+                runner=fake_runner,
+            )
+
+        table = summary['tables'][0]
+        self.assertEqual('avro', summary['format'])
+        self.assertEqual(['NOT_FOUND'],
+                         [item['status'] for item in table['avro_files']])
+        self.assertEqual([
+            'gs://imports/scripts/example/Example_Import/v1/input0/genmcf/table_mcf_data_avro'
+        ], table['avro_dirs'])
 
     def test_cli_uses_explicit_bigquery_option_names(self):
         result = subprocess.run([
@@ -391,6 +495,7 @@ class ImportVersionToBqTest(unittest.TestCase):
         self.assertNotIn('FATAL Flags parsing error', help_text)
         self.assertIn('--bq-project', help_text)
         self.assertIn('--bq-dataset', help_text)
+        self.assertIn('--format', help_text)
         self.assertIn('dry-run', help_text)
         self.assertNotIn('--version-gcs-dir', help_text)
 
@@ -410,6 +515,7 @@ class ImportVersionToBqTest(unittest.TestCase):
             '--shard-size-bytes=1024',
             '--workers=4',
             '--cleanup-temp',
+            '--format=avro',
             '--dry-run',
             '--verbose',
             '--only_check_args',

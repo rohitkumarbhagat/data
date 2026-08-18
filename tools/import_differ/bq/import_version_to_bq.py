@@ -34,12 +34,13 @@ from absl import logging
 _FLAGS = flags.FLAGS
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parents[2]
-_GCS_MCF_TO_PARQUET_SH = _SCRIPT_DIR / 'gcs_mcf_to_parquet.sh'
-_LOAD_PARQUET_TO_BQ_SH = _SCRIPT_DIR / 'load_gcs_parquet_to_bigquery.sh'
+_GCS_MCF_TO_OUTPUT_SH = _SCRIPT_DIR / 'gcs_mcf_to_bigquery_files.sh'
+_LOAD_OUTPUT_TO_BQ_SH = _SCRIPT_DIR / 'load_gcs_files_to_bigquery.sh'
 
 _DEFAULT_GCS_BASE_PATH = 'gs://datcom-prod-imports'
 _DEFAULT_TTL_SECONDS = 604800
 _IMPORT_ROOTS = ('scripts', 'statvar_imports')
+_OUTPUT_FORMATS = ('parquet', 'avro')
 _VERSION_MARKERS = {
     'latest': 'latest_version.txt',
     'staging': 'staging_version.txt',
@@ -76,9 +77,11 @@ def _define_flags():
                          'Parallel MCF conversion processes. Default: 8.')
     flags.DEFINE_boolean('cleanup-temp', False,
                          'Delete local temporary conversion directories.')
+    flags.DEFINE_enum('format', 'parquet', _OUTPUT_FORMATS,
+                      'Output format to generate and load. Default: parquet.')
     flags.DEFINE_boolean(
         'dry-run', False,
-        'Inspect paths and statuses without generating Parquet or loading BigQuery.'
+        'Inspect paths and statuses without generating files or loading BigQuery.'
     )
     flags.DEFINE_boolean(
         'verbose', False,
@@ -358,16 +361,18 @@ def list_table_mcf_files(
     return files
 
 
-def check_parquet_dir_has_files(
-    parquet_gcs_dir: str,
+def check_output_dir_has_files(
+    output_gcs_dir: str,
+    output_format: str,
     runner: Optional[Callable[...,
                               subprocess.CompletedProcess]] = None) -> bool:
-    """Checks whether the given GCS parquet directory contains *.parquet files."""
+    """Checks whether a GCS directory contains selected-format files."""
     if runner is None:
         runner = subprocess.run
 
-    pattern = f"{parquet_gcs_dir.rstrip('/')}/*.parquet"
-    logging.debug(f"Checking Parquet directory: {pattern}")
+    pattern = f"{output_gcs_dir.rstrip('/')}/*.{output_format}"
+    format_label = output_format.title()
+    logging.debug(f"Checking {format_label} directory: {pattern}")
     result = runner(['gcloud', 'storage', 'ls', pattern],
                     capture_output=True,
                     text=True,
@@ -377,8 +382,9 @@ def check_parquet_dir_has_files(
             return False
         output = (result.stderr or result.stdout or '').strip()
         raise RuntimeError(
-            f"Failed to check Parquet directory {parquet_gcs_dir}: {output}")
-    return any(line.strip().endswith('.parquet')
+            f"Failed to check {format_label} directory {output_gcs_dir}: {output}"
+        )
+    return any(line.strip().endswith(f'.{output_format}')
                for line in result.stdout.splitlines())
 
 
@@ -406,24 +412,27 @@ def check_bq_table_exists(
     raise RuntimeError(f"Failed to check BigQuery table {table_ref}: {output}")
 
 
-def generate_parquet(
+def generate_output(
     mcf_gcs_file: str,
-    parquet_gcs_dir: str,
+    output_gcs_dir: str,
+    output_format: str,
     shard_size_bytes: Optional[int] = None,
     workers: Optional[int] = None,
     cleanup_temp: bool = False,
     runner: Optional[Callable[...,
                               subprocess.CompletedProcess]] = None) -> None:
-    """Runs gcs_mcf_to_parquet.sh to convert GCS MCF to Parquet."""
+    """Converts a GCS MCF file to the selected output format."""
     if runner is None:
         runner = subprocess.run
 
     cmd = [
-        str(_GCS_MCF_TO_PARQUET_SH),
+        str(_GCS_MCF_TO_OUTPUT_SH),
         '--input-gcs-file',
         mcf_gcs_file,
         '--output-gcs-dir',
-        parquet_gcs_dir,
+        output_gcs_dir,
+        '--format',
+        output_format,
     ]
     if shard_size_bytes:
         cmd.extend(['--shard-size-bytes', str(shard_size_bytes)])
@@ -432,16 +441,19 @@ def generate_parquet(
     if cleanup_temp:
         cmd.append('--cleanup-temp')
 
-    logging.info(f"Generating Parquet for {mcf_gcs_file} -> {parquet_gcs_dir}")
+    format_label = output_format.title()
+    logging.info(
+        f"Generating {format_label} for {mcf_gcs_file} -> {output_gcs_dir}")
     result = runner(cmd, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         raise RuntimeError(
-            f"Parquet conversion failed for {mcf_gcs_file}: {result.stderr.strip()}"
+            f"{format_label} conversion failed for {mcf_gcs_file}: {result.stderr.strip()}"
         )
 
 
-def load_parquet_to_bigquery(
-    parquet_gcs_dirs: list[str],
+def load_output_to_bigquery(
+    output_gcs_dirs: list[str],
+    output_format: str,
     project: str,
     dataset: str,
     table: str,
@@ -449,13 +461,13 @@ def load_parquet_to_bigquery(
     ttl_seconds: int = _DEFAULT_TTL_SECONDS,
     runner: Optional[Callable[...,
                               subprocess.CompletedProcess]] = None) -> None:
-    """Loads one or more Parquet directories into one BigQuery table."""
+    """Loads selected-format directories into one BigQuery table."""
     if runner is None:
         runner = subprocess.run
 
-    cmd = [str(_LOAD_PARQUET_TO_BQ_SH)]
-    for parquet_gcs_dir in parquet_gcs_dirs:
-        cmd.extend(['--parquet-gcs-dir', parquet_gcs_dir])
+    cmd = [str(_LOAD_OUTPUT_TO_BQ_SH), '--format', output_format]
+    for output_gcs_dir in output_gcs_dirs:
+        cmd.extend(['--gcs-dir', output_gcs_dir])
     cmd.extend([
         '--project',
         project,
@@ -470,10 +482,12 @@ def load_parquet_to_bigquery(
         cmd.append('--replace-bq-table')
 
     table_ref = f"{project}:{dataset}.{table}"
+    format_label = output_format.title()
     logging.info(
-        f"Loading Parquet from {len(parquet_gcs_dirs)} GCS source(s) into {table_ref}"
+        f"Loading {format_label} from {len(output_gcs_dirs)} GCS source(s) into {table_ref}"
     )
-    logging.debug(f"Parquet directories for {table_ref}: {parquet_gcs_dirs}")
+    logging.debug(
+        f"{format_label} directories for {table_ref}: {output_gcs_dirs}")
     result = runner(cmd, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         raise RuntimeError(
@@ -493,6 +507,7 @@ def import_version_to_bq(
     workers: Optional[int] = None,
     cleanup_temp: bool = False,
     dry_run: bool = False,
+    output_format: str = 'parquet',
     repo_root: Path = _REPO_ROOT,
     runner: Optional[Callable[...,
                               subprocess.CompletedProcess]] = None) -> dict:
@@ -502,9 +517,14 @@ def import_version_to_bq(
     if not gcs_base_path.startswith('gs://'):
         raise ValueError(
             f"--gcs-base-path must start with gs://: {gcs_base_path}")
+    if output_format not in _OUTPUT_FORMATS:
+        raise ValueError(
+            f"--format must be one of {', '.join(_OUTPUT_FORMATS)}: {output_format}"
+        )
+    format_label = output_format.title()
     if dry_run:
         logging.info(
-            "Dry run enabled; no Parquet files or BigQuery tables will be changed"
+            f"Dry run enabled; no {format_label} files or BigQuery tables will be changed"
         )
 
     import_path, import_spec = resolve_import_spec(import_name, repo_root)
@@ -529,38 +549,40 @@ def import_version_to_bq(
         mcf_files = list_table_mcf_files(version_gcs_dir,
                                          input_name,
                                          runner=runner)
-        parquet_files = []
-        parquet_dirs = []
+        output_files = []
+        output_dirs = []
         for mcf_file in mcf_files:
             mcf_stem = mcf_file.rsplit('/', 1)[-1].removesuffix('.mcf')
             parent_dir = mcf_file.rsplit('/', 1)[0]
-            parquet_dir = f"{parent_dir}/{mcf_stem}_parquet"
-            parquet_dirs.append(parquet_dir)
-            parquet_exists = check_parquet_dir_has_files(parquet_dir,
-                                                         runner=runner)
+            output_dir = f"{parent_dir}/{mcf_stem}_{output_format}"
+            output_dirs.append(output_dir)
+            output_exists = check_output_dir_has_files(output_dir,
+                                                       output_format,
+                                                       runner=runner)
             if dry_run:
-                parquet_status = 'FOUND' if parquet_exists else 'NOT_FOUND'
+                output_status = 'FOUND' if output_exists else 'NOT_FOUND'
                 logging.info(
-                    f"Dry run: Parquet {parquet_status}: {parquet_dir}")
-            elif parquet_exists:
+                    f"Dry run: {format_label} {output_status}: {output_dir}")
+            elif output_exists:
                 logging.info(
-                    f"Parquet directory already contains files: {parquet_dir}; skipping generation"
+                    f"{format_label} directory already contains files: {output_dir}; skipping generation"
                 )
-                parquet_status = 'SKIPPED_ALREADY_EXISTS'
+                output_status = 'SKIPPED_ALREADY_EXISTS'
             else:
-                generate_parquet(
+                generate_output(
                     mcf_file,
-                    parquet_dir,
+                    output_dir,
+                    output_format,
                     shard_size_bytes=shard_size_bytes,
                     workers=workers,
                     cleanup_temp=cleanup_temp,
                     runner=runner,
                 )
-                parquet_status = 'GENERATED'
-            parquet_files.append({
+                output_status = 'GENERATED'
+            output_files.append({
                 'mcf_file': mcf_file,
-                'parquet_dir': parquet_dir,
-                'status': parquet_status,
+                f'{output_format}_dir': output_dir,
+                'status': output_status,
             })
 
         table_name = (
@@ -581,8 +603,9 @@ def import_version_to_bq(
             )
             bq_status = 'SKIPPED_ALREADY_EXISTS'
         else:
-            load_parquet_to_bigquery(
-                parquet_dirs,
+            load_output_to_bigquery(
+                output_dirs,
+                output_format,
                 project,
                 dataset,
                 table_name,
@@ -595,8 +618,8 @@ def import_version_to_bq(
         processed_tables.append({
             'import_input': input_name,
             'mcf_files': mcf_files,
-            'parquet_dirs': parquet_dirs,
-            'parquet_files': parquet_files,
+            f'{output_format}_dirs': output_dirs,
+            f'{output_format}_files': output_files,
             'bq_table': f"{project}:{dataset}.{table_name}",
             'bq_status': bq_status,
         })
@@ -613,6 +636,7 @@ def import_version_to_bq(
         'dataset': dataset,
         'ttl_seconds': ttl_seconds,
         'replace_bq_table': replace_bq_table,
+        'format': output_format,
         'dry_run': dry_run,
         'processed_count': len(processed_tables),
         'tables': processed_tables,
@@ -635,6 +659,7 @@ def main(_):
         workers=_FLAGS['workers'].value,
         cleanup_temp=_FLAGS['cleanup-temp'].value,
         dry_run=_FLAGS['dry-run'].value,
+        output_format=_FLAGS['format'].value,
     )
     print(json.dumps(summary, indent=2))
 

@@ -13,6 +13,7 @@ chembl-webresource-client
 dataclasses-json
 deepdiff
 earthengine-api
+fastavro
 flask_restful
 geopandas
 geopy

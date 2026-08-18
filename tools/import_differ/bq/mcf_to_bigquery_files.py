@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Converts a local MCF file into CSV and Parquet parts.
+"""Converts a local MCF file into CSV and Parquet or Avro parts.
 
 Usage from the repository root:
 
-  .env/bin/python tools/import_differ/bq/mcf_to_parquet.py \
+  .env/bin/python tools/import_differ/bq/mcf_to_bigquery_files.py \
     --input=/path/to/nodes-deleted.mcf \
     --output-dir=/path/to/output
 
@@ -25,7 +25,8 @@ soft shard limit when needed:
   --shard-size-bytes=268435456
 
 CSV intermediates are retained by default. Pass `--delete-csv` to remove each
-CSV after its corresponding Parquet part is written successfully.
+CSV after its corresponding output part is written successfully. Parquet is the
+default output format; pass `--format=avro` to write Avro instead.
 """
 
 import argparse
@@ -38,6 +39,7 @@ import sys
 from typing import Callable
 
 from absl import logging
+import fastavro
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -52,6 +54,7 @@ _MIB = 1024 * 1024
 _DEFAULT_SHARD_SIZE_BYTES = 500 * _MIB
 _DEFAULT_WORKERS = 8
 _PARQUET_BATCH_SIZE = 100_000
+_OUTPUT_FORMATS = ('parquet', 'avro')
 _PARQUET_COLUMNS = (
     '_node_key',
     'Node',
@@ -70,6 +73,29 @@ _PARQUET_COLUMNS = (
 )
 _GENERATED_COLUMNS = {'_node_key', 'extra_properties_json'}
 _CSV_KEY_COLUMN = 'key'
+# BigQuery maps an Avro string annotated with sqlType JSON to its native JSON
+# type when the file is loaded with source_format=AVRO.
+_AVRO_SCHEMA = {
+    'type':
+        'record',
+    'name':
+        'McfNode',
+    'fields': [{
+        'name': column,
+        'type': ['null', 'string'],
+        'default': None,
+    } for column in _PARQUET_COLUMNS if column != 'extra_properties_json'] + [{
+        'name': 'extra_properties_json',
+        'type': [
+            'null',
+            {
+                'type': 'string',
+                'sqlType': 'JSON',
+            },
+        ],
+        'default': None,
+    }],
+}
 
 
 class BinaryShardingWriter:
@@ -201,7 +227,7 @@ def _convert_mcf_to_csv(source_path: Path, csv_path: Path) -> int:
     return len(nodes)
 
 
-def _parquet_record(csv_row: dict) -> dict:
+def _output_record(csv_row: dict) -> dict:
     record = {
         column: csv_row.get(column) or None
         for column in _PARQUET_COLUMNS
@@ -236,7 +262,7 @@ def _write_parquet_part(csv_path: Path, parquet_path: Path) -> dict:
         with pq.ParquetWriter(parquet_path, schema,
                               compression='zstd') as writer:
             for csv_row in reader:
-                record = _parquet_record(csv_row)
+                record = _output_record(csv_row)
                 batch.append(record)
                 node_count += 1
                 if not record['_node_key']:
@@ -267,11 +293,56 @@ def _write_parquet_part(csv_path: Path, parquet_path: Path) -> dict:
     }
 
 
-def _convert_part(source_path: Path, csv_path: Path, parquet_path: Path,
-                  delete_csv: bool) -> dict:
+def _write_avro_part(csv_path: Path, avro_path: Path) -> dict:
+    logging.info(
+        f"Writing Avro part from {csv_path.name} -> {avro_path.name}...")
+    node_count = 0
+    observation_count = 0
+    schema_count = 0
+    missing_node_id_count = 0
+
+    def records():
+        nonlocal node_count
+        nonlocal observation_count
+        nonlocal schema_count
+        nonlocal missing_node_id_count
+
+        with csv_path.open('r', encoding='utf-8', newline='') as csv_file:
+            for csv_row in csv.DictReader(csv_file):
+                record = _output_record(csv_row)
+                node_count += 1
+                if not record['_node_key']:
+                    missing_node_id_count += 1
+                if 'StatVarObservation' in str(record['typeOf'] or ''):
+                    observation_count += 1
+                else:
+                    schema_count += 1
+                yield record
+
+    with avro_path.open('wb') as avro_file:
+        fastavro.writer(avro_file, _AVRO_SCHEMA, records(), codec='deflate')
+
+    logging.info(
+        f"Wrote Avro part {avro_path.name}: {node_count} nodes "
+        f"({observation_count} observations, {schema_count} schema nodes)")
+    return {
+        'avro_file': str(avro_path),
+        'avro_bytes': avro_path.stat().st_size,
+        'avro_nodes': node_count,
+        'observation_nodes': observation_count,
+        'schema_nodes': schema_count,
+        'missing_node_id_nodes': missing_node_id_count,
+    }
+
+
+def _convert_part(source_path: Path, csv_path: Path, output_path: Path,
+                  output_format: str, delete_csv: bool) -> dict:
     mcf_nodes = _convert_mcf_to_csv(source_path, csv_path)
     csv_bytes = csv_path.stat().st_size
-    part_summary = _write_parquet_part(csv_path, parquet_path)
+    if output_format == 'parquet':
+        part_summary = _write_parquet_part(csv_path, output_path)
+    else:
+        part_summary = _write_avro_part(csv_path, output_path)
     if delete_csv:
         csv_path.unlink()
     return {
@@ -285,12 +356,14 @@ def _convert_part(source_path: Path, csv_path: Path, parquet_path: Path,
     }
 
 
-def convert_mcf_to_parquet(input_file: str,
-                           output_dir: str,
-                           shard_size_bytes: int = _DEFAULT_SHARD_SIZE_BYTES,
-                           delete_csv: bool = False,
-                           workers: int = _DEFAULT_WORKERS) -> dict:
-    """Converts a local MCF file to CSV and Parquet parts."""
+def convert_mcf_to_bigquery_files(
+        input_file: str,
+        output_dir: str,
+        shard_size_bytes: int = _DEFAULT_SHARD_SIZE_BYTES,
+        delete_csv: bool = False,
+        workers: int = _DEFAULT_WORKERS,
+        output_format: str = 'parquet') -> dict:
+    """Converts a local MCF file to CSV and Parquet or Avro parts."""
     input_path = Path(input_file).expanduser().resolve()
     output_path = Path(output_dir).expanduser().resolve()
     if not input_path.is_file():
@@ -299,28 +372,34 @@ def convert_mcf_to_parquet(input_file: str,
         raise ValueError('Shard size must be greater than zero.')
     if workers <= 0:
         raise ValueError('Workers must be greater than zero.')
+    if output_format not in _OUTPUT_FORMATS:
+        raise ValueError(
+            f"Output format must be one of {', '.join(_OUTPUT_FORMATS)}: {output_format}"
+        )
     if output_path.exists() and any(output_path.iterdir()):
         raise ValueError(f'Output directory is not empty: {output_path}')
 
     logging.info(
-        f"Starting MCF to Parquet conversion: {input_path} ({input_path.stat().st_size} bytes)"
-    )
+        f"Starting MCF to {output_format.title()} conversion: {input_path} "
+        f"({input_path.stat().st_size} bytes)")
     output_path.mkdir(parents=True, exist_ok=True)
     shards_dir = output_path / 'mcf_shards'
     csv_dir = output_path / 'csv'
-    parquet_dir = output_path / 'parquet'
+    format_dir = output_path / output_format
     csv_dir.mkdir()
-    parquet_dir.mkdir()
+    format_dir.mkdir()
 
     part_futures = {}
     with ProcessPoolExecutor(max_workers=workers) as executor:
 
         def submit_part(part_index: int, source_path: Path):
             csv_path = csv_dir / f'part-{part_index:05d}.csv'
-            parquet_path = parquet_dir / f'part-{part_index:05d}.parquet'
+            format_path = format_dir / f'part-{part_index:05d}.{output_format}'
             part_futures[part_index] = executor.submit(_convert_part,
                                                        source_path, csv_path,
-                                                       parquet_path, delete_csv)
+                                                       format_path,
+                                                       output_format,
+                                                       delete_csv)
 
         source_paths, scan_summary = _scan_and_shard(input_path, shards_dir,
                                                      shard_size_bytes,
@@ -335,38 +414,41 @@ def convert_mcf_to_parquet(input_file: str,
         ]
 
     mcf_nodes = sum(part['mcf_nodes'] for part in parts)
-    parquet_nodes = sum(part['parquet_nodes'] for part in parts)
+    output_nodes = sum(part[f'{output_format}_nodes'] for part in parts)
     summary = {
         'input_file': str(input_path),
         'output_directory': str(output_path),
         'shard_size_bytes': shard_size_bytes,
         'delete_csv': delete_csv,
         'workers': workers,
+        'format': output_format,
         **scan_summary,
-        'parquet_schema': list(_PARQUET_COLUMNS),
         'parts': parts,
         'mcf_nodes': mcf_nodes,
-        'parquet_nodes': parquet_nodes,
-        'parquet_matches_mcf_nodes': parquet_nodes == mcf_nodes,
+        f'{output_format}_schema': (list(_PARQUET_COLUMNS) if output_format
+                                    == 'parquet' else _AVRO_SCHEMA),
+        f'{output_format}_nodes': output_nodes,
+        f'{output_format}_matches_mcf_nodes': output_nodes == mcf_nodes,
     }
     summary_path = output_path / 'summary.json'
     with summary_path.open('w', encoding='utf-8') as summary_file:
         json.dump(summary, summary_file, indent=2)
         summary_file.write('\n')
     logging.info(
-        f"MCF to Parquet conversion complete: {parquet_nodes} Parquet nodes written "
-        f"across {len(parts)} part(s). Summary written to {summary_path}")
+        f"MCF to {output_format.title()} conversion complete: {output_nodes} "
+        f"{output_format.title()} nodes written across {len(parts)} part(s). "
+        f"Summary written to {summary_path}")
     return summary
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Shard a local MCF and convert it through CSV to Parquet.')
+        description='Shard a local MCF and convert it through CSV.')
     parser.add_argument('--input', required=True, help='Local MCF input file.')
     parser.add_argument(
         '--output-dir',
         required=True,
-        help='New or empty directory for MCF shards, CSV, Parquet, and summary.',
+        help='New or empty directory for MCF shards, CSV, output, and summary.',
     )
     parser.add_argument(
         '--shard-size-bytes',
@@ -377,7 +459,13 @@ def main():
     parser.add_argument(
         '--delete-csv',
         action='store_true',
-        help='Delete each CSV after its Parquet part is written successfully.',
+        help='Delete each CSV after its output part is written successfully.',
+    )
+    parser.add_argument(
+        '--format',
+        choices=_OUTPUT_FORMATS,
+        default='parquet',
+        help='Output file format (default: parquet).',
     )
     parser.add_argument(
         '--workers',
@@ -386,11 +474,13 @@ def main():
         help=f'Parallel conversion processes (default: {_DEFAULT_WORKERS}).',
     )
     args = parser.parse_args()
-    summary = convert_mcf_to_parquet(args.input,
-                                     args.output_dir,
-                                     shard_size_bytes=args.shard_size_bytes,
-                                     delete_csv=args.delete_csv,
-                                     workers=args.workers)
+    summary = convert_mcf_to_bigquery_files(
+        args.input,
+        args.output_dir,
+        shard_size_bytes=args.shard_size_bytes,
+        delete_csv=args.delete_csv,
+        workers=args.workers,
+        output_format=args.format)
     print(json.dumps(summary, indent=2))
 
 

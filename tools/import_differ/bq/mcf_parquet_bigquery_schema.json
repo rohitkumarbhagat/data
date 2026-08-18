@@ -1,0 +1,72 @@
+[
+  {
+    "name": "_node_key",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Node",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "dcid",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "typeOf",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "variableMeasured",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "observationAbout",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "observationDate",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "observationPeriod",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "measurementMethod",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "unit",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "scalingFactor",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "value",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "extra_properties_json",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  }
+]

@@ -13,18 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Loads all Parquet files directly under one or more GCS directories into a
-# native BigQuery table. The table expires after one week by default.
+# Loads all Parquet or Avro files directly under one or more GCS directories
+# into a native BigQuery table. The table expires after one week by default.
 #
 # Usage:
-#   tools/import_differ/bq/load_gcs_parquet_to_bigquery.sh \
-#     --parquet-gcs-dir gs://bucket/path/parquet \
+#   tools/import_differ/bq/load_gcs_files_to_bigquery.sh \
+#     --gcs-dir gs://bucket/path/parquet \
 #     --project my-project \
 #     --dataset my_dataset \
 #     --table deleted_nodes
 #
 # Optional:
-#   --parquet-gcs-dir gs://bucket/path/another-parquet-directory
+#   --format avro
+#   --gcs-dir gs://bucket/path/another-directory
 #   --ttl-seconds 172800
 #   --replace-bq-table
 
@@ -32,33 +33,35 @@ set -euo pipefail
 
 usage() {
   printf '%s\n' \
-    'Load GCS Parquet parts into a native BigQuery table.' \
+    'Load GCS Parquet or Avro parts into a native BigQuery table.' \
     '' \
     'Usage:' \
-    '  load_gcs_parquet_to_bigquery.sh --parquet-gcs-dir GCS_DIR [...]' \
+    '  load_gcs_files_to_bigquery.sh --gcs-dir GCS_DIR [...]' \
     '      --project PROJECT --dataset DATASET --table TABLE' \
-    '      [--ttl-seconds SECONDS] [--replace-bq-table]' \
+    '      [--format FORMAT] [--ttl-seconds SECONDS] [--replace-bq-table]' \
     '' \
     'Required options:' \
-    '  --parquet-gcs-dir GCS_DIR  Prefix containing *.parquet files.' \
+    '  --gcs-dir GCS_DIR          Prefix containing selected-format files.' \
     '                             Repeat to load multiple prefixes.' \
     '  --project PROJECT          GCP project ID.' \
     '  --dataset DATASET          Existing BigQuery dataset ID.' \
     '  --table TABLE              Destination BigQuery table ID.' \
     '' \
     'Optional options:' \
+    '  --format FORMAT            parquet or avro. Default: parquet.' \
+    '  --parquet-gcs-dir GCS_DIR  Legacy alias for --gcs-dir.' \
     '  --ttl-seconds SECONDS      Table lifetime. Default: 604800 (one week).' \
     '  --replace-bq-table         Replace the table if it already exists.' \
     '                             By default, an existing table causes failure.' \
     '  -h, --help                 Show this help.' \
     '' \
     'Preflight checks:' \
-    '  The dataset must exist and every prefix must contain *.parquet objects.' \
+    '  The dataset must exist and every prefix must contain selected-format objects.' \
     '  The destination table must not exist unless --replace-bq-table is supplied.' \
     '' \
     'Example:' \
-    '  tools/import_differ/bq/load_gcs_parquet_to_bigquery.sh \' \
-    '    --parquet-gcs-dir gs://bucket/output/deleted-nodes-parquet \' \
+    '  tools/import_differ/bq/load_gcs_files_to_bigquery.sh \' \
+    '    --gcs-dir gs://bucket/output/deleted-nodes-parquet \' \
     '    --project my-project --dataset my_dataset --table deleted_nodes'
 }
 
@@ -70,18 +73,24 @@ require_value() {
   fi
 }
 
-parquet_gcs_dirs=()
+gcs_dirs=()
 project=""
 dataset=""
 table=""
 ttl_seconds=604800
 replace_bq_table=false
+output_format="parquet"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --parquet-gcs-dir)
+    --gcs-dir|--parquet-gcs-dir)
       require_value "$@"
-      parquet_gcs_dirs+=("$2")
+      gcs_dirs+=("$2")
+      shift 2
+      ;;
+    --format)
+      require_value "$@"
+      output_format="$2"
       shift 2
       ;;
     --project)
@@ -120,16 +129,24 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ ${#parquet_gcs_dirs[@]} -eq 0 ]]; then
-  echo "At least one --parquet-gcs-dir is required." >&2
+if [[ ${#gcs_dirs[@]} -eq 0 ]]; then
+  echo "At least one --gcs-dir is required." >&2
   exit 2
 fi
-for parquet_gcs_dir in "${parquet_gcs_dirs[@]}"; do
-  if [[ "$parquet_gcs_dir" != gs://* ]]; then
-    echo "--parquet-gcs-dir must be a GCS path: $parquet_gcs_dir" >&2
+for gcs_dir in "${gcs_dirs[@]}"; do
+  if [[ "$gcs_dir" != gs://* ]]; then
+    echo "--gcs-dir must be a GCS path: $gcs_dir" >&2
     exit 2
   fi
 done
+if [[ "$output_format" != "parquet" && "$output_format" != "avro" ]]; then
+  echo "--format must be parquet or avro." >&2
+  exit 2
+fi
+format_label="Parquet"
+if [[ "$output_format" == "avro" ]]; then
+  format_label="Avro"
+fi
 if [[ -z "$project" || -z "$dataset" || -z "$table" ]]; then
   echo "--project, --dataset, and --table are required." >&2
   exit 2
@@ -154,23 +171,23 @@ if ! bq --project_id="$project" show --dataset "$dataset_ref" >/dev/null; then
   exit 1
 fi
 
-parquet_sources=()
-for parquet_gcs_dir in "${parquet_gcs_dirs[@]}"; do
-  parquet_gcs_dir="${parquet_gcs_dir%/}"
+sources=()
+for gcs_dir in "${gcs_dirs[@]}"; do
+  gcs_dir="${gcs_dir%/}"
   set +e
-  parquet_objects="$(gcloud storage ls "$parquet_gcs_dir/*.parquet" 2>&1)"
-  parquet_status=$?
+  objects="$(gcloud storage ls "$gcs_dir/*.$output_format" 2>&1)"
+  object_status=$?
   set -e
-  if [[ $parquet_status -ne 0 || -z "$parquet_objects" ]]; then
-    echo "No accessible Parquet files found at $parquet_gcs_dir/*.parquet" >&2
-    if [[ -n "$parquet_objects" ]]; then
-      echo "$parquet_objects" >&2
+  if [[ $object_status -ne 0 || -z "$objects" ]]; then
+    echo "No accessible $format_label files found at $gcs_dir/*.$output_format" >&2
+    if [[ -n "$objects" ]]; then
+      echo "$objects" >&2
     fi
     exit 1
   fi
-  parquet_sources+=("$parquet_gcs_dir/*.parquet")
+  sources+=("$gcs_dir/*.$output_format")
 done
-parquet_sources_csv="$(IFS=,; echo "${parquet_sources[*]}")"
+sources_csv="$(IFS=,; echo "${sources[*]}")"
 
 table_ref="$project:$dataset.$table"
 table_exists=false
@@ -184,19 +201,23 @@ if [[ "$table_exists" == true && "$replace_bq_table" == false ]]; then
 fi
 
 echo "Starting BigQuery load pipeline for $table_ref..."
+source_format="PARQUET"
+if [[ "$output_format" == "avro" ]]; then
+  source_format="AVRO"
+fi
 load_args=(
   --project_id="$project"
   load
-  --source_format=PARQUET
+  --source_format="$source_format"
 )
 if [[ "$replace_bq_table" == true ]]; then
   load_args+=(--replace=true)
 fi
-echo "Loading Parquet files from $parquet_sources_csv into $table_ref..."
-bq "${load_args[@]}" "$table_ref" "$parquet_sources_csv"
+echo "Loading $format_label files from $sources_csv into $table_ref..."
+bq "${load_args[@]}" "$table_ref" "$sources_csv"
 
 echo "Setting expiration of $table_ref to $ttl_seconds seconds..."
 bq --project_id="$project" update --expiration="$ttl_seconds" "$table_ref"
 
-echo "Loaded $parquet_sources_csv into $table_ref"
+echo "Loaded $sources_csv into $table_ref"
 echo "Table TTL: $ttl_seconds seconds"

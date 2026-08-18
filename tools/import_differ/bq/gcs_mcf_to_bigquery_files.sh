@@ -13,15 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Converts one GCS or local MCF file and uploads every Parquet part to an empty
-# GCS prefix. The temporary directory is retained by default.
+# Converts one GCS or local MCF file and uploads every Parquet or Avro part to
+# an empty GCS prefix. The temporary directory is retained by default.
 #
 # Usage:
-#   tools/import_differ/bq/gcs_mcf_to_parquet.sh \
+#   tools/import_differ/bq/gcs_mcf_to_bigquery_files.sh \
 #     --input-gcs-file gs://bucket/path/nodes-deleted.mcf \
 #     --output-gcs-dir gs://bucket/path/parquet
 #
 # Optional:
+#   --format avro
 #   --shard-size-bytes 268435456
 #   --workers 8
 #   --cleanup-temp
@@ -30,10 +31,11 @@ set -euo pipefail
 
 usage() {
   printf '%s\n' \
-    'Convert one GCS or local MCF file and upload Parquet parts.' \
+    'Convert one GCS or local MCF file and upload Parquet or Avro parts.' \
     '' \
     'Usage:' \
-    '  gcs_mcf_to_parquet.sh INPUT_OPTION --output-gcs-dir GCS_DIR' \
+    '  gcs_mcf_to_bigquery_files.sh INPUT_OPTION --output-gcs-dir GCS_DIR' \
+    '                             [--format FORMAT]' \
     '                             [--shard-size-bytes BYTES] [--workers N]' \
     '                             [--cleanup-temp]' \
     '' \
@@ -42,9 +44,10 @@ usage() {
     '  --input-gcs-file GCS_OBJECT  Source MCF object, such as' \
     '                               gs://bucket/path/nodes-deleted.mcf.' \
     '  --input-local-file FILE      Source MCF file on the local filesystem.' \
-    '  --output-gcs-dir GCS_DIR     Empty destination prefix for part-*.parquet.' \
+    '  --output-gcs-dir GCS_DIR     Empty destination prefix for output parts.' \
     '' \
     'Optional options:' \
+    '  --format FORMAT              parquet or avro. Default: parquet.' \
     '  --shard-size-bytes BYTES     Soft MCF shard limit. Default: 524288000.' \
     '  --workers N                  Parallel conversion processes. Default: 8.' \
     '  --cleanup-temp               Delete temporary files on success or failure.' \
@@ -57,7 +60,7 @@ usage() {
     '  A missing prefix does not need creation; GCS creates it on first upload.' \
     '' \
     'Example:' \
-    '  tools/import_differ/bq/gcs_mcf_to_parquet.sh \' \
+    '  tools/import_differ/bq/gcs_mcf_to_bigquery_files.sh \' \
     '    --input-gcs-file gs://bucket/input/nodes-deleted.mcf \' \
     '    --output-gcs-dir gs://bucket/output/deleted-nodes-parquet'
 }
@@ -76,6 +79,7 @@ output_gcs_dir=""
 shard_size_bytes=""
 workers=""
 cleanup_temp=false
+output_format="parquet"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -97,6 +101,11 @@ while [[ $# -gt 0 ]]; do
     --shard-size-bytes)
       require_value "$@"
       shard_size_bytes="$2"
+      shift 2
+      ;;
+    --format)
+      require_value "$@"
+      output_format="$2"
       shift 2
       ;;
     --workers)
@@ -150,6 +159,10 @@ if [[ -n "$workers" && ! "$workers" =~ ^[1-9][0-9]*$ ]]; then
   echo "--workers must be a positive integer." >&2
   exit 2
 fi
+if [[ "$output_format" != "parquet" && "$output_format" != "avro" ]]; then
+  echo "--format must be parquet or avro." >&2
+  exit 2
+fi
 
 command -v gcloud >/dev/null || {
   echo "gcloud is required." >&2
@@ -192,7 +205,7 @@ if [[ $list_status -ne 0 &&
 fi
 
 temp_root="${TMPDIR:-/tmp}"
-temp_dir="$(mktemp -d "${temp_root%/}/mcf-to-parquet.XXXXXX")"
+temp_dir="$(mktemp -d "${temp_root%/}/mcf-to-bigquery-files.XXXXXX")"
 cleanup() {
   if [[ "$cleanup_temp" == true && -d "$temp_dir" ]]; then
     rm -rf -- "$temp_dir"
@@ -200,7 +213,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Starting MCF to Parquet pipeline."
+echo "Starting MCF to $output_format pipeline."
 echo "Output GCS directory: $output_gcs_dir"
 echo "Temporary directory: $temp_dir"
 local_output="$temp_dir/output"
@@ -220,6 +233,7 @@ fi
 converter_args=(
   --input="$local_input"
   --output-dir "$local_output"
+  --format "$output_format"
 )
 if [[ -n "$shard_size_bytes" ]]; then
   converter_args+=(--shard-size-bytes "$shard_size_bytes")
@@ -227,18 +241,18 @@ fi
 if [[ -n "$workers" ]]; then
   converter_args+=(--workers "$workers")
 fi
-echo "Converting $local_input to Parquet..."
-"$python_bin" "$script_dir/mcf_to_parquet.py" "${converter_args[@]}"
+echo "Converting $local_input to $output_format..."
+"$python_bin" "$script_dir/mcf_to_bigquery_files.py" "${converter_args[@]}"
 
-parquet_files=("$local_output/parquet/"*.parquet)
-if [[ ! -e "${parquet_files[0]}" ]]; then
-  echo "Conversion did not produce any Parquet files." >&2
+output_files=("$local_output/$output_format/"*."$output_format")
+if [[ ! -e "${output_files[0]}" ]]; then
+  echo "Conversion did not produce any $output_format files." >&2
   exit 1
 fi
-echo "Uploading ${#parquet_files[@]} Parquet part(s) to $output_gcs_dir/..."
-gcloud storage cp "${parquet_files[@]}" "$output_gcs_dir/"
+echo "Uploading ${#output_files[@]} $output_format part(s) to $output_gcs_dir/..."
+gcloud storage cp "${output_files[@]}" "$output_gcs_dir/"
 
-echo "Uploaded ${#parquet_files[@]} Parquet file(s) to $output_gcs_dir/"
+echo "Uploaded ${#output_files[@]} $output_format file(s) to $output_gcs_dir/"
 if [[ "$cleanup_temp" == false ]]; then
   echo "Retained temporary directory: $temp_dir"
 fi

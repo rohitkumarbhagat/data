@@ -17,10 +17,13 @@ from pathlib import Path
 import tempfile
 import unittest
 
+import fastavro
 import pyarrow.parquet as pq
 
-from tools.import_differ.bq import mcf_to_parquet
+from tools.import_differ.bq import mcf_to_bigquery_files
 
+_BIGQUERY_SCHEMA_PATH = Path(mcf_to_bigquery_files.__file__).with_name(
+    'mcf_parquet_bigquery_schema.json')
 _MCF = b'''Node: obs1
 typeOf: dcid:StatVarObservation
 variableMeasured: dcid:Count_Person
@@ -45,7 +48,7 @@ statType: dcid:measuredValue
 '''
 
 
-class McfToParquetTest(unittest.TestCase):
+class McfToBigQueryFilesTest(unittest.TestCase):
 
     def setUp(self):
         self._temp_dir = tempfile.TemporaryDirectory()
@@ -56,10 +59,21 @@ class McfToParquetTest(unittest.TestCase):
     def tearDown(self):
         self._temp_dir.cleanup()
 
+    def test_bigquery_schema_matches_parquet_schema(self):
+        bigquery_schema = json.loads(
+            _BIGQUERY_SCHEMA_PATH.read_text(encoding='utf-8'))
+
+        self.assertEqual([{
+            'name': column,
+            'type': 'STRING',
+            'mode': 'NULLABLE',
+        } for column in mcf_to_bigquery_files._PARQUET_COLUMNS],
+                         bigquery_schema)
+
     def test_converts_small_file_without_mcf_shards_and_retains_csv(self):
         output_path = self._root / 'output'
 
-        summary = mcf_to_parquet.convert_mcf_to_parquet(
+        summary = mcf_to_bigquery_files.convert_mcf_to_bigquery_files(
             str(self._input_path),
             str(output_path),
             shard_size_bytes=len(_MCF),
@@ -68,6 +82,7 @@ class McfToParquetTest(unittest.TestCase):
         self.assertFalse(summary['was_sharded'])
         self.assertEqual(3, summary['input_node_blocks'])
         self.assertEqual(3, summary['mcf_nodes'])
+        self.assertEqual('parquet', summary['format'])
         self.assertEqual(3, summary['parquet_nodes'])
         self.assertTrue(summary['parquet_matches_mcf_nodes'])
         self.assertFalse((output_path / 'mcf_shards').exists())
@@ -75,7 +90,7 @@ class McfToParquetTest(unittest.TestCase):
 
         table = pq.read_table(output_path / 'parquet' / 'part-00000.parquet')
         self.assertEqual(3, table.num_rows)
-        self.assertEqual(list(mcf_to_parquet._PARQUET_COLUMNS),
+        self.assertEqual(list(mcf_to_bigquery_files._PARQUET_COLUMNS),
                          table.column_names)
         rows = table.to_pylist()
         schema_row = next(row for row in rows if row['Node'] == 'Count_Person')
@@ -86,13 +101,45 @@ class McfToParquetTest(unittest.TestCase):
                 'statType': 'dcid:measuredValue',
             }, json.loads(schema_row['extra_properties_json']))
 
+    def test_converts_to_avro_with_bigquery_json_annotation(self):
+        output_path = self._root / 'output'
+
+        summary = mcf_to_bigquery_files.convert_mcf_to_bigquery_files(
+            str(self._input_path),
+            str(output_path),
+            shard_size_bytes=len(_MCF),
+            workers=1,
+            output_format='avro')
+
+        self.assertEqual('avro', summary['format'])
+        self.assertEqual(3, summary['avro_nodes'])
+        self.assertTrue(summary['avro_matches_mcf_nodes'])
+        self.assertFalse((output_path / 'parquet').exists())
+        avro_path = output_path / 'avro' / 'part-00000.avro'
+        with avro_path.open('rb') as avro_file:
+            avro_reader = fastavro.reader(avro_file)
+            extra_properties_field = next(
+                field for field in avro_reader.writer_schema['fields']
+                if field['name'] == 'extra_properties_json')
+            rows = list(avro_reader)
+
+        self.assertEqual('JSON', extra_properties_field['type'][1]['sqlType'])
+        self.assertEqual(3, len(rows))
+        schema_row = next(row for row in rows if row['Node'] == 'Count_Person')
+        self.assertEqual(
+            {
+                'populationType': 'dcid:Person',
+                'statType': 'dcid:measuredValue',
+            }, json.loads(schema_row['extra_properties_json']))
+
     def test_shards_at_blank_boundaries_and_preserves_input_bytes(self):
         output_path = self._root / 'output'
 
-        summary = mcf_to_parquet.convert_mcf_to_parquet(str(self._input_path),
-                                                        str(output_path),
-                                                        shard_size_bytes=1,
-                                                        workers=2)
+        summary = mcf_to_bigquery_files.convert_mcf_to_bigquery_files(
+            str(self._input_path),
+            str(output_path),
+            shard_size_bytes=1,
+            workers=2)
 
         self.assertTrue(summary['was_sharded'])
         self.assertEqual(3, len(summary['shards']))
@@ -120,7 +167,7 @@ class McfToParquetTest(unittest.TestCase):
                 self.assertFalse((shards_dir / 'part_1.mcf').exists())
             ready_paths.append(source_path)
 
-        source_paths, _ = mcf_to_parquet._scan_and_shard(
+        source_paths, _ = mcf_to_bigquery_files._scan_and_shard(
             self._input_path, shards_dir, 1, on_source_ready)
 
         self.assertEqual(source_paths, ready_paths)
@@ -129,7 +176,7 @@ class McfToParquetTest(unittest.TestCase):
     def test_deletes_csv_only_when_requested(self):
         output_path = self._root / 'output'
 
-        summary = mcf_to_parquet.convert_mcf_to_parquet(
+        summary = mcf_to_bigquery_files.convert_mcf_to_bigquery_files(
             str(self._input_path),
             str(output_path),
             shard_size_bytes=len(_MCF),

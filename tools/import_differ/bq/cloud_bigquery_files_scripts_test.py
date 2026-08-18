@@ -21,8 +21,8 @@ import tempfile
 import unittest
 
 _SCRIPT_DIR = Path(__file__).parent
-_GCS_SCRIPT = _SCRIPT_DIR / 'gcs_mcf_to_parquet.sh'
-_BQ_SCRIPT = _SCRIPT_DIR / 'load_gcs_parquet_to_bigquery.sh'
+_GCS_SCRIPT = _SCRIPT_DIR / 'gcs_mcf_to_bigquery_files.sh'
+_BQ_SCRIPT = _SCRIPT_DIR / 'load_gcs_files_to_bigquery.sh'
 
 _GCLOUD_MOCK = r'''#!/bin/bash
 printf '%s\n' "$*" >> "$COMMAND_LOG"
@@ -38,6 +38,14 @@ if [[ "$1" == "storage" && "$2" == "ls" ]]; then
   if [[ "$3" == *"/*.parquet" ]]; then
     if [[ "${MOCK_PARQUET_EXISTS:-1}" == "1" ]]; then
       echo "gs://output/parquet/part-00000.parquet"
+      exit 0
+    fi
+    echo "One or more URLs matched no objects." >&2
+    exit 1
+  fi
+  if [[ "$3" == *"/*.avro" ]]; then
+    if [[ "${MOCK_AVRO_EXISTS:-1}" == "1" ]]; then
+      echo "gs://output/avro/part-00000.avro"
       exit 0
     fi
     echo "One or more URLs matched no objects." >&2
@@ -80,7 +88,7 @@ fi
 '''
 
 
-class CloudParquetScriptsTest(unittest.TestCase):
+class CloudBigQueryFilesScriptsTest(unittest.TestCase):
 
     def setUp(self):
         self._temp_dir = tempfile.TemporaryDirectory()
@@ -131,6 +139,7 @@ class CloudParquetScriptsTest(unittest.TestCase):
         self.assertIn('Required options:', result.stdout)
         self.assertIn('Preflight checks:', result.stdout)
         self.assertIn('--input-local-file', result.stdout)
+        self.assertIn('--format FORMAT', result.stdout)
         self.assertIn('Default: 524288000', result.stdout)
         self.assertIn('Default: 8', result.stdout)
 
@@ -230,6 +239,35 @@ class CloudParquetScriptsTest(unittest.TestCase):
         self.assertEqual(2, summary['workers'])
         shutil.rmtree(temp_dir)
 
+    def test_gcs_script_generates_and_uploads_avro(self):
+        result = self._run(
+            _GCS_SCRIPT,
+            '--input-gcs-file',
+            'gs://input/nodes-deleted.mcf',
+            '--output-gcs-dir',
+            'gs://output/avro',
+            '--format',
+            'avro',
+            '--workers',
+            '1',
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        prefix = 'Retained temporary directory: '
+        temp_dir = Path(
+            next(
+                line.removeprefix(prefix)
+                for line in result.stdout.splitlines()
+                if line.startswith(prefix)))
+        self.assertEqual(1, len(list(
+            (temp_dir / 'output/avro').glob('*.avro'))))
+        summary = json.loads(
+            (temp_dir / 'output/summary.json').read_text(encoding='utf-8'))
+        self.assertEqual('avro', summary['format'])
+        command_log = self._command_log.read_text(encoding='utf-8')
+        self.assertIn('.avro gs://output/avro/', command_log)
+        shutil.rmtree(temp_dir)
+
     def test_gcs_script_cleans_temp_directory_when_requested(self):
         result = self._run(_GCS_SCRIPT, *self._gcs_args(), '--cleanup-temp')
 
@@ -260,6 +298,7 @@ class CloudParquetScriptsTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn('Required options:', result.stdout)
         self.assertIn('Preflight checks:', result.stdout)
+        self.assertIn('--format FORMAT', result.stdout)
         self.assertIn('Default: 604800', result.stdout)
 
     def test_bq_script_fails_when_table_exists(self):
@@ -321,6 +360,27 @@ class CloudParquetScriptsTest(unittest.TestCase):
         self.assertIn(
             'gs://output/parquet/*.parquet,gs://output/another-parquet/*.parquet',
             commands)
+
+    def test_bq_script_loads_avro_with_avro_source_format(self):
+        result = self._run(
+            _BQ_SCRIPT,
+            '--gcs-dir',
+            'gs://output/avro',
+            '--format',
+            'avro',
+            '--project',
+            'my-project',
+            '--dataset',
+            'my_dataset',
+            '--table',
+            'deleted_nodes',
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        commands = self._command_log.read_text()
+        self.assertIn('storage ls gs://output/avro/*.avro', commands)
+        self.assertIn('--source_format=AVRO', commands)
+        self.assertIn('gs://output/avro/*.avro', commands)
 
 
 if __name__ == '__main__':
