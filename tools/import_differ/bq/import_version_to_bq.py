@@ -77,6 +77,10 @@ def _define_flags():
     flags.DEFINE_boolean('cleanup-temp', False,
                          'Delete local temporary conversion directories.')
     flags.DEFINE_boolean(
+        'dry-run', False,
+        'Inspect paths and statuses without generating Parquet or loading BigQuery.'
+    )
+    flags.DEFINE_boolean(
         'verbose', False,
         'Log manifest checks, resolution attempts, and GCS lookups.')
 
@@ -369,7 +373,11 @@ def check_parquet_dir_has_files(
                     text=True,
                     check=False)
     if result.returncode != 0:
-        return False
+        if _is_missing_gcs_result(result):
+            return False
+        output = (result.stderr or result.stdout or '').strip()
+        raise RuntimeError(
+            f"Failed to check Parquet directory {parquet_gcs_dir}: {output}")
     return any(line.strip().endswith('.parquet')
                for line in result.stdout.splitlines())
 
@@ -390,7 +398,12 @@ def check_bq_table_exists(
                     capture_output=True,
                     text=True,
                     check=False)
-    return result.returncode == 0
+    if result.returncode == 0:
+        return True
+    output = (result.stderr or result.stdout or '').strip()
+    if 'not found' in output.lower() or '404' in output:
+        return False
+    raise RuntimeError(f"Failed to check BigQuery table {table_ref}: {output}")
 
 
 def generate_parquet(
@@ -479,6 +492,7 @@ def import_version_to_bq(
     shard_size_bytes: Optional[int] = None,
     workers: Optional[int] = None,
     cleanup_temp: bool = False,
+    dry_run: bool = False,
     repo_root: Path = _REPO_ROOT,
     runner: Optional[Callable[...,
                               subprocess.CompletedProcess]] = None) -> dict:
@@ -488,6 +502,10 @@ def import_version_to_bq(
     if not gcs_base_path.startswith('gs://'):
         raise ValueError(
             f"--gcs-base-path must start with gs://: {gcs_base_path}")
+    if dry_run:
+        logging.info(
+            "Dry run enabled; no Parquet files or BigQuery tables will be changed"
+        )
 
     import_path, import_spec = resolve_import_spec(import_name, repo_root)
     import_gcs_dir = (
@@ -518,7 +536,13 @@ def import_version_to_bq(
             parent_dir = mcf_file.rsplit('/', 1)[0]
             parquet_dir = f"{parent_dir}/{mcf_stem}_parquet"
             parquet_dirs.append(parquet_dir)
-            if check_parquet_dir_has_files(parquet_dir, runner=runner):
+            parquet_exists = check_parquet_dir_has_files(parquet_dir,
+                                                         runner=runner)
+            if dry_run:
+                parquet_status = 'FOUND' if parquet_exists else 'NOT_FOUND'
+                logging.info(
+                    f"Dry run: Parquet {parquet_status}: {parquet_dir}")
+            elif parquet_exists:
                 logging.info(
                     f"Parquet directory already contains files: {parquet_dir}; skipping generation"
                 )
@@ -546,7 +570,12 @@ def import_version_to_bq(
                                              dataset,
                                              table_name,
                                              runner=runner)
-        if table_exists and not replace_bq_table:
+        if dry_run:
+            bq_status = 'FOUND' if table_exists else 'NOT_FOUND'
+            logging.info(
+                f"Dry run: BigQuery table {bq_status}: {project}:{dataset}.{table_name}"
+            )
+        elif table_exists and not replace_bq_table:
             logging.info(
                 f"BigQuery table {project}:{dataset}.{table_name} already exists; skipping load"
             )
@@ -584,6 +613,7 @@ def import_version_to_bq(
         'dataset': dataset,
         'ttl_seconds': ttl_seconds,
         'replace_bq_table': replace_bq_table,
+        'dry_run': dry_run,
         'processed_count': len(processed_tables),
         'tables': processed_tables,
     }
@@ -604,6 +634,7 @@ def main(_):
         shard_size_bytes=_FLAGS['shard-size-bytes'].value,
         workers=_FLAGS['workers'].value,
         cleanup_temp=_FLAGS['cleanup-temp'].value,
+        dry_run=_FLAGS['dry-run'].value,
     )
     print(json.dumps(summary, indent=2))
 

@@ -172,6 +172,25 @@ class ImportVersionToBqTest(unittest.TestCase):
                                                        ['requested'],
                                                        ['input0'])
 
+    def test_status_checks_do_not_treat_access_errors_as_missing(self):
+
+        def fake_runner(cmd, **kwargs):
+            return subprocess.CompletedProcess(cmd,
+                                               1,
+                                               stdout='',
+                                               stderr='Access denied')
+
+        with self.assertRaisesRegex(RuntimeError,
+                                    'Failed to check Parquet directory'):
+            import_version_to_bq.check_parquet_dir_has_files(
+                'gs://bucket/parquet', runner=fake_runner)
+        with self.assertRaisesRegex(RuntimeError,
+                                    'Failed to check BigQuery table'):
+            import_version_to_bq.check_bq_table_exists('project',
+                                                       'dataset',
+                                                       'table',
+                                                       runner=fake_runner)
+
     def test_end_to_end_loads_multiple_mcf_parquet_dirs_into_one_table(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_root = Path(temp_dir)
@@ -268,6 +287,97 @@ class ImportVersionToBqTest(unittest.TestCase):
         self.assertEqual(1, len(load_commands))
         self.assertEqual(2, load_commands[0].count('--parquet-gcs-dir'))
 
+    def test_dry_run_reports_paths_and_status_without_changes(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir)
+            self._write_manifest(repo_root, 'scripts/example', 'Example_Import',
+                                 ['output/data.tmcf'])
+
+            for table_exists, replace_table, expected_bq_status in (
+                (False, False, 'NOT_FOUND'),
+                (True, False, 'FOUND'),
+                (True, True, 'FOUND'),
+            ):
+                with self.subTest(table_exists=table_exists,
+                                  replace_table=replace_table):
+
+                    def fake_runner(cmd, **kwargs):
+                        cmd_text = ' '.join(str(part) for part in cmd)
+                        if cmd[:3] == ['gcloud', 'storage', 'cat']:
+                            return subprocess.CompletedProcess(
+                                cmd, 1, stdout='', stderr='No URLs matched')
+                        if cmd[:3] == ['gcloud', 'storage', 'ls']:
+                            pattern = cmd[3]
+                            if pattern.endswith('Example_Import/'):
+                                return subprocess.CompletedProcess(
+                                    cmd,
+                                    0,
+                                    stdout=('gs://imports/scripts/example/'
+                                            'Example_Import/v1/\n'),
+                                    stderr='')
+                            if pattern.endswith('/v1/'):
+                                return subprocess.CompletedProcess(
+                                    cmd,
+                                    0,
+                                    stdout=('gs://imports/scripts/example/'
+                                            'Example_Import/v1/input0/\n'),
+                                    stderr='')
+                            if pattern.endswith('table_mcf_*.mcf'):
+                                prefix = pattern.removesuffix('table_mcf_*.mcf')
+                                return subprocess.CompletedProcess(
+                                    cmd,
+                                    0,
+                                    stdout=(f'{prefix}table_mcf_existing.mcf\n'
+                                            f'{prefix}table_mcf_missing.mcf\n'),
+                                    stderr='')
+                            if 'existing_parquet' in pattern:
+                                return subprocess.CompletedProcess(
+                                    cmd,
+                                    0,
+                                    stdout=
+                                    f'{pattern.removesuffix("*")}part.parquet\n',
+                                    stderr='')
+                            if pattern.endswith('*.parquet'):
+                                return subprocess.CompletedProcess(
+                                    cmd, 1, stdout='', stderr='No URLs matched')
+                        if cmd[0] == 'bq':
+                            return subprocess.CompletedProcess(
+                                cmd,
+                                0 if table_exists else 1,
+                                stdout='Table' if table_exists else '',
+                                stderr='' if table_exists else 'Not found')
+                        if ('gcs_mcf_to_parquet.sh' in cmd_text or
+                                'load_gcs_parquet_to_bigquery.sh' in cmd_text):
+                            self.fail(
+                                f'Dry run invoked mutating command: {cmd}')
+                        self.fail(f'Unexpected command: {cmd}')
+
+                    summary = import_version_to_bq.import_version_to_bq(
+                        import_name='Example_Import',
+                        version='v1',
+                        project='test-project',
+                        dataset='test_dataset',
+                        gcs_base_path='gs://imports',
+                        replace_bq_table=replace_table,
+                        dry_run=True,
+                        repo_root=repo_root,
+                        runner=fake_runner,
+                    )
+
+                    table = summary['tables'][0]
+                    self.assertTrue(summary['dry_run'])
+                    self.assertEqual(
+                        'test-project:test_dataset.Example_Import__v1__input0',
+                        table['bq_table'])
+                    self.assertEqual(expected_bq_status, table['bq_status'])
+                    self.assertEqual(
+                        ['FOUND', 'NOT_FOUND'],
+                        [item['status'] for item in table['parquet_files']])
+                    self.assertEqual([
+                        'gs://imports/scripts/example/Example_Import/v1/input0/genmcf/table_mcf_existing_parquet',
+                        'gs://imports/scripts/example/Example_Import/v1/input0/genmcf/table_mcf_missing_parquet',
+                    ], table['parquet_dirs'])
+
     def test_cli_uses_explicit_bigquery_option_names(self):
         result = subprocess.run([
             sys.executable,
@@ -281,6 +391,7 @@ class ImportVersionToBqTest(unittest.TestCase):
         self.assertNotIn('FATAL Flags parsing error', help_text)
         self.assertIn('--bq-project', help_text)
         self.assertIn('--bq-dataset', help_text)
+        self.assertIn('dry-run', help_text)
         self.assertNotIn('--version-gcs-dir', help_text)
 
     def test_cli_accepts_representative_flags_without_running(self):
@@ -299,6 +410,7 @@ class ImportVersionToBqTest(unittest.TestCase):
             '--shard-size-bytes=1024',
             '--workers=4',
             '--cleanup-temp',
+            '--dry-run',
             '--verbose',
             '--only_check_args',
         ],
