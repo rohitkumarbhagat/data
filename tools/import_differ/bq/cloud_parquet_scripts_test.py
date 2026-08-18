@@ -309,6 +309,19 @@ class CloudParquetScriptsTest(unittest.TestCase):
         self.assertNotIn('--replace=true', commands)
         self.assertIn('update --expiration=172800', commands)
 
+    def test_bq_script_loads_multiple_parquet_directories_together(self):
+        result = self._run(_BQ_SCRIPT, *self._bq_args(), '--parquet-gcs-dir',
+                           'gs://output/another-parquet')
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        commands = self._command_log.read_text()
+        self.assertIn('storage ls gs://output/parquet/*.parquet', commands)
+        self.assertIn('storage ls gs://output/another-parquet/*.parquet',
+                      commands)
+        self.assertIn(
+            'gs://output/parquet/*.parquet,gs://output/another-parquet/*.parquet',
+            commands)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import json
+from pathlib import Path
 import subprocess
+import sys
+import tempfile
 import unittest
 
 from tools.import_differ.bq import import_version_to_bq
@@ -21,186 +24,289 @@ from tools.import_differ.bq import import_version_to_bq
 
 class ImportVersionToBqTest(unittest.TestCase):
 
+    def _write_manifest(self, repo_root: Path, relative_dir: str,
+                        import_name: str, template_mcfs: list[str]):
+        manifest_dir = repo_root / relative_dir
+        manifest_dir.mkdir(parents=True, exist_ok=True)
+        manifest = {
+            'import_specifications': [{
+                'import_name':
+                    import_name,
+                'import_inputs': [{
+                    'template_mcf': template_mcf
+                } for template_mcf in template_mcfs],
+            }]
+        }
+        (manifest_dir / 'manifest.json').write_text(json.dumps(manifest),
+                                                    encoding='utf-8')
+
     def test_sanitize_identifier(self):
         self.assertEqual(
             'US_Urban_Schools_Teachers_And_Staff',
             import_version_to_bq.sanitize_identifier(
                 'US-Urban.Schools/Teachers_And_Staff'))
-        self.assertEqual('2026_08_14T22_03_06',
-                         import_version_to_bq.sanitize_identifier(
-                             '2026-08-14T22:03:06'))
-
-    def test_parse_version_from_gcs_dir(self):
-        version_dir = 'gs://datcom-prod-imports/statvar_imports/us_urban_school/teachers/US_Urban_Schools_Teachers_And_Staff/2026_08_14T22_03_06_397467_07_00/'
         self.assertEqual(
-            '2026_08_14T22_03_06_397467_07_00',
-            import_version_to_bq.parse_version_from_gcs_dir(version_dir))
+            '2026_08_14T22_03_06',
+            import_version_to_bq.sanitize_identifier('2026-08-14T22:03:06'))
 
-    def test_fetch_import_summary(self):
-        summary_payload = {'import_name': 'US_Urban_Schools_Teachers_And_Staff'}
+    def test_resolve_import_spec_finds_exact_import_name(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir)
+            self._write_manifest(repo_root, 'scripts/example', 'Target_Import',
+                                 ['output/data.tmcf'])
+            self._write_manifest(repo_root, 'statvar_imports/other',
+                                 'Other_Import', ['other.tmcf'])
+
+            import_path, spec = import_version_to_bq.resolve_import_spec(
+                'Target_Import', repo_root)
+
+        self.assertEqual('scripts/example', import_path)
+        self.assertEqual('Target_Import', spec['import_name'])
+
+    def test_resolve_import_spec_rejects_duplicate_import_name(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir)
+            self._write_manifest(repo_root, 'scripts/one', 'Duplicate_Import',
+                                 ['one.tmcf'])
+            self._write_manifest(repo_root, 'statvar_imports/two',
+                                 'Duplicate_Import', ['two.tmcf'])
+
+            with self.assertRaisesRegex(ValueError, 'defined more than once'):
+                import_version_to_bq.resolve_import_spec(
+                    'Duplicate_Import', repo_root)
+
+    def test_resolve_version_reads_latest_and_staging_markers(self):
 
         def fake_runner(cmd, **kwargs):
-            self.assertEqual(['gcloud', 'storage', 'cat',
-                              'gs://bucket/import/v1/import_summary.json'], cmd)
+            if cmd[-1].endswith('latest_version.txt'):
+                return subprocess.CompletedProcess(cmd,
+                                                   0,
+                                                   stdout='version_latest\n',
+                                                   stderr='')
+            if cmd[-1].endswith('staging_version.txt'):
+                return subprocess.CompletedProcess(cmd,
+                                                   0,
+                                                   stdout='version_staging\n',
+                                                   stderr='')
             return subprocess.CompletedProcess(
-                cmd, 0, stdout=json.dumps(summary_payload), stderr='')
+                cmd,
+                0,
+                stdout=('gs://bucket/import/version_latest/\n'
+                        'gs://bucket/import/version_staging/\n'),
+                stderr='')
 
-        summary = import_version_to_bq.fetch_import_summary(
-            'gs://bucket/import/v1', runner=fake_runner)
-        self.assertEqual('US_Urban_Schools_Teachers_And_Staff',
-                         summary['import_name'])
+        self.assertEqual(
+            'version_latest',
+            import_version_to_bq.resolve_version('gs://bucket/import',
+                                                 'latest',
+                                                 runner=fake_runner))
+        self.assertEqual(
+            'version_staging',
+            import_version_to_bq.resolve_version('gs://bucket/import',
+                                                 'staging',
+                                                 runner=fake_runner))
 
-    def test_list_table_mcf_files_none_found(self):
+    def test_resolve_version_last_run_uses_max_timestamp_folder(self):
+
         def fake_runner(cmd, **kwargs):
             return subprocess.CompletedProcess(
-                cmd, 1, stdout='', stderr='One or more URLs matched no objects.')
+                cmd,
+                0,
+                stdout=(
+                    'gs://bucket/import/manual/\n'
+                    'gs://bucket/import/2026_08_13T10_00_00_000000_00_00/\n'
+                    'gs://bucket/import/2026_08_14T09_00_00_000000_00_00/\n'),
+                stderr='')
 
-        files = import_version_to_bq.list_table_mcf_files(
-            'gs://bucket/import/v1', runner=fake_runner)
-        self.assertEqual([], files)
+        self.assertEqual(
+            '2026_08_14T09_00_00_000000_00_00',
+            import_version_to_bq.resolve_version('gs://bucket/import',
+                                                 'last_run',
+                                                 runner=fake_runner))
 
-    def test_end_to_end_single_mcf_flow(self):
-        commands_run = []
+    def test_fetch_import_summary_is_optional_but_must_match(self):
 
-        def fake_runner(cmd, **kwargs):
-            commands_run.append(list(cmd))
-            cmd_str = ' '.join(str(c) for c in cmd)
+        def missing_runner(cmd, **kwargs):
+            return subprocess.CompletedProcess(cmd,
+                                               1,
+                                               stdout='',
+                                               stderr='No URLs matched')
 
-            # 1. Fetch import_summary.json
-            if 'storage cat' in cmd_str:
-                return subprocess.CompletedProcess(
-                    cmd, 0,
-                    stdout=json.dumps({'import_name': 'US_Urban_Schools'}),
-                    stderr='')
+        self.assertIsNone(
+            import_version_to_bq.fetch_import_summary('gs://bucket/import/v1',
+                                                      'Expected_Import',
+                                                      runner=missing_runner))
 
-            # 2. List MCF files
-            if 'storage ls' in cmd_str and '/input*/genmcf/table_mcf_*.mcf' in cmd_str:
-                return subprocess.CompletedProcess(
-                    cmd, 0,
-                    stdout='gs://bucket/import/2026_08_14/input0/genmcf/table_mcf_data.mcf\n',
-                    stderr='')
+        def mismatch_runner(cmd, **kwargs):
+            return subprocess.CompletedProcess(
+                cmd,
+                0,
+                stdout=json.dumps({'import_name': 'Other_Import'}),
+                stderr='')
 
-            # 3. Check Parquet dir (initially empty)
-            if 'storage ls' in cmd_str and 'table_mcf_data_parquet/*.parquet' in cmd_str:
-                return subprocess.CompletedProcess(
-                    cmd, 1, stdout='', stderr='No URLs matched')
+        with self.assertRaisesRegex(ValueError, 'Import name mismatch'):
+            import_version_to_bq.fetch_import_summary('gs://bucket/import/v1',
+                                                      'Expected_Import',
+                                                      runner=mismatch_runner)
 
-            # 4. Generate Parquet script execution
-            if 'gcs_mcf_to_parquet.sh' in cmd_str:
-                return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
+    def test_resolve_import_inputs_uses_input_number_then_template_name(self):
+        import_spec = {
+            'import_name':
+                'Example_Import',
+            'import_inputs': [{
+                'template_mcf': 'output/first.tmcf'
+            }, {
+                'template_mcf': 'output/second.tmcf'
+            }],
+        }
 
-            # 5. Check BigQuery table exists (initially does not exist)
-            if 'bq' in cmd_str and 'show' in cmd_str:
-                return subprocess.CompletedProcess(cmd, 1, stdout='', stderr='Not found')
+        resolved = import_version_to_bq.resolve_import_inputs(
+            import_spec, 'gs://bucket/import/v1', None, ['input0', 'second'])
 
-            # 6. Load Parquet to BigQuery script execution
-            if 'load_gcs_parquet_to_bigquery.sh' in cmd_str:
-                return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
+        self.assertEqual(['input0', 'second'], resolved)
 
-            return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
+    def test_resolve_import_inputs_validates_explicit_names(self):
+        with self.assertRaisesRegex(ValueError, 'was not found'):
+            import_version_to_bq.resolve_import_inputs({},
+                                                       'gs://bucket/import/v1',
+                                                       ['requested'],
+                                                       ['input0'])
 
-        summary = import_version_to_bq.import_version_to_bq(
-            version_gcs_dir='gs://bucket/import/2026_08_14',
-            project='test-project',
-            dataset='test_dataset',
-            replace_bq_table=False,
-            workers=4,
-            runner=fake_runner,
-        )
+    def test_end_to_end_loads_multiple_mcf_parquet_dirs_into_one_table(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir)
+            self._write_manifest(repo_root, 'scripts/example', 'Example_Import',
+                                 ['output/data.tmcf'])
+            commands_run = []
 
-        self.assertEqual('US_Urban_Schools', summary['import_name'])
-        self.assertEqual('2026_08_14', summary['version'])
+            def fake_runner(cmd, **kwargs):
+                commands_run.append(list(cmd))
+                cmd_text = ' '.join(str(part) for part in cmd)
+                if cmd[:3] == ['gcloud', 'storage', 'cat']:
+                    return subprocess.CompletedProcess(cmd,
+                                                       1,
+                                                       stdout='',
+                                                       stderr='No URLs matched')
+                if cmd[:3] == ['gcloud', 'storage', 'ls']:
+                    pattern = cmd[3]
+                    if pattern.endswith('Example_Import/'):
+                        return subprocess.CompletedProcess(
+                            cmd,
+                            0,
+                            stdout=(
+                                'gs://imports/scripts/example/Example_Import/'
+                                '2026_08_14T09_00_00_000000_00_00/\n'),
+                            stderr='')
+                    if pattern.endswith('00_00/'):
+                        return subprocess.CompletedProcess(
+                            cmd,
+                            0,
+                            stdout=(
+                                'gs://imports/scripts/example/Example_Import/'
+                                '2026_08_14T09_00_00_000000_00_00/input0/\n'),
+                            stderr='')
+                    if pattern.endswith('table_mcf_*.mcf'):
+                        prefix = pattern.removesuffix('table_mcf_*.mcf')
+                        return subprocess.CompletedProcess(
+                            cmd,
+                            0,
+                            stdout=(f'{prefix}table_mcf_observations.mcf\n'
+                                    f'{prefix}table_mcf_events.mcf\n'),
+                            stderr='')
+                    if pattern.endswith('*.parquet'):
+                        return subprocess.CompletedProcess(
+                            cmd, 1, stdout='', stderr='No URLs matched')
+                if 'gcs_mcf_to_parquet.sh' in cmd_text:
+                    return subprocess.CompletedProcess(cmd,
+                                                       0,
+                                                       stdout='',
+                                                       stderr='')
+                if cmd[0] == 'bq':
+                    return subprocess.CompletedProcess(cmd,
+                                                       1,
+                                                       stdout='',
+                                                       stderr='Not found')
+                if 'load_gcs_parquet_to_bigquery.sh' in cmd_text:
+                    return subprocess.CompletedProcess(cmd,
+                                                       0,
+                                                       stdout='',
+                                                       stderr='')
+                self.fail(f'Unexpected command: {cmd}')
+
+            summary = import_version_to_bq.import_version_to_bq(
+                import_name='Example_Import',
+                version='2026_08_14T09_00_00_000000_00_00',
+                project='test-project',
+                dataset='test_dataset',
+                gcs_base_path='gs://imports',
+                workers=4,
+                repo_root=repo_root,
+                runner=fake_runner,
+            )
+
+        self.assertEqual('scripts/example', summary['import_path'])
+        self.assertEqual(['input0'], summary['import_inputs'])
         self.assertEqual(1, summary['processed_count'])
-        self.assertEqual(604800, summary['ttl_seconds'])
-
-        table_info = summary['tables'][0]
-        self.assertEqual('input0', table_info['input_folder'])
         self.assertEqual(
-            'test-project:test_dataset.US_Urban_Schools__2026_08_14__input0',
-            table_info['bq_table'])
-        self.assertEqual('GENERATED', table_info['parquet_status'])
-        self.assertEqual('CREATED', table_info['bq_status'])
-        generate_command = next(command for command in commands_run
-                                if 'gcs_mcf_to_parquet.sh' in str(command[0]))
-        self.assertEqual(
-            '4', generate_command[generate_command.index('--workers') + 1])
+            'test-project:test_dataset.Example_Import__2026_08_14T09_00_00_000000_00_00__input0',
+            summary['tables'][0]['bq_table'])
+        self.assertEqual(2, len(summary['tables'][0]['parquet_dirs']))
+        self.assertEqual('CREATED', summary['tables'][0]['bq_status'])
 
-    def test_multiple_mcfs_in_single_input_generates_distinct_table_names(self):
-        def fake_runner(cmd, **kwargs):
-            cmd_str = ' '.join(str(c) for c in cmd)
-            if 'storage cat' in cmd_str:
-                return subprocess.CompletedProcess(
-                    cmd, 0,
-                    stdout=json.dumps({'import_name': 'Multi_Table_Import'}),
-                    stderr='')
-            if 'storage ls' in cmd_str and '/input*/genmcf/table_mcf_*.mcf' in cmd_str:
-                return subprocess.CompletedProcess(
-                    cmd, 0,
-                    stdout=('gs://bucket/import/v1/input0/genmcf/table_mcf_obs.mcf\n'
-                            'gs://bucket/import/v1/input0/genmcf/table_mcf_events.mcf\n'),
-                    stderr='')
-            if 'storage ls' in cmd_str and '*.parquet' in cmd_str:
-                # Parquet already exists
-                return subprocess.CompletedProcess(
-                    cmd, 0,
-                    stdout='gs://bucket/import/v1/input0/genmcf/table_mcf_obs_parquet/part-00000.parquet\n',
-                    stderr='')
-            if 'bq' in cmd_str and 'show' in cmd_str:
-                # Table already exists
-                return subprocess.CompletedProcess(cmd, 0, stdout='Table details', stderr='')
-            return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
+        generate_commands = [
+            command for command in commands_run
+            if 'gcs_mcf_to_parquet.sh' in str(command[0])
+        ]
+        self.assertEqual(2, len(generate_commands))
+        self.assertTrue(
+            all(command[command.index('--workers') + 1] == '4'
+                for command in generate_commands))
+        load_commands = [
+            command for command in commands_run
+            if 'load_gcs_parquet_to_bigquery.sh' in str(command[0])
+        ]
+        self.assertEqual(1, len(load_commands))
+        self.assertEqual(2, load_commands[0].count('--parquet-gcs-dir'))
 
-        summary = import_version_to_bq.import_version_to_bq(
-            version_gcs_dir='gs://bucket/import/v1',
-            project='test-project',
-            dataset='test_dataset',
-            replace_bq_table=False,
-            runner=fake_runner,
-        )
+    def test_cli_uses_explicit_bigquery_option_names(self):
+        result = subprocess.run([
+            sys.executable,
+            str(Path(import_version_to_bq.__file__)), '--help'
+        ],
+                                capture_output=True,
+                                text=True,
+                                check=False)
 
-        self.assertEqual(2, summary['processed_count'])
-        table_names = [t['bq_table'] for t in summary['tables']]
-        self.assertIn('test-project:test_dataset.Multi_Table_Import__v1__input0__table_mcf_obs',
-                      table_names)
-        self.assertIn('test-project:test_dataset.Multi_Table_Import__v1__input0__table_mcf_events',
-                      table_names)
-        self.assertEqual('SKIPPED_ALREADY_EXISTS', summary['tables'][0]['parquet_status'])
-        self.assertEqual('SKIPPED_ALREADY_EXISTS', summary['tables'][0]['bq_status'])
+        help_text = result.stdout + result.stderr
+        self.assertNotIn('FATAL Flags parsing error', help_text)
+        self.assertIn('--bq-project', help_text)
+        self.assertIn('--bq-dataset', help_text)
+        self.assertNotIn('--version-gcs-dir', help_text)
 
-    def test_replace_bq_table_forces_load_when_table_exists(self):
-        loaded_tables = []
+    def test_cli_accepts_representative_flags_without_running(self):
+        result = subprocess.run([
+            sys.executable,
+            str(Path(import_version_to_bq.__file__)),
+            '--import-name=Example_Import',
+            '--version=latest',
+            '--import-input=input0',
+            '--import-input=input1',
+            '--gcs-base-path=gs://test-imports',
+            '--bq-project=test-project',
+            '--bq-dataset=test_dataset',
+            '--replace-bq-table',
+            '--ttl-seconds=3600',
+            '--shard-size-bytes=1024',
+            '--workers=4',
+            '--cleanup-temp',
+            '--verbose',
+            '--only_check_args',
+        ],
+                                capture_output=True,
+                                text=True,
+                                check=False)
 
-        def fake_runner(cmd, **kwargs):
-            cmd_str = ' '.join(str(c) for c in cmd)
-            if 'storage cat' in cmd_str:
-                return subprocess.CompletedProcess(
-                    cmd, 0, stdout=json.dumps({'import_name': 'My_Import'}), stderr='')
-            if 'storage ls' in cmd_str and '/input*/genmcf/table_mcf_*.mcf' in cmd_str:
-                return subprocess.CompletedProcess(
-                    cmd, 0,
-                    stdout='gs://bucket/import/v1/input0/genmcf/table_mcf_data.mcf\n',
-                    stderr='')
-            if 'storage ls' in cmd_str and '*.parquet' in cmd_str:
-                return subprocess.CompletedProcess(
-                    cmd, 0, stdout='part-00000.parquet\n', stderr='')
-            if 'bq' in cmd_str and 'show' in cmd_str:
-                return subprocess.CompletedProcess(cmd, 0, stdout='Table details', stderr='')
-            if 'load_gcs_parquet_to_bigquery.sh' in cmd_str:
-                loaded_tables.append(cmd)
-                return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
-            return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
-
-        summary = import_version_to_bq.import_version_to_bq(
-            version_gcs_dir='gs://bucket/import/v1',
-            project='test-project',
-            dataset='test_dataset',
-            replace_bq_table=True,
-            runner=fake_runner,
-        )
-
-        self.assertEqual(1, len(loaded_tables))
-        self.assertIn('--replace-bq-table', loaded_tables[0])
-        self.assertEqual('REPLACED', summary['tables'][0]['bq_status'])
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
 
 if __name__ == '__main__':
