@@ -164,12 +164,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
+echo "Starting MCF to Parquet pipeline."
+echo "Input GCS file: $input_gcs_file"
+echo "Output GCS directory: $output_gcs_dir"
 echo "Temporary directory: $temp_dir"
 mkdir -p "$temp_dir/download"
 input_name="${input_gcs_file##*/}"
 local_input="$temp_dir/download/$input_name"
 local_output="$temp_dir/output"
 
+echo "Downloading $input_gcs_file to $local_input..."
 gcloud storage cp "$input_gcs_file" "$local_input"
 
 converter_args=(
@@ -179,6 +183,7 @@ converter_args=(
 if [[ -n "$shard_size_bytes" ]]; then
   converter_args+=(--shard-size-bytes "$shard_size_bytes")
 fi
+echo "Converting $local_input to Parquet..."
 "$python_bin" "$script_dir/mcf_to_parquet.py" "${converter_args[@]}"
 
 parquet_files=("$local_output/parquet/"*.parquet)
@@ -186,6 +191,7 @@ if [[ ! -e "${parquet_files[0]}" ]]; then
   echo "Conversion did not produce any Parquet files." >&2
   exit 1
 fi
+echo "Uploading ${#parquet_files[@]} Parquet part(s) to $output_gcs_dir/..."
 gcloud storage cp "${parquet_files[@]}" "$output_gcs_dir/"
 
 echo "Uploaded ${#parquet_files[@]} Parquet file(s) to $output_gcs_dir/"

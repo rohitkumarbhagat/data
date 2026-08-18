@@ -170,6 +170,7 @@ if [[ "$table_exists" == true && "$force_bq" == false ]]; then
   exit 1
 fi
 
+echo "Starting BigQuery load pipeline for $table_ref..."
 load_args=(
   --project_id="$project"
   load
@@ -178,7 +179,10 @@ load_args=(
 if [[ "$force_bq" == true ]]; then
   load_args+=(--replace=true)
 fi
+echo "Loading Parquet files from $parquet_gcs_dir/*.parquet into $table_ref..."
 bq "${load_args[@]}" "$table_ref" "$parquet_gcs_dir/*.parquet"
+
+echo "Setting expiration of $table_ref to $ttl_seconds seconds..."
 bq --project_id="$project" update --expiration="$ttl_seconds" "$table_ref"
 
 echo "Loaded $parquet_gcs_dir/*.parquet into $table_ref"

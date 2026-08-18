@@ -36,6 +36,7 @@ import os
 from pathlib import Path
 import sys
 
+from absl import logging
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -141,10 +142,12 @@ def _scan_and_shard(input_path: Path, shards_dir: Path,
 
 
 def _convert_mcf_to_csv(source_path: Path, csv_path: Path) -> int:
+    logging.info(f"Converting MCF to CSV intermediate: {source_path.name} -> {csv_path.name}")
     nodes = mcf_file_util.load_mcf_nodes(str(source_path))
     mcf_file_util.write_mcf_nodes([nodes], str(csv_path))
     if not csv_path.exists():
         csv_path.write_text(f'{_CSV_KEY_COLUMN}\n', encoding='utf-8')
+    logging.info(f"Converted {len(nodes)} MCF node(s) to CSV: {csv_path.name}")
     return len(nodes)
 
 
@@ -168,6 +171,7 @@ def _parquet_record(csv_row: dict) -> dict:
 
 
 def _write_parquet_part(csv_path: Path, parquet_path: Path) -> dict:
+    logging.info(f"Writing Parquet part from {csv_path.name} -> {parquet_path.name}...")
     schema = pa.schema(
         [pa.field(column, pa.string()) for column in _PARQUET_COLUMNS])
     batch = []
@@ -199,6 +203,9 @@ def _write_parquet_part(csv_path: Path, parquet_path: Path) -> dict:
             if batch:
                 writer.write_table(pa.Table.from_pylist(batch, schema=schema))
 
+    logging.info(
+        f"Wrote Parquet part {parquet_path.name}: {node_count} nodes "
+        f"({observation_count} observations, {schema_count} schema nodes)")
     return {
         'parquet_file': str(parquet_path),
         'parquet_bytes': parquet_path.stat().st_size,
@@ -241,6 +248,9 @@ def convert_mcf_to_parquet(input_file: str,
     if output_path.exists() and any(output_path.iterdir()):
         raise ValueError(f'Output directory is not empty: {output_path}')
 
+    logging.info(
+        f"Starting MCF to Parquet conversion: {input_path} ({input_path.stat().st_size} bytes)"
+    )
     output_path.mkdir(parents=True, exist_ok=True)
     shards_dir = output_path / 'mcf_shards'
     csv_dir = output_path / 'csv'
@@ -250,8 +260,15 @@ def convert_mcf_to_parquet(input_file: str,
 
     source_paths, scan_summary = _scan_and_shard(input_path, shards_dir,
                                                  shard_size_bytes)
+    logging.info(
+        f"MCF scan complete: {scan_summary['input_node_blocks']} node block(s), "
+        f"{len(source_paths)} part(s) to convert (sharded: {scan_summary['was_sharded']})"
+    )
     parts = []
     for part_index, source_path in enumerate(source_paths):
+        logging.info(
+            f"Starting part {part_index + 1}/{len(source_paths)}: {source_path.name}"
+        )
         csv_path = csv_dir / f'part-{part_index:05d}.csv'
         parquet_path = parquet_dir / f'part-{part_index:05d}.parquet'
         parts.append(
@@ -275,6 +292,9 @@ def convert_mcf_to_parquet(input_file: str,
     with summary_path.open('w', encoding='utf-8') as summary_file:
         json.dump(summary, summary_file, indent=2)
         summary_file.write('\n')
+    logging.info(
+        f"MCF to Parquet conversion complete: {parquet_nodes} Parquet nodes written "
+        f"across {len(parts)} part(s). Summary written to {summary_path}")
     return summary
 
 
