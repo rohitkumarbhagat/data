@@ -365,9 +365,10 @@ def list_table_mcf_files(
                 f"No table MCF files under {input_gcs_dir}/genmcf; checking validation"
             )
 
-    raise ValueError(
-        f"No table MCF files found for import input {input_name!r}: {', '.join(patterns)}"
+    logging.info(
+        f"No table MCF files found for import input {input_name}; skipping input"
     )
+    return []
 
 
 def check_output_dir_has_files(
@@ -558,6 +559,8 @@ def import_version_to_bq(
         mcf_files = list_table_mcf_files(version_gcs_dir,
                                          input_name,
                                          runner=runner)
+        if not mcf_files:
+            continue
         output_files = []
         output_dirs = []
         for mcf_file in mcf_files:

@@ -222,6 +222,26 @@ class ImportVersionToBqTest(unittest.TestCase):
             'gs://bucket/import/v1/input0/validation/table_mcf_*.mcf',
         ], patterns)
 
+    def test_list_table_mcf_files_returns_empty_when_both_locations_missing(
+            self):
+        patterns = []
+
+        def fake_runner(cmd, **kwargs):
+            patterns.append(cmd[3])
+            return subprocess.CompletedProcess(cmd,
+                                               1,
+                                               stdout='',
+                                               stderr='No URLs matched')
+
+        files = import_version_to_bq.list_table_mcf_files(
+            'gs://bucket/import/v1', 'input0', runner=fake_runner)
+
+        self.assertEqual([], files)
+        self.assertEqual([
+            'gs://bucket/import/v1/input0/genmcf/table_mcf_*.mcf',
+            'gs://bucket/import/v1/input0/validation/table_mcf_*.mcf',
+        ], patterns)
+
     def test_status_checks_do_not_treat_access_errors_as_missing(self):
 
         def fake_runner(cmd, **kwargs):
@@ -249,7 +269,7 @@ class ImportVersionToBqTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_root = Path(temp_dir)
             self._write_manifest(repo_root, 'scripts/example', 'Example_Import',
-                                 ['output/data.tmcf'])
+                                 ['output/data.tmcf', 'output/missing.tmcf'])
             commands_run = []
 
             def fake_runner(cmd, **kwargs):
@@ -276,9 +296,14 @@ class ImportVersionToBqTest(unittest.TestCase):
                             0,
                             stdout=(
                                 'gs://imports/scripts/example/Example_Import/'
-                                '2026_08_14T09_00_00_000000_00_00/input0/\n'),
+                                '2026_08_14T09_00_00_000000_00_00/input0/\n'
+                                'gs://imports/scripts/example/Example_Import/'
+                                '2026_08_14T09_00_00_000000_00_00/input1/\n'),
                             stderr='')
                     if pattern.endswith('table_mcf_*.mcf'):
+                        if '/input1/' in pattern:
+                            return subprocess.CompletedProcess(
+                                cmd, 1, stdout='', stderr='No URLs matched')
                         prefix = pattern.removesuffix('table_mcf_*.mcf')
                         return subprocess.CompletedProcess(
                             cmd,
@@ -319,7 +344,7 @@ class ImportVersionToBqTest(unittest.TestCase):
 
         self.assertEqual('scripts/example', summary['import_path'])
         self.assertEqual('parquet', summary['format'])
-        self.assertEqual(['input0'], summary['import_inputs'])
+        self.assertEqual(['input0', 'input1'], summary['import_inputs'])
         self.assertEqual(1, summary['processed_count'])
         self.assertEqual(
             'test-project:test_dataset.Example_Import__2026_08_14T09_00_00_000000_00_00__input0',
