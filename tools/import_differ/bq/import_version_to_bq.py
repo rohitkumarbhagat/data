@@ -331,34 +331,43 @@ def list_table_mcf_files(
     if runner is None:
         runner = subprocess.run
 
-    pattern = f"{version_gcs_dir.rstrip('/')}/{input_name}/genmcf/table_mcf_*.mcf"
-    logging.debug(f"Scanning for table MCF files: {pattern}")
-    result = runner(['gcloud', 'storage', 'ls', pattern],
-                    capture_output=True,
-                    text=True,
-                    check=False)
-    if result.returncode != 0:
-        if _is_missing_gcs_result(result):
-            raise ValueError(
-                f"No table MCF files found for import input {input_name!r}: {pattern}"
-            )
-        output = (result.stderr or result.stdout or '').strip()
-        raise RuntimeError(
-            f"Failed to list MCF files for {input_name}: {output}")
+    input_gcs_dir = f"{version_gcs_dir.rstrip('/')}/{input_name}"
+    patterns = (
+        f'{input_gcs_dir}/genmcf/table_mcf_*.mcf',
+        f'{input_gcs_dir}/validation/table_mcf_*.mcf',
+    )
+    for pattern_index, pattern in enumerate(patterns):
+        logging.debug(f"Scanning for table MCF files: {pattern}")
+        result = runner(['gcloud', 'storage', 'ls', pattern],
+                        capture_output=True,
+                        text=True,
+                        check=False)
+        if result.returncode != 0:
+            if not _is_missing_gcs_result(result):
+                output = (result.stderr or result.stdout or '').strip()
+                raise RuntimeError(
+                    f"Failed to list MCF files for {input_name}: {output}")
+            files = []
+        else:
+            files = sorted({
+                line.strip()
+                for line in result.stdout.splitlines()
+                if line.strip().endswith('.mcf')
+            })
 
-    files = sorted({
-        line.strip()
-        for line in result.stdout.splitlines()
-        if line.strip().endswith('.mcf')
-    })
-    if not files:
-        raise ValueError(
-            f"No table MCF files found for import input {input_name!r}: {pattern}"
-        )
-    logging.info(
-        f"Found {len(files)} MCF file(s) for import input {input_name}")
-    logging.debug(f"MCF files for {input_name}: {files}")
-    return files
+        if files:
+            logging.info(
+                f"Found {len(files)} MCF file(s) for import input {input_name}")
+            logging.debug(f"MCF files for {input_name}: {files}")
+            return files
+        if pattern_index == 0:
+            logging.info(
+                f"No table MCF files under {input_gcs_dir}/genmcf; checking validation"
+            )
+
+    raise ValueError(
+        f"No table MCF files found for import input {input_name!r}: {', '.join(patterns)}"
+    )
 
 
 def check_output_dir_has_files(

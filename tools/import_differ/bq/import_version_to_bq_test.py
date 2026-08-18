@@ -172,6 +172,56 @@ class ImportVersionToBqTest(unittest.TestCase):
                                                        ['requested'],
                                                        ['input0'])
 
+    def test_list_table_mcf_files_prefers_genmcf_folder(self):
+        patterns = []
+
+        def fake_runner(cmd, **kwargs):
+            patterns.append(cmd[3])
+            return subprocess.CompletedProcess(
+                cmd,
+                0,
+                stdout=
+                'gs://bucket/import/v1/input0/genmcf/table_mcf_data.mcf\n',
+                stderr='')
+
+        files = import_version_to_bq.list_table_mcf_files(
+            'gs://bucket/import/v1', 'input0', runner=fake_runner)
+
+        self.assertEqual(
+            ['gs://bucket/import/v1/input0/genmcf/table_mcf_data.mcf'], files)
+        self.assertEqual(
+            ['gs://bucket/import/v1/input0/genmcf/table_mcf_*.mcf'], patterns)
+
+    def test_list_table_mcf_files_falls_back_to_validation_folder(self):
+        patterns = []
+
+        def fake_runner(cmd, **kwargs):
+            pattern = cmd[3]
+            patterns.append(pattern)
+            if '/validation/' not in pattern:
+                return subprocess.CompletedProcess(cmd,
+                                                   1,
+                                                   stdout='',
+                                                   stderr='No URLs matched')
+            return subprocess.CompletedProcess(
+                cmd,
+                0,
+                stdout=
+                ('gs://bucket/import/v1/input0/validation/table_mcf_data.mcf\n'
+                ),
+                stderr='')
+
+        files = import_version_to_bq.list_table_mcf_files(
+            'gs://bucket/import/v1', 'input0', runner=fake_runner)
+
+        self.assertEqual(
+            ['gs://bucket/import/v1/input0/validation/table_mcf_data.mcf'],
+            files)
+        self.assertEqual([
+            'gs://bucket/import/v1/input0/genmcf/table_mcf_*.mcf',
+            'gs://bucket/import/v1/input0/validation/table_mcf_*.mcf',
+        ], patterns)
+
     def test_status_checks_do_not_treat_access_errors_as_missing(self):
 
         def fake_runner(cmd, **kwargs):
@@ -190,6 +240,10 @@ class ImportVersionToBqTest(unittest.TestCase):
                                                        'dataset',
                                                        'table',
                                                        runner=fake_runner)
+        with self.assertRaisesRegex(RuntimeError, 'Failed to list MCF files'):
+            import_version_to_bq.list_table_mcf_files('gs://bucket/import/v1',
+                                                      'input0',
+                                                      runner=fake_runner)
 
     def test_end_to_end_loads_multiple_mcf_parquet_dirs_into_one_table(self):
         with tempfile.TemporaryDirectory() as temp_dir:
