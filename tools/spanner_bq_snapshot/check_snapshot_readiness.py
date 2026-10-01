@@ -49,26 +49,30 @@ Checks (all read-only):
       committed after C by this read, BQ(T) holds nothing newer than C.
       With DS2/DS3/BQ2 (everything up to C present): BQ(T) == SP(C).
 
-Nothing is created, modified or deleted on any server. Progress is logged to
-stderr; the final report (or JSON with --json) is printed to stdout.
+Nothing is created, modified or deleted on any server. Progress is logged with
+absl logging (stderr); the final report (or JSON with --json) is printed to
+stdout.
 
 Usage (from repo root):
   python -m tools.spanner_bq_snapshot.check_snapshot_readiness [--json]
 Exit code: 0 = YES, 1 = NO, 2 = error.
 """
 
-import argparse
 import dataclasses
 import datetime
 import json
-import sys
 import time
 
+from absl import app
+from absl import flags
+from absl import logging
 import google.auth
 from google.auth.transport.requests import AuthorizedSession
 from google.cloud import bigquery
 from google.cloud import monitoring_v3
 from google.cloud import spanner
+
+_FLAGS = flags.FLAGS
 
 _LOCK_ID = 'global_ingestion_lock'
 _ONE_MINUTE = datetime.timedelta(minutes=1)
@@ -90,42 +94,45 @@ class Check:
     detail: str
 
 
-def _log(msg):
-    now = datetime.datetime.now(datetime.timezone.utc).strftime('%H:%M:%S')
-    print(f'[{now}] {msg}', file=sys.stderr, flush=True)
+def _define_flags():
+    try:
+        flags.DEFINE_string('project', 'datcom-store', 'GCP project.')
+        flags.DEFINE_string('spanner_instance', 'dc-graph-prod',
+                            'SP instance.')
+        flags.DEFINE_string('spanner_database', 'dc_graph', 'SP database.')
+        flags.DEFINE_string('bq_dataset', 'spanner_dc_graph_prod_DEFAULT',
+                            'BQ mirror dataset.')
+        flags.DEFINE_string('bq_region', 'region-us',
+                            'BQ region qualifier for INFORMATION_SCHEMA.')
+        flags.DEFINE_string('stream_location', 'us-central1', 'DS location.')
+        flags.DEFINE_string('stream', 'ds-spanner-dc-graph-prod-to-bq',
+                            'DS stream ID.')
+        flags.DEFINE_integer('quiet_minutes', 30,
+                             'DS3: no DS events for this long.')
+        flags.DEFINE_integer('settle_minutes', 15,
+                             'BQ1: last BQ append must be older than this.')
+        flags.DEFINE_integer(
+            'freshness_max_age_minutes', 10,
+            'DS2: latest freshness metric point must be this recent.')
+        flags.DEFINE_boolean('json', False, 'Print JSON output.')
+    except flags.DuplicateFlagError:
+        pass
 
 
 class _Step:
-    """Logs start and duration of a step to stderr."""
+    """Logs start and duration of a step."""
 
     def __init__(self, msg):
         self._msg = msg
 
     def __enter__(self):
-        _log(f'{self._msg} ...')
+        logging.info('%s ...', self._msg)
         self._start = time.monotonic()
 
-    def __exit__(self, *exc):
-        _log(f'{self._msg}: done in {time.monotonic() - self._start:.1f}s')
-
-
-def _parse_args():
-    p = argparse.ArgumentParser(description=__doc__.split('\n')[0])
-    p.add_argument('--project', default='datcom-store')
-    p.add_argument('--spanner_instance', default='dc-graph-prod')
-    p.add_argument('--spanner_database', default='dc_graph')
-    p.add_argument('--bq_dataset', default='spanner_dc_graph_prod_DEFAULT')
-    p.add_argument('--bq_region', default='region-us')
-    p.add_argument('--stream_location', default='us-central1')
-    p.add_argument('--stream', default='ds-spanner-dc-graph-prod-to-bq')
-    p.add_argument('--quiet_minutes', type=int, default=30,
-                   help='DS3: no DS events for this long.')
-    p.add_argument('--settle_minutes', type=int, default=15,
-                   help='BQ1: last BQ append must be older than this.')
-    p.add_argument('--freshness_max_age_minutes', type=int, default=10,
-                   help='DS2: latest freshness metric point must be this recent.')
-    p.add_argument('--json', action='store_true', help='Print JSON output.')
-    return p.parse_args()
+    def __exit__(self, exc_type, *_):
+        status = 'FAILED' if exc_type else 'done'
+        logging.info('%s: %s in %.1fs', self._msg, status,
+                     time.monotonic() - self._start)
 
 
 def _fmt(ts):
@@ -198,16 +205,16 @@ def spanner_checks(state):
 
 # --------------------------------------------------------------------- DS --
 
-def check_stream_running(args, creds):
-    url = (f'https://datastream.googleapis.com/v1/projects/{args.project}'
-           f'/locations/{args.stream_location}/streams/{args.stream}')
+def check_stream_running(creds, project, stream_location, stream):
+    url = (f'https://datastream.googleapis.com/v1/projects/{project}'
+           f'/locations/{stream_location}/streams/{stream}')
     resp = AuthorizedSession(creds).get(url, timeout=60)
     resp.raise_for_status()
     body = resp.json()
     state = body.get('state')
     errors = body.get('errors') or []
     return Check('DS1 stream running', state == 'RUNNING' and not errors,
-                 f'DS stream {args.stream}: state={state}, errors={len(errors)}')
+                 f'DS stream {stream}: state={state}, errors={len(errors)}')
 
 
 def _interval(now, minutes):
@@ -215,11 +222,11 @@ def _interval(now, minutes):
         end_time=now, start_time=now - datetime.timedelta(minutes=minutes))
 
 
-def check_freshness(mclient, args, now, c):
+def check_freshness(mclient, project, stream, now, c, max_age_minutes):
     series = list(mclient.list_time_series(request=monitoring_v3.ListTimeSeriesRequest(
-        name=f'projects/{args.project}',
+        name=f'projects/{project}',
         filter=('metric.type = "datastream.googleapis.com/stream/freshness"'
-                f' AND resource.labels.stream_id = "{args.stream}"'),
+                f' AND resource.labels.stream_id = "{stream}"'),
         interval=_interval(now, 60),
         view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL)))
     points = [p for s in series for p in s.points]
@@ -234,20 +241,20 @@ def check_freshness(mclient, args, now, c):
     detail = (f'DS read lag={lag_s}s per latest freshness metric point '
               f'({_fmt(point_t)}, {_minutes(age)} min old) -> DS has read SP '
               f'changes up to {_fmt(read_up_to)}; required > C ({_fmt(c)})')
-    if age > datetime.timedelta(minutes=args.freshness_max_age_minutes):
+    if age > datetime.timedelta(minutes=max_age_minutes):
         return Check('DS2 DS read past C', False,
-                     f'metric point older than {args.freshness_max_age_minutes} '
+                     f'metric point older than {max_age_minutes} '
                      f'min, cannot trust it; {detail}')
     return Check('DS2 DS read past C', c is not None and read_up_to > c, detail)
 
 
-def check_no_recent_events(mclient, args, now):
-    window_s = args.quiet_minutes * 60
+def check_no_recent_events(mclient, project, stream, now, quiet_minutes):
+    window_s = quiet_minutes * 60
     series = mclient.list_time_series(request=monitoring_v3.ListTimeSeriesRequest(
-        name=f'projects/{args.project}',
+        name=f'projects/{project}',
         filter=('metric.type = "datastream.googleapis.com/streamobject/event_count"'
-                f' AND resource.labels.stream_id = "{args.stream}"'),
-        interval=_interval(now, args.quiet_minutes),
+                f' AND resource.labels.stream_id = "{stream}"'),
+        interval=_interval(now, quiet_minutes),
         view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
         aggregation=monitoring_v3.Aggregation(
             alignment_period={'seconds': window_s},
@@ -260,10 +267,10 @@ def check_no_recent_events(mclient, args, now):
             busy[obj] = busy.get(obj, 0) + total
     if busy:
         return Check('DS3 no recent DS events', False,
-                     f'DS sent change events in the last {args.quiet_minutes} min '
+                     f'DS sent change events in the last {quiet_minutes} min '
                      f'for {len(busy)} table(s) (table: events): {busy}')
     return Check('DS3 no recent DS events', True,
-                 f'no DS change events in the last {args.quiet_minutes} min '
+                 f'no DS change events in the last {quiet_minutes} min '
                  f'for any table')
 
 
@@ -288,16 +295,16 @@ ORDER BY table_name
 """
 
 
-def bq_checks(bq, args):
+def bq_checks(bq, project, bq_dataset, bq_region, settle_minutes):
     """Returns (T, checks, per-table info). T is BQ's CURRENT_TIMESTAMP()."""
-    sql = _BQ_SQL.format(p=args.project, ds=args.bq_dataset, region=args.bq_region)
+    sql = _BQ_SQL.format(p=project, ds=bq_dataset, region=bq_region)
     job = bq.query(sql, job_config=bigquery.QueryJobConfig(
-        query_parameters=[bigquery.ScalarQueryParameter('ds', 'STRING', args.bq_dataset)]))
+        query_parameters=[bigquery.ScalarQueryParameter('ds', 'STRING', bq_dataset)]))
     rows = list(job.result())
     if not rows:
-        raise RuntimeError(f'no tables found in {args.project}.{args.bq_dataset}')
+        raise RuntimeError(f'no tables found in {project}.{bq_dataset}')
     t = rows[0].t
-    settle_cutoff = t - datetime.timedelta(minutes=args.settle_minutes)
+    settle_cutoff = t - datetime.timedelta(minutes=settle_minutes)
 
     unsettled, pending, tables = [], [], []
     for r in rows:
@@ -327,12 +334,12 @@ def bq_checks(bq, args):
     if unsettled:
         bq1 = Check('BQ1 BQ appends settled', False,
                     f'{len(unsettled)} of {n} tables got BQ appends within the '
-                    f'settle window ({args.settle_minutes} min, i.e. after '
+                    f'settle window ({settle_minutes} min, i.e. after '
                     f'{_fmt(settle_cutoff)}): {unsettled}')
     else:
         bq1 = Check('BQ1 BQ appends settled', True,
                     f'none of {n} tables got BQ appends within the settle window '
-                    f'({args.settle_minutes} min, i.e. after {_fmt(settle_cutoff)})')
+                    f'({settle_minutes} min, i.e. after {_fmt(settle_cutoff)})')
     if pending:
         bq2 = Check('BQ2 nothing pending in BQ', False,
                     f'{len(pending)} of {n} tables have received changes not yet '
@@ -346,46 +353,52 @@ def bq_checks(bq, args):
 
 # ------------------------------------------------------------------- main --
 
-def main():
-    args = _parse_args()
+def run(project, spanner_instance, spanner_database, bq_dataset, bq_region,
+        stream_location, stream, quiet_minutes, settle_minutes,
+        freshness_max_age_minutes, as_json):
+    """Runs all checks and prints the report. Returns the exit code."""
     checks = []
 
     creds, _ = google.auth.default(
         scopes=['https://www.googleapis.com/auth/cloud-platform'])
     if hasattr(creds, 'with_quota_project'):
-        creds = creds.with_quota_project(args.project)
+        creds = creds.with_quota_project(project)
 
     # disable_builtin_metrics: the Spanner client otherwise exports its own
     # metrics to Cloud Monitoring, which is a write.
     database = spanner.Client(
-        project=args.project, credentials=creds,
+        project=project, credentials=creds,
         disable_builtin_metrics=True).instance(
-            args.spanner_instance).database(args.spanner_database)
+            spanner_instance).database(spanner_database)
     mclient = monitoring_v3.MetricServiceClient(credentials=creds)
-    bq = bigquery.Client(project=args.project, credentials=creds)
+    bq = bigquery.Client(project=project, credentials=creds)
 
     # 1. SP gate.
     with _Step('SP1/SP2: strong read of SP IngestionLock + IngestionHistory'):
         first = read_spanner_state(database)
     checks += spanner_checks(first)
     c = first['c']
-    _log(f'C = {_fmt(c)}')
+    logging.info('C = %s', _fmt(c))
 
     # 2. DS.
     now = datetime.datetime.now(datetime.timezone.utc)
     with _Step('DS1: reading DS stream state'):
-        checks.append(check_stream_running(args, creds))
+        checks.append(check_stream_running(creds, project, stream_location,
+                                           stream))
     with _Step('DS2: reading DS freshness metric'):
-        checks.append(check_freshness(mclient, args, now, c))
+        checks.append(check_freshness(mclient, project, stream, now, c,
+                                      freshness_max_age_minutes))
     with _Step(f'DS3: reading DS per-table event counts '
-               f'(last {args.quiet_minutes} min)'):
-        checks.append(check_no_recent_events(mclient, args, now))
+               f'(last {quiet_minutes} min)'):
+        checks.append(check_no_recent_events(mclient, project, stream, now,
+                                             quiet_minutes))
 
     # 3. BQ, evaluated at T.
     with _Step('BQ1/BQ2: querying BQ INFORMATION_SCHEMA (appends, watermarks)'):
-        t, bq_result, tables = bq_checks(bq, args)
+        t, bq_result, tables = bq_checks(bq, project, bq_dataset, bq_region,
+                                         settle_minutes)
     checks += bq_result
-    _log(f'T = {_fmt(t)}')
+    logging.info('T = %s', _fmt(t))
 
     # 4. Authoritative SP re-read, strictly after T.
     with _Step('SP3: strong re-read of SP after T'):
@@ -410,7 +423,7 @@ def main():
         summary = (f'YES: BQ at T ({_fmt(t)}) == SP at C ({_fmt(c)}) == what '
                    f'mixer serves. Safe to snapshot FOR SYSTEM_TIME AS OF T.')
 
-    if args.json:
+    if as_json:
         print(json.dumps({
             'verdict': verdict,
             'summary': summary,
@@ -432,9 +445,25 @@ def main():
     return 0 if not failed else 1
 
 
-if __name__ == '__main__':
+def main(_):
     try:
-        sys.exit(main())
+        return run(
+            project=_FLAGS.project,
+            spanner_instance=_FLAGS.spanner_instance,
+            spanner_database=_FLAGS.spanner_database,
+            bq_dataset=_FLAGS.bq_dataset,
+            bq_region=_FLAGS.bq_region,
+            stream_location=_FLAGS.stream_location,
+            stream=_FLAGS.stream,
+            quiet_minutes=_FLAGS.quiet_minutes,
+            settle_minutes=_FLAGS.settle_minutes,
+            freshness_max_age_minutes=_FLAGS.freshness_max_age_minutes,
+            as_json=_FLAGS.json)
     except Exception as e:  # pylint: disable=broad-except
-        print(f'ERROR: {type(e).__name__}: {e}', file=sys.stderr)
-        sys.exit(2)
+        logging.error('%s: %s', type(e).__name__, e)
+        return 2
+
+
+if __name__ == '__main__':
+    _define_flags()
+    app.run(main)

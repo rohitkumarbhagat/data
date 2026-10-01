@@ -35,8 +35,8 @@ Flow:
      label snapshot_dataset=<new dataset> on it. A failure here keeps the
      snapshot.
 
---dry_run only lists tables (read-only) and prints the statements.
-Progress is logged to stderr; the summary is printed to stdout.
+--dry_run only lists tables (read-only) and logs the statements.
+Progress is logged with absl logging (stderr); the summary is printed to stdout.
 
 Usage (from repo root):
   python -m tools.spanner_bq_snapshot.create_snapshot [--as_of TIME]
@@ -45,61 +45,66 @@ Exit code: 0 = success, 1 = snapshot failed, 2 = snapshot created but
 --mark_latest failed.
 """
 
-import argparse
 import datetime
-import sys
 import time
 
+from absl import app
+from absl import flags
+from absl import logging
 from google.api_core import exceptions
 from google.cloud import bigquery
 
+_FLAGS = flags.FLAGS
 
-def _log(msg):
-    now = datetime.datetime.now(datetime.timezone.utc).strftime('%H:%M:%S')
-    print(f'[{now}] {msg}', file=sys.stderr, flush=True)
+
+def _define_flags():
+    try:
+        flags.DEFINE_string('project', 'datcom-store', 'GCP project.')
+        flags.DEFINE_string('location', 'US', 'BigQuery location.')
+        flags.DEFINE_string('source_dataset', 'spanner_dc_graph_prod_DEFAULT',
+                            'Dataset to snapshot.')
+        flags.DEFINE_string('snapshot_prefix', 'spanner_dc_graph_prod_snap_',
+                            'Prefix of the dated snapshot dataset name.')
+        flags.DEFINE_string('latest_dataset', 'spanner_dc_graph_prod_snap_latest',
+                            'Dataset with the views updated by --mark_latest.')
+        flags.DEFINE_string(
+            'as_of', None,
+            'Snapshot time T, ISO format, e.g. "2026-10-01 04:09:17". '
+            'No timezone = UTC. Default: now. Must be within the source '
+            'dataset time-travel window (7 days).')
+        flags.DEFINE_integer('ttl_days', 60,
+                             'Dataset default_table_expiration_days.')
+        flags.DEFINE_boolean(
+            'mark_latest', False,
+            'Point the views in --latest_dataset at the new snapshot.')
+        flags.DEFINE_boolean('dry_run', False,
+                             'Only list tables and log the statements.')
+    except flags.DuplicateFlagError:
+        pass
 
 
 class _Step:
-    """Logs start and duration of a step to stderr."""
+    """Logs start and duration of a step."""
 
     def __init__(self, msg):
         self._msg = msg
 
     def __enter__(self):
-        _log(f'{self._msg} ...')
+        logging.info('%s ...', self._msg)
         self._start = time.monotonic()
 
     def __exit__(self, exc_type, *_):
         status = 'FAILED' if exc_type else 'done'
-        _log(f'{self._msg}: {status} in {time.monotonic() - self._start:.1f}s')
+        logging.info('%s: %s in %.1fs', self._msg, status,
+                     time.monotonic() - self._start)
 
 
-def _parse_as_of(value):
+def parse_as_of(value):
     """Parses an ISO time; a value without a timezone is taken as UTC."""
     ts = datetime.datetime.fromisoformat(value)
     if ts.tzinfo is None:
         ts = ts.replace(tzinfo=datetime.timezone.utc)
     return ts.astimezone(datetime.timezone.utc)
-
-
-def _parse_args():
-    p = argparse.ArgumentParser(description=__doc__.split('\n')[0])
-    p.add_argument('--project', default='datcom-store')
-    p.add_argument('--location', default='US')
-    p.add_argument('--source_dataset', default='spanner_dc_graph_prod_DEFAULT')
-    p.add_argument('--snapshot_prefix', default='spanner_dc_graph_prod_snap_')
-    p.add_argument('--latest_dataset', default='spanner_dc_graph_prod_snap_latest')
-    p.add_argument('--as_of', type=_parse_as_of,
-                   help='Snapshot time T, ISO format, e.g. "2026-10-01 04:09:17". '
-                        'No timezone = UTC. Default: now. Must be within the '
-                        'source dataset time-travel window (7 days).')
-    p.add_argument('--ttl_days', type=int, default=60,
-                   help='Dataset default_table_expiration_days.')
-    p.add_argument('--mark_latest', action='store_true',
-                   help='Point the views in --latest_dataset at the new snapshot.')
-    p.add_argument('--dry_run', action='store_true',
-                   help='Only list tables and print the statements.')
-    return p.parse_args()
 
 
 def _fmt(ts):
@@ -110,155 +115,177 @@ def _labels_sql(labels):
     return '[' + ', '.join(f"('{k}', '{v}')" for k, v in labels.items()) + ']'
 
 
-def _list_tables(bq, args, dataset, table_type):
+def _list_tables(bq, project, location, dataset, table_type):
     rows = bq.query(
         f'SELECT table_name, creation_time '
-        f'FROM `{args.project}.{dataset}.INFORMATION_SCHEMA.TABLES` '
+        f'FROM `{project}.{dataset}.INFORMATION_SCHEMA.TABLES` '
         f'WHERE table_type = @t ORDER BY table_name',
-        location=args.location,
+        location=location,
         job_config=bigquery.QueryJobConfig(query_parameters=[
             bigquery.ScalarQueryParameter('t', 'STRING', table_type)])).result()
     return list(rows)
 
 
-def _run(bq, args, sql):
-    _log(f'  SQL: {sql}')
-    if not args.dry_run:
-        bq.query(sql, location=args.location).result()
+def _run(bq, location, dry_run, sql):
+    logging.info('  SQL: %s', sql)
+    if not dry_run:
+        bq.query(sql, location=location).result()
 
 
-def create_snapshot(bq, args, t, dataset, tables):
+def create_snapshot(bq, project, location, source_dataset, dataset, tables, t,
+                    ttl_days, dry_run):
     """Steps 2-4. Drops the dataset on any error, then re-raises."""
-    ds = f'`{args.project}.{dataset}`'
-    description = (f'Snapshot of {args.project}.{args.source_dataset} '
+    ds = f'`{project}.{dataset}`'
+    description = (f'Snapshot of {project}.{source_dataset} '
                    f'FOR SYSTEM_TIME AS OF {_fmt(t)}.')
     created = False
     try:
         with _Step(f'Creating dataset {dataset} (status=incomplete, '
-                   f'ttl {args.ttl_days} days)'):
-            _run(bq, args,
+                   f'ttl {ttl_days} days)'):
+            _run(bq, location, dry_run,
                  f'CREATE SCHEMA {ds} OPTIONS('
-                 f"location='{args.location}', "
-                 f'default_table_expiration_days={args.ttl_days}, '
+                 f"location='{location}', "
+                 f'default_table_expiration_days={ttl_days}, '
                  f'description="{description}", '
                  f"labels={_labels_sql({'status': 'incomplete'})})")
         created = True
         for i, name in enumerate(tables, 1):
             with _Step(f'[{i}/{len(tables)}] Snapshotting {name}'):
-                _run(bq, args,
-                     f'CREATE SNAPSHOT TABLE `{args.project}.{dataset}.{name}` '
-                     f'CLONE `{args.project}.{args.source_dataset}.{name}` '
+                _run(bq, location, dry_run,
+                     f'CREATE SNAPSHOT TABLE `{project}.{dataset}.{name}` '
+                     f'CLONE `{project}.{source_dataset}.{name}` '
                      f"FOR SYSTEM_TIME AS OF TIMESTAMP '{t.isoformat()}'")
         with _Step('Marking dataset status=complete'):
-            _run(bq, args,
+            _run(bq, location, dry_run,
                  f'ALTER SCHEMA {ds} SET OPTIONS('
                  f"labels={_labels_sql({'status': 'complete'})})")
     except BaseException:  # Also KeyboardInterrupt: never leave a partial snapshot.
-        if created and not args.dry_run:
-            _log(f'Snapshot failed; dropping dataset {dataset}')
+        if created and not dry_run:
+            logging.error('Snapshot failed; dropping dataset %s', dataset)
             try:
                 bq.query(f'DROP SCHEMA IF EXISTS {ds} CASCADE',
-                         location=args.location).result()
-                _log(f'Dropped dataset {dataset}')
+                         location=location).result()
+                logging.info('Dropped dataset %s', dataset)
             except Exception as e:  # pylint: disable=broad-except
-                _log(f'Could not drop dataset {dataset} ({type(e).__name__}: '
-                     f'{e}); it stays labeled status=incomplete')
+                logging.error('Could not drop dataset %s (%s: %s); it stays '
+                              'labeled status=incomplete', dataset,
+                              type(e).__name__, e)
         raise
 
 
-def mark_latest(bq, args, t, dataset, tables):
+def mark_latest(bq, project, location, latest_dataset, dataset, tables, t,
+                dry_run):
     """Step 5. Returns (created_or_replaced, dropped) view names."""
-    latest = f'{args.project}.{args.latest_dataset}'
-    if args.dry_run:
+    latest = f'{project}.{latest_dataset}'
+    if dry_run:
         snap_tables = tables  # The snapshot dataset doesn't exist in a dry run.
     else:
         snap_tables = [r.table_name for r in
-                       _list_tables(bq, args, dataset, 'SNAPSHOT')]
+                       _list_tables(bq, project, location, dataset, 'SNAPSHOT')]
     try:
         views = [r.table_name for r in
-                 _list_tables(bq, args, args.latest_dataset, 'VIEW')]
+                 _list_tables(bq, project, location, latest_dataset, 'VIEW')]
     except exceptions.NotFound:
-        if not args.dry_run:
+        if not dry_run:
             raise
-        _log(f'  WARNING: {latest} not found; it must be created before a real run')
+        logging.warning('%s not found; it must be created before a real run',
+                        latest)
         views = []
     to_drop = sorted(set(views) - set(snap_tables))
 
     for name in snap_tables:
-        with _Step(f'Pointing view {args.latest_dataset}.{name} at {dataset}'):
-            _run(bq, args,
+        with _Step(f'Pointing view {latest_dataset}.{name} at {dataset}'):
+            _run(bq, location, dry_run,
                  f'CREATE OR REPLACE VIEW `{latest}.{name}` AS '
-                 f'SELECT * FROM `{args.project}.{dataset}.{name}`')
+                 f'SELECT * FROM `{project}.{dataset}.{name}`')
     for name in to_drop:
-        with _Step(f'Dropping view {args.latest_dataset}.{name} '
+        with _Step(f'Dropping view {latest_dataset}.{name} '
                    f'(no such table in {dataset})'):
-            _run(bq, args, f'DROP VIEW `{latest}.{name}`')
+            _run(bq, location, dry_run, f'DROP VIEW `{latest}.{name}`')
 
-    with _Step(f'Setting label snapshot_dataset={dataset} on {args.latest_dataset}'):
-        if not args.dry_run:
+    with _Step(f'Setting label snapshot_dataset={dataset} on {latest_dataset}'):
+        if not dry_run:
             # Read-modify-write keeps any other labels on the dataset.
             ds = bq.get_dataset(latest)
             ds.labels = {**ds.labels, 'snapshot_dataset': dataset}
-            ds.description = (f'Views pointing to {args.project}.{dataset} '
+            ds.description = (f'Views pointing to {project}.{dataset} '
                               f'(snapshot AS OF {_fmt(t)}).')
             bq.update_dataset(ds, ['labels', 'description'])
     return snap_tables, to_drop
 
 
-def main():
-    args = _parse_args()
-    t = args.as_of or datetime.datetime.now(datetime.timezone.utc)
+def run(project, location, source_dataset, snapshot_prefix, latest_dataset,
+        as_of, ttl_days, do_mark_latest, dry_run):
+    """Runs steps 1-5 and prints the summary. Returns the exit code."""
+    t = as_of or datetime.datetime.now(datetime.timezone.utc)
     t = t.replace(microsecond=0)
-    dataset = args.snapshot_prefix + t.strftime('%Y_%m_%d_%H_%M_%S')
-    _log(f'T = {_fmt(t)}; target dataset = {args.project}.{dataset}'
-         + (' (DRY RUN: nothing will be created)' if args.dry_run else ''))
+    dataset = snapshot_prefix + t.strftime('%Y_%m_%d_%H_%M_%S')
+    logging.info('T = %s; target dataset = %s.%s%s', _fmt(t), project, dataset,
+                 ' (DRY RUN: nothing will be created)' if dry_run else '')
 
-    bq = bigquery.Client(project=args.project)
+    bq = bigquery.Client(project=project)
 
-    with _Step(f'Listing base tables in {args.source_dataset}'):
-        rows = _list_tables(bq, args, args.source_dataset, 'BASE TABLE')
+    with _Step(f'Listing base tables in {source_dataset}'):
+        rows = _list_tables(bq, project, location, source_dataset, 'BASE TABLE')
     tables = [r.table_name for r in rows if r.creation_time <= t]
     skipped = [f'{r.table_name} (created {_fmt(r.creation_time)})'
                for r in rows if r.creation_time > t]
-    _log(f'{len(tables)} tables to snapshot: {tables}')
+    logging.info('%d tables to snapshot: %s', len(tables), tables)
     if skipped:
-        _log(f'WARNING: skipping tables created after T: {skipped}')
+        logging.warning('Skipping tables created after T: %s', skipped)
     if not tables:
-        raise RuntimeError(f'no tables in {args.source_dataset} existed at T')
+        raise RuntimeError(f'no tables in {source_dataset} existed at T')
 
     try:
-        create_snapshot(bq, args, t, dataset, tables)
+        create_snapshot(bq, project, location, source_dataset, dataset, tables,
+                        t, ttl_days, dry_run)
     except Exception as e:  # pylint: disable=broad-except
-        print(f'FAILED: snapshot {args.project}.{dataset} not created: '
+        print(f'FAILED: snapshot {project}.{dataset} not created: '
               f'{type(e).__name__}: {e}')
         return 1
 
-    expires = t + datetime.timedelta(days=args.ttl_days)
-    prefix = 'DRY RUN: would create' if args.dry_run else 'Created'
-    print(f'{prefix} {args.project}.{dataset}: {len(tables)} tables AS OF '
-          f'{_fmt(t)}, status=complete, tables expire ~{args.ttl_days} days '
+    expires = t + datetime.timedelta(days=ttl_days)
+    prefix = 'DRY RUN: would create' if dry_run else 'Created'
+    print(f'{prefix} {project}.{dataset}: {len(tables)} tables AS OF '
+          f'{_fmt(t)}, status=complete, tables expire ~{ttl_days} days '
           f'after creation (~{expires:%Y-%m-%d}).')
     if skipped:
         print(f'Skipped (created after T): {skipped}')
 
-    if args.mark_latest:
+    if do_mark_latest:
         try:
-            replaced, dropped = mark_latest(bq, args, t, dataset, tables)
+            replaced, dropped = mark_latest(bq, project, location,
+                                            latest_dataset, dataset, tables, t,
+                                            dry_run)
         except Exception as e:  # pylint: disable=broad-except
             print(f'FAILED: --mark_latest: {type(e).__name__}: {e}. The snapshot '
-                  f'is kept; {args.latest_dataset} may be partly switched '
-                  f'(see stderr), its snapshot_dataset label was not updated.')
+                  f'is kept; {latest_dataset} may be partly switched '
+                  f'(see logs), its snapshot_dataset label was not updated.')
             return 2
-        prefix = 'DRY RUN: would point' if args.dry_run else 'Pointed'
-        print(f'{prefix} {len(replaced)} views in {args.project}.'
-              f'{args.latest_dataset} at {dataset}; dropped views: '
-              f'{dropped or "none"}; label snapshot_dataset={dataset}.')
+        prefix = 'DRY RUN: would point' if dry_run else 'Pointed'
+        print(f'{prefix} {len(replaced)} views in {project}.{latest_dataset} '
+              f'at {dataset}; dropped views: {dropped or "none"}; '
+              f'label snapshot_dataset={dataset}.')
     return 0
 
 
-if __name__ == '__main__':
+def main(_):
     try:
-        sys.exit(main())
+        return run(
+            project=_FLAGS.project,
+            location=_FLAGS.location,
+            source_dataset=_FLAGS.source_dataset,
+            snapshot_prefix=_FLAGS.snapshot_prefix,
+            latest_dataset=_FLAGS.latest_dataset,
+            as_of=parse_as_of(_FLAGS.as_of) if _FLAGS.as_of else None,
+            ttl_days=_FLAGS.ttl_days,
+            do_mark_latest=_FLAGS.mark_latest,
+            dry_run=_FLAGS.dry_run)
     except Exception as e:  # pylint: disable=broad-except
-        print(f'ERROR: {type(e).__name__}: {e}', file=sys.stderr)
-        sys.exit(1)
+        logging.error('%s: %s', type(e).__name__, e)
+        return 1
+
+
+if __name__ == '__main__':
+    _define_flags()
+    app.run(main)
