@@ -14,9 +14,18 @@ applied in BigQuery.
 
 ## Usage
 
-Requires `google-cloud-bigquery`, `google-cloud-spanner` and
-`google-cloud-monitoring`, and credentials with read access to Spanner,
-BigQuery, Cloud Monitoring and Datastream in `datcom-store`.
+Dependencies are declared in `import-automation/executor/requirements.txt`,
+which `requirements_all.txt` includes (`pip install -r requirements_all.txt`).
+
+Credentials come from the environment (Application Default Credentials); the
+scripts don't pass any. Required access in `datcom-store`:
+- `check_snapshot_readiness.py`: read-only access to Spanner, BigQuery,
+  Cloud Monitoring and Datastream.
+- `create_snapshot.py`: BigQuery only; read the source dataset, create and
+  drop datasets, create snapshot tables and views, update dataset labels.
+
+If your ADC quota project doesn't have these APIs enabled (e.g. a local gcloud
+login), set `GOOGLE_CLOUD_QUOTA_PROJECT=datcom-store`.
 
 Run from the repo root:
 

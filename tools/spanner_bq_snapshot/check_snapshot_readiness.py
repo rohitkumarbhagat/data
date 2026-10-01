@@ -66,9 +66,8 @@ import time
 from absl import app
 from absl import flags
 from absl import logging
-import google.auth
-from google.auth.transport.requests import AuthorizedSession
 from google.cloud import bigquery
+from google.cloud import datastream_v1
 from google.cloud import monitoring_v3
 from google.cloud import spanner
 
@@ -205,16 +204,13 @@ def spanner_checks(state):
 
 # --------------------------------------------------------------------- DS --
 
-def check_stream_running(creds, project, stream_location, stream):
-    url = (f'https://datastream.googleapis.com/v1/projects/{project}'
-           f'/locations/{stream_location}/streams/{stream}')
-    resp = AuthorizedSession(creds).get(url, timeout=60)
-    resp.raise_for_status()
-    body = resp.json()
-    state = body.get('state')
-    errors = body.get('errors') or []
-    return Check('DS1 stream running', state == 'RUNNING' and not errors,
-                 f'DS stream {stream}: state={state}, errors={len(errors)}')
+def check_stream_running(dsclient, project, stream_location, stream):
+    s = dsclient.get_stream(
+        name=f'projects/{project}/locations/{stream_location}/streams/{stream}')
+    state = datastream_v1.Stream.State(s.state).name
+    return Check('DS1 stream running',
+                 s.state == datastream_v1.Stream.State.RUNNING and not s.errors,
+                 f'DS stream {stream}: state={state}, errors={len(s.errors)}')
 
 
 def _interval(now, minutes):
@@ -359,19 +355,15 @@ def run(project, spanner_instance, spanner_database, bq_dataset, bq_region,
     """Runs all checks and prints the report. Returns the exit code."""
     checks = []
 
-    creds, _ = google.auth.default(
-        scopes=['https://www.googleapis.com/auth/cloud-platform'])
-    if hasattr(creds, 'with_quota_project'):
-        creds = creds.with_quota_project(project)
-
+    # Credentials come from the environment (ADC).
     # disable_builtin_metrics: the Spanner client otherwise exports its own
     # metrics to Cloud Monitoring, which is a write.
     database = spanner.Client(
-        project=project, credentials=creds,
-        disable_builtin_metrics=True).instance(
+        project=project, disable_builtin_metrics=True).instance(
             spanner_instance).database(spanner_database)
-    mclient = monitoring_v3.MetricServiceClient(credentials=creds)
-    bq = bigquery.Client(project=project, credentials=creds)
+    dsclient = datastream_v1.DatastreamClient()
+    mclient = monitoring_v3.MetricServiceClient()
+    bq = bigquery.Client(project=project)
 
     # 1. SP gate.
     with _Step('SP1/SP2: strong read of SP IngestionLock + IngestionHistory'):
@@ -383,7 +375,7 @@ def run(project, spanner_instance, spanner_database, bq_dataset, bq_region,
     # 2. DS.
     now = datetime.datetime.now(datetime.timezone.utc)
     with _Step('DS1: reading DS stream state'):
-        checks.append(check_stream_running(creds, project, stream_location,
+        checks.append(check_stream_running(dsclient, project, stream_location,
                                            stream))
     with _Step('DS2: reading DS freshness metric'):
         checks.append(check_freshness(mclient, project, stream, now, c,

@@ -25,10 +25,12 @@ google-cloud-batch
 google-cloud-bigquery
 google-cloud-bigquery-storage
 google-cloud-datastore
+google-cloud-datastream
 google-cloud-run
 google-cloud-spanner
 google-cloud-storage
 google-cloud-logging
+google-cloud-monitoring
 google-cloud-scheduler
 google-cloud-secret-manager
 gspread
